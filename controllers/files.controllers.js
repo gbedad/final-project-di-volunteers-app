@@ -2,11 +2,38 @@ import db from '../config/database.js'
 import File from '../models/files.model.js'
 
 // const File = db.files;
-export const uploadFile =async (req, res) => {
-	const { originalname, mimetype, location } = req.file;
-  	const file = await File.create({ filename: originalname, mimetype, path: location });
-	res.json(file)
+// Code valid with AWS------
+export const uploadFile = async (req, res) => {
+	
+
+	const userId = req.params.userId
+	console.log(userId);
+	try {
+
+		const { originalname, mimetype, location} = req.file;
+		  const file = await File.create({ filename: originalname, mimetype, path: location , userId});
+		res.json(file)
+	}
+	catch (err) {
+		console.log(err)
+	}
+
 }
+
+// export const uploadFile =async (req, res) => {
+// 	try {
+// 		const { body, files } = req;
+	
+// 		for (let f = 0; f < files.length; f += 1) {
+// 		  await uploadFile(files[f]);
+// 		}
+	
+// 		console.log(body);
+// 		res.status(200).send('Form Submitted');
+// 	  } catch (f) {
+// 		res.send(f.message);
+// 	  }
+// }
 
 // export const listAllFiles = (req, res) => {
 // 	File.findAll({attributes: ['id', 'name']}).then(files => {

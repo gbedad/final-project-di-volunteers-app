@@ -1,6 +1,8 @@
 import { Sequelize } from 'sequelize';
 import db from '../config/database.js';
 
+import Users from './users.model.js';
+
 
 const { DataTypes } = Sequelize;
 
@@ -24,8 +26,8 @@ const Files = db.define(
       { 
         timestamps: false,
          
-        }
-  
+        },
   );
-  
-  export default Files;
+
+
+export default Files;

@@ -1,6 +1,8 @@
 import { Sequelize } from 'sequelize';
 import db from '../config/database.js';
 import Missions  from './missions.model.js';
+import Files from './files.model.js'
+import Skills from './skills.model.js';
 
 const { DataTypes } = Sequelize;
 
@@ -55,13 +57,36 @@ Users.hasOne(Missions, {
     allowNull: true
   }
 })
+
+Users.hasMany(Files, {
+  foreignKey: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  }
+})
+
 Missions.hasMany(Users, {
   foreignKey: "mission_id",
   as: "mission",
 })
 Users.belongsTo(Missions)
 
+Users.hasMany(Files, {
+  foreignKey: "userId",
+  as: "file",
+    })
+Files.belongsTo(Users)
 
-db.sync({alter: false})
+Users.hasOne(Skills, {
+  foreignKey: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  }
+  })
+
+Skills.belongsTo(Users)
+
+
+// db.sync({alter: false})
 
 export default Users;
