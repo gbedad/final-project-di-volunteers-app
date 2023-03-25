@@ -209,3 +209,23 @@ export const updateById = async (req, res) => {
       res.status(500).json({ message: 'Error updating row.' });
     }
   };
+
+
+  export const setActiveUser = async (req, res) => {
+    const  userId  = req.params.id; // get the ID of the record to update from the request parameters
+    const {newIsActive} = req.body
+  try {
+    const record = await Users.findOne(
+        {where: {
+            id: userId
+            }}); // find the record in the database by its ID
+    if (!record) {
+      return res.status(404).json({ error: 'Record not found' }); // return an error response if the record doesn't exist
+    }
+    const updatedRecord = await record.update({ is_active: newIsActive }); // update the is_active field to false
+    return res.json(updatedRecord); // return the updated record as a JSON response
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error' }); // return an error response if something goes wrong
+  }
+  }

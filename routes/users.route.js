@@ -6,7 +6,10 @@ import {
   getUsers,
   deleteRegistration,
   updateUser,
-  logout, updateById, getUserById
+  logout,
+  updateById,
+  getUserById,
+  setActiveUser
 } from '../controllers/users.controllers.js';
 import { verifyToken } from '../middlewares/verifyToken.js';
 import {validateUserRole} from '../middlewares/validateUserRole.js'
@@ -23,5 +26,6 @@ router.put('/update/:id', verifyToken, updateUser)
 router.delete('/delete-registration/:id', verifyToken, deleteRegistration);
 router.get('/user-by-id/:id', verifyToken,getUserById)
 router.patch('/update-status/:id', verifyToken, updateById);
+router.put('/update-active-user/:id', verifyToken, setActiveUser)
 
 export default router;
