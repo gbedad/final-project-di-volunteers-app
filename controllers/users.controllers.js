@@ -18,7 +18,7 @@ export const gotoHomePage = async (req, res) => {
         const missions = await Missions.findAll({
             attributes: ['id','title', 'description', 'location']
         })
-        res.status(200).json({msg: "Connected to Home Page", missions: missions})
+        res.status(200).json(missions)
     }
     catch(e) {
         console.log(e)

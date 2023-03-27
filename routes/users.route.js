@@ -21,7 +21,7 @@ router.get('/', gotoHomePage);
 router.post('/register', register);
 router.post('/login', login);
 router.get('/logout', verifyToken, logout)
-router.post('/all-users',verifyToken, getUsers);
+router.get('/all-users',verifyToken, getUsers);
 router.put('/update/:id', verifyToken, updateUser)
 router.delete('/delete-registration/:id', verifyToken, deleteRegistration);
 router.get('/user-by-id/:id', verifyToken,getUserById)
