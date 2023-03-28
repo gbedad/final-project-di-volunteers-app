@@ -31,10 +31,11 @@ export const createUser = async (req, res) => {
 }
 
 export const getUsers = async (req, res) => {
+  console.log("Reached all users")
     try {
        
         const users = await Users.findAll({
-            attributes: ['id', 'email', 'first_name', 'last_name', 'phone', 'status', 'created_at', 'updated_at', 'is_active', 'message', 'role'],
+            attributes: ['id', 'email', 'first_name', 'last_name', 'phone', 'status', 'created_at', 'updated_at', 'is_active', 'message', 'role', 'is_active'],
             include: ['mission', 'skill', 'file'],
             where : {
                 role : 'volunteer'
@@ -43,6 +44,7 @@ export const getUsers = async (req, res) => {
                 ["created_at", "desc"]
             ]
     })
+  console.log(users)
     res.json(users)
         // if (users.role === 'volunteer') {
         //     res.json(users)
@@ -53,6 +55,7 @@ export const getUsers = async (req, res) => {
        
         }
     catch(err) {
+        console.log("Catch error", err)
         res.status(404).json({msg: err.message})
         }
     }
@@ -133,14 +136,14 @@ export const login = async (req, res) => {
                 userid,
                 email
             },
-            `${process.env.ACCESS_SECRET_TOKEN}`,
+            process.env.ACCESS_TOKEN_SECRET,
             {
-                expiresIn:'3000s'
+                expiresIn:'7d'
             }
             )
         res.cookie('accesstoken', token, {
             httpOnly: true,
-            maxAge: 3000 * 1000
+            maxAge: 7*24*3600 * 1000
         })
         res.json({token:token, user: user});
     }

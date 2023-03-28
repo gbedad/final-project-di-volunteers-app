@@ -19,13 +19,13 @@ const router = express.Router();
 
 router.get('/', gotoHomePage);
 router.post('/register', register);
-router.post('/login', login);
-router.get('/logout', verifyToken, logout)
-router.get('/all-users',verifyToken, getUsers);
-router.put('/update/:id', verifyToken, updateUser)
-router.delete('/delete-registration/:id', verifyToken, deleteRegistration);
-router.get('/user-by-id/:id', verifyToken,getUserById)
-router.patch('/update-status/:id', verifyToken, updateById);
-router.put('/update-active-user/:id', verifyToken, setActiveUser)
+router.post('/login',login);
+router.get('/logout', logout)
+router.get('/all-users', getUsers);
+router.put('/update/:id', updateUser)
+router.delete('/delete-registration/:id',deleteRegistration);
+router.get('/user-by-id/:id', getUserById)
+router.patch('/update-status/:id',  updateById);
+router.patch('/update-active-user/:id', setActiveUser)
 
 export default router;

@@ -4,15 +4,15 @@ import File from '../models/files.model.js'
 // const File = db.files;
 // Code valid with AWS------
 export const uploadFile = async (req, res) => {
-	
+	console.log(req);
 
 	const userId = req.params.userId
 	console.log(userId);
 	try {
 
 		const { originalname, mimetype, location} = req.file;
-		  const file = await File.create({ filename: originalname, mimetype, path: location , userId});
-		res.json(file)
+		  const newfile = await File.create({ filename: originalname, mimetype, path: location , userId});
+		res.json(newfile)
 	}
 	catch (err) {
 		console.log(err)
