@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 
 dotenv.config()
 
-export const verifyToken = (req, res, next) => {
+// export const verifyToken = (req, res, next) => {
 //     const token = req.cookies.accesstoken || req.headers['x-access-token'];
 //         console.log("Token",token)
 //         console.log(req.cookies);
@@ -25,6 +25,7 @@ export const verifyToken = (req, res, next) => {
 //         console.log('JWT verification successful:', decoded);
 
 //         req.decoded = decoded;
+//         console.log(decoded);
 
 //             // const id = decoded.userid;
 //             // req.userid = id
@@ -32,18 +33,21 @@ export const verifyToken = (req, res, next) => {
 //         next();
 //     })
 // }
-const token = req.cookies.accesstoken || req.headers['x-access-token']
-console.log(token, req.cookies);
-  // Check if token exists
-  if (!token) return res.status(401).send('Access denied. No token provided.');
 
-  try {
-    // Verify token
-    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-    req.user = decoded;
 
-    next();
-  } catch (ex) {
-    res.status(400).send('Invalid token.');
+export function verifyToken(req, res, next) {
+  const token = req.cookies.accesstoken || req.headers['x-access-token'];
+  if (token) {
+    
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
+      if (err) {
+        return res.sendStatus(403);
+      }
+      req.user = user;
+      console.log("User",user);
+      next();
+    });
+  } else {
+    res.sendStatus(401);
   }
 }

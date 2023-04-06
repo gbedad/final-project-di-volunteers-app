@@ -31,7 +31,7 @@ export const createUser = async (req, res) => {
 }
 
 export const getUsers = async (req, res) => {
-  console.log("Reached all users")
+  console.log("Reached all users", req)
     try {
        
         const users = await Users.findAll({
@@ -131,10 +131,12 @@ export const login = async (req, res) => {
         if (!match) return res.status(400).json({msg: 'Wrong password'})
         const userid = user.id;
         const email = user.email;
+        const role = user.role;
         const token = jwt.sign(
             {
                 userid,
-                email
+                email,
+                role
             },
             process.env.ACCESS_TOKEN_SECRET,
             {
@@ -145,7 +147,7 @@ export const login = async (req, res) => {
             httpOnly: true,
             maxAge: 7*24*3600 * 1000
         })
-        res.json({token:token, user: user});
+        res.json({token, user});
     }
     catch (error) {
         console.log(error);

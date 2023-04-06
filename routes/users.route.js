@@ -12,7 +12,6 @@ import {
   setActiveUser
 } from '../controllers/users.controllers.js';
 import { verifyToken } from '../middlewares/verifyToken.js';
-import {validateUserRole} from '../middlewares/validateUserRole.js'
 import {isAdmin} from '../middlewares/isAdmin.js'
  
 const router = express.Router();
@@ -21,7 +20,7 @@ router.get('/', gotoHomePage);
 router.post('/register', register);
 router.post('/login',login);
 router.get('/logout', logout)
-router.get('/all-users', getUsers);
+router.get('/all-users', verifyToken,isAdmin, getUsers);
 router.put('/update/:id', updateUser)
 router.delete('/delete-registration/:id',deleteRegistration);
 router.get('/user-by-id/:id', getUserById)
