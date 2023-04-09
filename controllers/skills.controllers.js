@@ -41,7 +41,7 @@ export const createSkills = async (req, res) => {
 
 
 export const updateSkills = async (req, res) => {
-    
+    console.log(req.body);
     try {
       const userId = req.params.userId;
       // console.log("Route", req.body)
@@ -72,12 +72,12 @@ export const updateSkills = async (req, res) => {
       if (req.body.when_day_slot) {
 
         // const days = JSON.parse(req.body.when_day_slot)
-        let parsedData = req.body.when_day_slot.forEach(element => {
-          console.log(element);
-          JSON.stringify(element)
-        });
-        console.log(parsedData);
-        skill.when_day_slot = req.body.when_day_slot
+        // let parsedData = req.body.when_day_slot.forEach(element => {
+        //   console.log(element);
+        //   JSON.parse(element)
+        // });
+        
+        skill.when_day_slot = JSON.parse(req.body.when_day_slot)
       }
   
       if (req.body.where_location) {
@@ -104,7 +104,7 @@ export const updateSkills = async (req, res) => {
       await skill.save();
     
       // Return a success response
-      res.status(200).json({ message: 'Skill updated successfully', skills: skill.when_day_slot });
+      res.status(200).json({ message: 'Skill updated successfully'});
     } catch (error) {
       console.log(error)
       // Return an error response if any error occurs during the update process

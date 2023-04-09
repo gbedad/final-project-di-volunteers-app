@@ -174,7 +174,8 @@ export const logout = (req, res) => {
 
 export async function getUserById(req, res) {
     try {
-      const user = await Users.findByPk(req.params.id, {
+      const user = await Users.findOne( {
+        where: {id: req.params.id},
         include:['mission', 'skill', 'file']
       });
   
