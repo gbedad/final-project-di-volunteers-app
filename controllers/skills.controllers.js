@@ -66,7 +66,7 @@ export const updateSkills = async (req, res) => {
 
       // Update the fields of the record based on the values present in the request body
       if (req.body.topics) {
-        skill.topics = req.body.topics;
+        skill.topics = JSON.parse(req.body.topics);
       }
       // console.log(req.body.when_day_slot);
       if (req.body.when_day_slot) {

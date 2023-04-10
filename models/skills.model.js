@@ -9,7 +9,7 @@ const Skills = db.define(
   'skills',
   {
     topics: {
-        type: DataTypes.ARRAY(DataTypes.TEXT),
+        type: DataTypes.ARRAY(DataTypes.JSONB),
         defaultValue: [] 
     },
     when_day_slot: {
