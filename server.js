@@ -14,6 +14,7 @@ import db from './config/database.js';
 import users_router from './routes/users.route.js';
 import files_router from './routes/files.route.js';
 import skills_router from './routes/skills.route.js'
+import missions_router from './routes/missions.route.js'
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ app.use(express.json());
 app.use(users_router);
 app.use(files_router);
 app.use(skills_router)
+app.use(missions_router)
 
 // Connection to database
 try {

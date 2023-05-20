@@ -1,7 +1,7 @@
 import { Sequelize } from 'sequelize';
 import db from '../config/database.js';
-import Missions  from './missions.model.js';
-import Files from './files.model.js'
+import Missions from './missions.model.js';
+import Files from './files.model.js';
 import Skills from './skills.model.js';
 
 const { DataTypes } = Sequelize;
@@ -28,64 +28,63 @@ const Users = db.define(
       type: DataTypes.STRING,
     },
     message: {
-      type: DataTypes.TEXT('medium')
+      type: DataTypes.TEXT('medium'),
     },
     role: {
       type: DataTypes.STRING,
-      defaultValue: 'volunteer'
+      defaultValue: 'volunteer',
     },
     status: {
       type: DataTypes.STRING,
-      defaultValue: 'created'
+      defaultValue: 'compte créé',
     },
     is_active: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false
-    }
-},
+      defaultValue: false,
+    },
+  },
 
-    { 
-        timestamps: true,
-        underscored: true,
-        created_at: "created_at", 
-        updated_at: "updated_at", 
-      },
+  {
+    timestamps: true,
+    underscored: true,
+    created_at: 'created_at',
+    updated_at: 'updated_at',
+  }
 );
 Users.hasOne(Missions, {
   foreignKey: {
     type: DataTypes.INTEGER,
-    allowNull: true
-  }
-})
+    allowNull: true,
+  },
+});
 
 Users.hasMany(Files, {
   foreignKey: {
     type: DataTypes.INTEGER,
-    allowNull: true
-  }
-})
+    allowNull: true,
+  },
+});
 
 Missions.hasMany(Users, {
-  foreignKey: "mission_id",
-  as: "mission",
-})
-Users.belongsTo(Missions)
+  foreignKey: 'mission_id',
+  as: 'mission',
+});
+Users.belongsTo(Missions);
 
 Users.hasMany(Files, {
-  foreignKey: "userId",
-  as: "file",
-    })
-Files.belongsTo(Users)
+  foreignKey: 'userId',
+  as: 'file',
+});
+Files.belongsTo(Users);
 
 Users.hasOne(Skills, {
   foreignKey: {
     type: DataTypes.INTEGER,
-    allowNull: true
-  }
-  })
+    allowNull: true,
+  },
+});
 
-Skills.belongsTo(Users)
-
+Skills.belongsTo(Users);
 
 // db.sync({alter: false})
 
