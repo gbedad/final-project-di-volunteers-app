@@ -42,6 +42,22 @@ const Users = db.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    cv_received: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    id_received: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    b3_received: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    convention_received: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
   },
 
   {
@@ -86,6 +102,6 @@ Users.hasOne(Skills, {
 
 Skills.belongsTo(Users);
 
-// db.sync({alter: false})
+// db.sync({ alter: true });
 
 export default Users;

@@ -48,6 +48,10 @@ export const getUsers = async (req, res) => {
         'message',
         'role',
         'is_active',
+        'id_received',
+        'cv_received',
+        'b3_received',
+        'convention_received',
       ],
       include: ['mission', 'skill', 'file'],
       where: {
@@ -210,6 +214,7 @@ export async function getUserById(req, res) {
 export const updateById = async (req, res) => {
   const { id } = req.params;
   const { newStatus } = req.body; // use "newStatus" instead of "newFieldValue"
+  console.log(newStatus);
 
   try {
     const [numUpdated, updatedRows] = await Users.update(
@@ -245,5 +250,34 @@ export const setActiveUser = async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Internal server error' }); // return an error response if something goes wrong
+  }
+};
+
+// Controller method to update the fields based on checkbox value
+export const updateReceivedFields = async (req, res) => {
+  const { userId, cvReceived, idReceived, b3Received, conventionReceived } =
+    req.body;
+  console.log('REQ.BODY===>>>', req.body);
+  try {
+    // Find the user by userId
+    const user = await Users.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update the fields based on checkbox values
+    user.cv_received = cvReceived || false;
+    user.id_received = idReceived || false;
+    user.b3_received = b3Received || false;
+    user.convention_received = conventionReceived || false;
+
+    // Save the updated user
+    await user.save();
+
+    return res.status(200).json({ message: 'Fields updated successfully' });
+  } catch (error) {
+    console.error('Error updating fields:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };
