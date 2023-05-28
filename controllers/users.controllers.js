@@ -52,6 +52,7 @@ export const getUsers = async (req, res) => {
         'cv_received',
         'b3_received',
         'convention_received',
+        'test_voltaire_passed',
       ],
       include: ['mission', 'skill', 'file'],
       where: {
@@ -255,8 +256,14 @@ export const setActiveUser = async (req, res) => {
 
 // Controller method to update the fields based on checkbox value
 export const updateReceivedFields = async (req, res) => {
-  const { userId, cvReceived, idReceived, b3Received, conventionReceived } =
-    req.body;
+  const {
+    userId,
+    cvReceived,
+    idReceived,
+    b3Received,
+    conventionReceived,
+    testVoltairePassed,
+  } = req.body;
   console.log('REQ.BODY===>>>', req.body);
   try {
     // Find the user by userId
@@ -271,6 +278,7 @@ export const updateReceivedFields = async (req, res) => {
     user.id_received = idReceived || false;
     user.b3_received = b3Received || false;
     user.convention_received = conventionReceived || false;
+    user.test_voltaire_passed = testVoltairePassed || false;
 
     // Save the updated user
     await user.save();

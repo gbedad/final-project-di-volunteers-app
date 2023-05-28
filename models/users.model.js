@@ -54,7 +54,8 @@ const Users = db.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
-    convention_received: {
+
+    test_voltaire_passed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
