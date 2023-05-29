@@ -7,7 +7,7 @@ import { uploadFile, cancelFile } from '../controllers/files.controllers.js';
 
 router.post('/upload/:userId', upload.single('file'), uploadFile);
 
-router.delete('/files/cancel/:fileId', cancelFile);
+router.delete('/files/cancel/:fileId', upload.single('file'), cancelFile);
 // router.post('/upload', upload.any(), uploadFile);
 
 // router.get('/api/file/info', fileWorker.listAllFiles);

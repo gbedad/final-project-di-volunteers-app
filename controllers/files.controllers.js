@@ -1,5 +1,6 @@
 import db from '../config/database.js';
 import File from '../models/files.model.js';
+import s3 from '../config/aws.config.js';
 
 // const File = db.files;
 // Code valid with AWS------
@@ -38,14 +39,27 @@ export const cancelFile = async (req, res) => {
     if (!file) {
       return res.status(404).json({ error: 'File not found' });
     }
-
-    // Perform cancellation logic, e.g., deleting the file from the system or updating its status
-    await file.destroy(); // Assuming you have a remove method on your File model
+    const { filename } = file;
+    const params = {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: `documents/${filename}`,
+    };
+    console.log(filename);
+    // Delete the file from the S3 bucket
+    const response = await s3.deleteObject(params, function (err, data) {
+      if (data) {
+        console.log('File deleted successfully');
+      } else {
+        console.log('Check if you have sufficient permissions : ' + err);
+      }
+    });
+    // Perform cancellation
+    await file.destroy();
 
     res.json({ message: 'File canceled successfully' });
   } catch (err) {
     console.log(err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'An error occurred during file deletion' });
   }
 };
 
