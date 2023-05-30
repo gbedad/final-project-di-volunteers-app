@@ -32,7 +32,7 @@ export const gotoHomePage = async (req, res) => {
 export const createUser = async (req, res) => {};
 
 export const getUsers = async (req, res) => {
-  console.log('Reached all users', req);
+  // console.log('Reached all users', req);
   try {
     const users = await Users.findAll({
       attributes: [
@@ -53,6 +53,7 @@ export const getUsers = async (req, res) => {
         'b3_received',
         'convention_received',
         'test_voltaire_passed',
+        'activity',
       ],
       include: ['mission', 'skill', 'file'],
       where: {
@@ -60,7 +61,7 @@ export const getUsers = async (req, res) => {
       },
       order: [['created_at', 'desc']],
     });
-    console.log(users);
+    // console.log(users);
     res.json(users);
     // if (users.role === 'volunteer') {
     //     res.json(users)
@@ -73,6 +74,28 @@ export const getUsers = async (req, res) => {
     res.status(404).json({ msg: err.message });
   }
 };
+// export const getUserById = async (req, res) => {
+//   // console.log('Reached all users', req);
+//   try {
+//     const users = await Users.findOne({
+//       include: ['mission', 'skill', 'file'],
+//       where: {
+//         id: userId,
+//       },
+//     });
+//     console.log(user);
+//     res.json(user);
+//     // if (users.role === 'volunteer') {
+//     //     res.json(users)
+//     // }
+//     // else {
+//     //     res.status(404).json({msg: 'Access denied'})
+//     // }
+//   } catch (err) {
+//     console.log('Catch error', err);
+//     res.status(404).json({ msg: err.message });
+//   }
+// };
 
 export const register = async (req, res) => {
   const {
@@ -87,7 +110,7 @@ export const register = async (req, res) => {
   } = req.body;
   const firstname = capitalizeString(first_name);
   const lastname = capitalizeString(last_name);
-  console.log('Controllers.register', req.body);
+  // console.log('Controllers.register', req.body);
   const salt = await bcrypt.genSalt();
   const hashPassword = await bcrypt.hash(password, salt);
 
@@ -117,7 +140,7 @@ export const register = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   const id = req.params.id;
-  console.log(req.body);
+  // console.log(req.body);
   Users.update(req.body, {
     where: { id: id },
   })
@@ -175,7 +198,7 @@ export const login = async (req, res) => {
 };
 
 export const deleteRegistration = async (req, res) => {
-  console.log(req.params.id);
+  // console.log(req.params.id);
   try {
     const count = await Users.destroy({ where: { id: req.params.id } });
     console.log(`deleted row(s): ${count}`);
@@ -215,7 +238,7 @@ export async function getUserById(req, res) {
 export const updateById = async (req, res) => {
   const { id } = req.params;
   const { newStatus } = req.body; // use "newStatus" instead of "newFieldValue"
-  console.log(newStatus);
+  // console.log(newStatus);
 
   try {
     const [numUpdated, updatedRows] = await Users.update(
@@ -264,7 +287,7 @@ export const updateReceivedFields = async (req, res) => {
     conventionReceived,
     testVoltairePassed,
   } = req.body;
-  console.log('REQ.BODY===>>>', req.body);
+  // console.log('REQ.BODY===>>>', req.body);
   try {
     // Find the user by userId
     const user = await Users.findByPk(userId);
@@ -284,6 +307,61 @@ export const updateReceivedFields = async (req, res) => {
     await user.save();
 
     return res.status(200).json({ message: 'Fields updated successfully' });
+  } catch (error) {
+    console.error('Error updating fields:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const saveActivity = async (req, res) => {
+  try {
+    const { userId, selectedActivity } = req.body;
+    const user = await Users.findByPk(userId);
+    console.log('=====>>', userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.activity = selectedActivity;
+    await user.save();
+    return res.status(200).json({
+      message: 'Activity updated successfully',
+      content: selectedActivity,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Controller method to update the fields based on checkbox value
+export const updateUserAddress = async (req, res) => {
+  const {
+    userId,
+    streetSelected,
+    citySelected,
+    zipcodeSelected,
+    countrySelected,
+  } = req.body;
+  // console.log('REQ.BODY===>>>', req.body);
+  try {
+    // Find the user by userId
+    const user = await Users.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update the fields
+    user.street = streetSelected;
+    user.city = citySelected;
+    user.zipcode = zipcodeSelected;
+    user.country = countrySelected;
+
+    // Save the updated user
+    await user.save();
+
+    return res.status(200).json({ message: 'Address updated successfully' });
   } catch (error) {
     console.error('Error updating fields:', error);
     return res.status(500).json({ error: 'Internal server error' });

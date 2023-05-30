@@ -11,6 +11,8 @@ import {
   getUserById,
   setActiveUser,
   updateReceivedFields,
+  saveActivity,
+  updateUserAddress,
 } from '../controllers/users.controllers.js';
 import { verifyToken } from '../middlewares/verifyToken.js';
 import { isAdmin } from '../middlewares/isAdmin.js';
@@ -22,11 +24,14 @@ router.post('/register', register);
 router.post('/login', login);
 router.get('/logout', logout);
 router.get('/all-users', verifyToken, isAdmin, getUsers);
+// router.get('/user-by-id', getUserById);
 router.put('/update/:id', updateUser);
 router.delete('/delete-registration/:id', deleteRegistration);
 router.get('/user-by-id/:id', getUserById);
 router.patch('/update-status/:id', updateById);
 router.patch('/update-active-user/:id', setActiveUser);
 router.post('/update-files-received/:id', updateReceivedFields);
+router.post('/add-activity', saveActivity);
+router.post('/update-address', updateUserAddress);
 
 export default router;
