@@ -5,15 +5,7 @@ import Users from '../models/users.model.js';
 dotenv.config();
 
 export const createSkills = async (req, res) => {
-  const {
-    topics,
-    when_day_slot,
-    where_location,
-    interview1_date,
-    interview1_comments,
-    interview2_date,
-    interview2_comments,
-  } = req.body;
+  const { topics, when_day_slot, where_location } = req.body;
 
   const userId = req.params.userId;
   try {
@@ -28,10 +20,6 @@ export const createSkills = async (req, res) => {
         topics,
         when_day_slot,
         where_location,
-        interview1_date,
-        interview1_comments,
-        interview2_date,
-        interview2_comments,
         userId,
       });
       res.json(skill);
@@ -79,12 +67,6 @@ export const updateSkills = async (req, res) => {
     }
     // console.log(req.body.when_day_slot);
     if (req.body.when_day_slot) {
-      // const days = JSON.parse(req.body.when_day_slot)
-      // let parsedData = req.body.when_day_slot.forEach(element => {
-      //   console.log(element);
-      //   JSON.parse(element)
-      // });
-
       skill.when_day_slot = JSON.parse(req.body.when_day_slot);
     }
 

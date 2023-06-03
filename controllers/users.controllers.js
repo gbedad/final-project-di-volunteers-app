@@ -54,6 +54,8 @@ export const getUsers = async (req, res) => {
         'convention_received',
         'test_voltaire_passed',
         'activity',
+        'interviews',
+        'email2',
       ],
       include: ['mission', 'skill', 'file'],
       where: {
@@ -287,7 +289,7 @@ export const updateReceivedFields = async (req, res) => {
     conventionReceived,
     testVoltairePassed,
   } = req.body;
-  // console.log('REQ.BODY===>>>', req.body);
+  console.log('REQ.BODY===>>>', req.body);
   try {
     // Find the user by userId
     const user = await Users.findByPk(userId);
@@ -365,5 +367,116 @@ export const updateUserAddress = async (req, res) => {
   } catch (error) {
     console.error('Error updating fields:', error);
     return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const addUserInterviews = async (req, res) => {
+  console.log(req.body.interviews);
+  const interviews = req.body.interviews;
+  const userId = req.params.userId;
+  try {
+    const user = await Users.findByPk(userId);
+
+    if (!user) {
+      return res.status(401).json({ message: 'No user found' });
+    }
+    user.interviews = interviews.map((interview) => JSON.stringify(interview));
+
+    await user.save();
+    return res
+      .status(200)
+      .json({ message: 'Interviews saved successfully', data: interviews });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.massage });
+  }
+};
+
+export const updateUserProfile = async (req, res) => {
+  console.log(req.body);
+  const { userId } = req.params;
+  const {
+    first_name,
+    last_name,
+    email2,
+    phone,
+    activity,
+    street,
+    city,
+    zipcode,
+    country,
+  } = req.body;
+  try {
+    const userProfile = await Users.findByPk(userId);
+    if (!userProfile) {
+      return res.status(404).json({ message: 'Profile not found' });
+    }
+
+    // Update only the provided fields
+    if (first_name) {
+      userProfile.first_name = first_name;
+    }
+    if (last_name) {
+      userProfile.last_name = last_name;
+    }
+    if (email2) {
+      userProfile.email2 = email2;
+    }
+    if (phone) {
+      userProfile.phone = phone;
+    }
+    if (activity) {
+      userProfile.activity = activity;
+    }
+
+    if (street) {
+      userProfile.street = street;
+    }
+
+    if (city) {
+      userProfile.city = city;
+    }
+    if (zipcode) {
+      userProfile.zipcode = zipcode;
+    }
+
+    if (country) {
+      userProfile.country = country;
+    }
+
+    // Save the updated profile
+    await userProfile.save();
+
+    return res
+      .status(200)
+      .json({ message: 'Profile updated successfully', userProfile });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Error updating user profile' });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const oldUser = await Users.findOne({ email });
+    if (!oldUser) {
+      return res.json({ status: 'User Not Exists!!' });
+    }
+    const secret = process.env.ACCESS_TOKEN_SECRET + oldUser.password;
+    const token = jwt.sign({ email: oldUser.email, id: oldUser._id }, secret, {
+      expiresIn: '5m',
+    });
+    const link = `http://localhost:3030/reset-password/${oldUser._id}/${token}`;
+
+    sendEmail(
+      email,
+      `You have requested to reset your password',
+      'Click on the link ${link} to reset`
+    );
+    console.log(link);
+    res.status(201).json({ message: 'Link sent' });
+  } catch (error) {
+    console.log(error);
   }
 };

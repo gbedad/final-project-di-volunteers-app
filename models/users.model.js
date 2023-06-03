@@ -42,6 +42,10 @@ const Users = db.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    email2: {
+      type: DataTypes.STRING,
+      defaultValue: '',
+    },
     cv_received: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
@@ -51,6 +55,10 @@ const Users = db.define(
       defaultValue: false,
     },
     b3_received: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    convention_received: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
@@ -74,8 +82,12 @@ const Users = db.define(
     activity: {
       type: DataTypes.STRING,
     },
-  },
 
+    interviews: {
+      type: DataTypes.ARRAY(DataTypes.JSONB),
+      defaultValue: [],
+    },
+  },
   {
     timestamps: true,
     underscored: true,

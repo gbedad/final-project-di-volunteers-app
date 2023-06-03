@@ -13,6 +13,9 @@ import {
   updateReceivedFields,
   saveActivity,
   updateUserAddress,
+  addUserInterviews,
+  updateUserProfile,
+  forgotPassword,
 } from '../controllers/users.controllers.js';
 import { verifyToken } from '../middlewares/verifyToken.js';
 import { isAdmin } from '../middlewares/isAdmin.js';
@@ -33,5 +36,8 @@ router.patch('/update-active-user/:id', setActiveUser);
 router.post('/update-files-received/:id', updateReceivedFields);
 router.post('/add-activity', saveActivity);
 router.post('/update-address', updateUserAddress);
+router.post('/add-interviews/:userId', addUserInterviews);
+router.patch('/update-user-profile/:userId', updateUserProfile);
+router.post('/forgot-password', forgotPassword);
 
 export default router;
