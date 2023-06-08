@@ -459,24 +459,86 @@ export const updateUserProfile = async (req, res) => {
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
   try {
-    const oldUser = await Users.findOne({ email });
+    const oldUser = await Users.findOne({ where: { email: email } });
     if (!oldUser) {
       return res.json({ status: 'User Not Exists!!' });
     }
     const secret = process.env.ACCESS_TOKEN_SECRET + oldUser.password;
-    const token = jwt.sign({ email: oldUser.email, id: oldUser._id }, secret, {
-      expiresIn: '5m',
+    const token = jwt.sign({ email: oldUser.email, id: oldUser.id }, secret, {
+      expiresIn: '300s',
     });
-    const link = `http://localhost:3030/reset-password/${oldUser._id}/${token}`;
+    const link = `http://localhost:3000/reset-password/${oldUser.id}/${token}`;
 
     sendEmail(
       email,
-      `You have requested to reset your password',
-      'Click on the link ${link} to reset`
+      'Changement de votre mot de passe',
+      `<h4>Cher ${oldUser.first_name},</h4>
+      <p>Vous avez demandé le changement de votre mot de passe. Pour le changer, il suffit de cliquer sur ce lien :${link}.</p>
+      <p>Attention, ce lien ne sera valide que pendant 5 minutes.</p>
+      <p>A très vite.</p>`
     );
     console.log(link);
-    res.status(201).json({ message: 'Link sent' });
+    res.status(201).json({ message: 'Email sent successfully', status: 201 });
   } catch (error) {
     console.log(error);
+    res.status(401).json({ message: 'Invalid user', status: 401 });
+  }
+};
+
+export const resetPasswordVerify = async (req, res) => {
+  const { id, token } = req.params;
+  console.log(req.params);
+  const oldUser = await Users.findOne({ where: { id: id } });
+  console.log('====>>', oldUser);
+  if (!oldUser) {
+    return res.json({ status: 'User Not Exists!!' });
+  }
+  const secret = process.env.ACCESS_TOKEN_SECRET + oldUser.password;
+  try {
+    const verify = jwt.verify(token, secret);
+    console.log(verify);
+    if (oldUser && verify.id) {
+      console.log(verify.email);
+      return res.status(201).json({ status: 201, oldUser });
+    } else {
+      return res
+        .status(401)
+        .json({ status: 401, message: 'User does not exist' });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({ status: 401, message: error.message });
+  }
+};
+
+export const renewPassword = async (req, res) => {
+  const { id, token } = req.params;
+  const { password } = req.body;
+  console.log(id);
+  try {
+    const oldUser = await Users.findOne({ where: { id: id } });
+    if (!oldUser) {
+      return res.json({ status: 'User Not Exists!!' });
+    }
+    const secret = process.env.ACCESS_TOKEN_SECRET + oldUser.password;
+
+    const verify = jwt.verify(token, secret);
+    const salt = await bcrypt.genSalt();
+    const encryptedPassword = await bcrypt.hash(password, salt);
+    await Users.update(
+      {
+        password: encryptedPassword,
+      },
+      {
+        where: {
+          id: oldUser.id,
+        },
+      }
+    );
+
+    res.status(201).json({ status: 201, email: verify.email });
+  } catch (error) {
+    console.log(error);
+    res.status(401).json({ status: 'Something Went Wrong' });
   }
 };

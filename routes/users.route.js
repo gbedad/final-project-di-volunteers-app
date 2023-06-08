@@ -16,6 +16,8 @@ import {
   addUserInterviews,
   updateUserProfile,
   forgotPassword,
+  resetPasswordVerify,
+  renewPassword,
 } from '../controllers/users.controllers.js';
 import { verifyToken } from '../middlewares/verifyToken.js';
 import { isAdmin } from '../middlewares/isAdmin.js';
@@ -39,5 +41,7 @@ router.post('/update-address', updateUserAddress);
 router.post('/add-interviews/:userId', addUserInterviews);
 router.patch('/update-user-profile/:userId', updateUserProfile);
 router.post('/forgot-password', forgotPassword);
+router.get('/reset-password/:id/:token', resetPasswordVerify);
+router.post('/reset-password/:id/:token', renewPassword);
 
 export default router;
