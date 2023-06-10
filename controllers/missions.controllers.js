@@ -1,5 +1,5 @@
 import Missions from '../models/missions.model.js';
-
+import fs from 'fs';
 
 // Controller function to get the list of missions
 export const getMissions = async (req, res) => {
@@ -18,56 +18,76 @@ export const getMissions = async (req, res) => {
 
 // Controller function for creating a new mission
 export const createMission = async (req, res) => {
+  const { title, description, location, is_active } = req.body;
+
+  // const imageType= req.file.mimetype
+  // const imageName= req.file.originalname
+  // const imageData= req.file.buffer
+
   try {
     // Extract mission data from request body
-    const { title, description, location, is_active } = req.body;
+    console.log('====>>', req.file.originalname);
+
+    if (!req.file.originalname) {
+      return res.status(400).json({ error: 'Image file is required' });
+    }
 
     // Create a new mission using Sequelize model
-    const mission = await Missions.create({
+    const newMission = await Missions.create({
       title,
       description,
       location,
-      is_active
+      image_type: req.file.mimetype,
+      image_name: req.file.originalname,
+      image_data: req.file.location,
+      is_active,
     });
 
     // Send success response
-    return res.status(201).json({ success: true, data: mission });
+    return res.status(201).json({ success: true, data: newMission });
   } catch (err) {
     // Handle error
     console.error(err);
-    return res.status(500).json({ success: false, error: 'Failed to create mission' });
+    return res
+      .status(500)
+      .json({ success: false, error: 'Failed to create mission' });
   }
 };
 
 // Controller function for updating a mission
 export const updateMission = async (req, res) => {
+  // Extract mission data from request body
+  const { id } = req.params;
+  const { title, description, location, image, is_active } = req.body;
+
   try {
-    // Extract mission data from request body
-    const { id, title, description, location, is_active } = req.body;
-
     // Find the mission to update by ID using Sequelize
-    const mission = await Missions.findByPk(id);
+    const existingMission = await Missions.findByPk(id);
 
-    if (!mission) {
+    if (!existingMission) {
       // If mission not found, send error response
-      return res.status(404).json({ success: false, error: 'Mission not found' });
+      return res
+        .status(404)
+        .json({ success: false, error: 'Mission not found' });
     }
 
     // Update mission with new data
-    mission.title = title;
-    mission.description = description;
-    mission.location = location;
-    mission.is_active = is_active;
+    existingMission.title = title;
+    existingMission.description = description;
+    existingMission.location = location;
+    existingMission.image = image.buffer;
+    existingMission.is_active = is_active;
 
     // Save the updated mission
-    await mission.save();
+    await existingMission.save();
 
     // Send success response
-    return res.status(200).json({ success: true, data: mission });
+    return res.status(200).json({ success: true, data: existingMission });
   } catch (err) {
     // Handle error
     console.error(err);
-    return res.status(500).json({ success: false, error: 'Failed to update mission' });
+    return res
+      .status(500)
+      .json({ success: false, error: 'Failed to update mission' });
   }
 };
-

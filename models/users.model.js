@@ -107,6 +107,7 @@ Users.hasMany(Files, {
     type: DataTypes.INTEGER,
     allowNull: true,
   },
+  onDelete: 'CASCADE',
 });
 
 Missions.hasMany(Users, {
@@ -118,10 +119,12 @@ Users.belongsTo(Missions);
 Users.hasMany(Files, {
   foreignKey: 'userId',
   as: 'file',
+  onDelete: 'CASCADE',
 });
 Files.belongsTo(Users);
 
 Users.hasOne(Skills, {
+  onDelete: 'CASCADE',
   foreignKey: {
     type: DataTypes.INTEGER,
     allowNull: true,
