@@ -25,7 +25,7 @@ const Missions = db.define(
       allowNull: true,
     },
     image_data: {
-      type: DataTypes.BLOB('long'),
+      type: DataTypes.STRING,
       allowNull: true,
     },
 

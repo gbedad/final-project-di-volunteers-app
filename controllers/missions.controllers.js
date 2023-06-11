@@ -5,10 +5,46 @@ import fs from 'fs';
 export const getMissions = async (req, res) => {
   try {
     // Fetch all missions from the database
-    const missions = await Missions.findAll();
+    const missions = await Missions.findAll({
+      attributes: [
+        'id',
+        'title',
+        'location',
+        'description',
+        'image_name',
+        'image_type',
+        'image_data',
+        'created_at',
+        'updated_at',
+        'is_active',
+      ],
+    });
+    // .then((missions) => {
+    //   missions.map((mission) => {
+    //     console.log(mission.image_data);
+    //     if (mission.image_data) {
+    //       const missionImage = mission.image_data.toString('base64');
+    //       mission['image_data'] = missionImage;
+    //       console.log(missionImage);
+    //     }
+    //   });
+    //   return missions;
+    // })
+    // .then((missions) => {
+    //   return res.status(201).json(missions);
+    // });
 
+    if (missions) {
+      console.log('=========???????');
+    }
+    await missions.map((mission) => {
+      if (mission.image_data) {
+        console.log(mission.image_data);
+      }
+    });
+    console.log('====>>', missions);
     // Send missions as JSON response
-    res.json(missions);
+    res.status(201).json(missions);
   } catch (error) {
     console.error(error);
     // Send error response with appropriate status code and error message
@@ -42,7 +78,7 @@ export const createMission = async (req, res) => {
       image_data: req.file.location,
       is_active,
     });
-
+    console.log(Buffer.from(newMission.image_data));
     // Send success response
     return res.status(201).json({ success: true, data: newMission });
   } catch (err) {
