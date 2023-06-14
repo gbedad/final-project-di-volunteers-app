@@ -21,6 +21,7 @@ import {
 } from '../controllers/users.controllers.js';
 import { verifyToken } from '../middlewares/verifyToken.js';
 import { isAdmin } from '../middlewares/isAdmin.js';
+import { adminAuth, userAuth } from '../middlewares/auth.js';
 
 const router = express.Router();
 
@@ -28,7 +29,7 @@ router.get('/', gotoHomePage);
 router.post('/register', register);
 router.post('/login', login);
 router.get('/logout', logout);
-router.get('/all-users', verifyToken, isAdmin, getUsers);
+router.get('/all-users', adminAuth, getUsers);
 // router.get('/user-by-id', getUserById);
 router.put('/update/:id', updateUser);
 router.delete('/delete-registration/:id', deleteRegistration);

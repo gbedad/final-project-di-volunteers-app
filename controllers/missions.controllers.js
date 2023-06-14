@@ -19,20 +19,42 @@ export const getMissions = async (req, res) => {
         'is_active',
       ],
     });
-    // .then((missions) => {
-    //   missions.map((mission) => {
-    //     console.log(mission.image_data);
-    //     if (mission.image_data) {
-    //       const missionImage = mission.image_data.toString('base64');
-    //       mission['image_data'] = missionImage;
-    //       console.log(missionImage);
-    //     }
-    //   });
-    //   return missions;
-    // })
-    // .then((missions) => {
-    //   return res.status(201).json(missions);
-    // });
+
+    if (missions) {
+      console.log('=========???????');
+    }
+    await missions.map((mission) => {
+      if (mission.image_data) {
+        console.log(mission.image_data);
+      }
+    });
+    console.log('====>>', missions);
+    // Send missions as JSON response
+    res.status(201).json(missions);
+  } catch (error) {
+    console.error(error);
+    // Send error response with appropriate status code and error message
+    res.status(500).json({ error: 'Failed to fetch missions' });
+  }
+};
+
+export const getAllMissions = async (req, res) => {
+  try {
+    // Fetch all missions from the database
+    const missions = await Missions.findAll({
+      attributes: [
+        'id',
+        'title',
+        'location',
+        'description',
+        'image_name',
+        'image_type',
+        'image_data',
+        'created_at',
+        'updated_at',
+        'is_active',
+      ],
+    });
 
     if (missions) {
       console.log('=========???????');
@@ -94,7 +116,7 @@ export const createMission = async (req, res) => {
 export const updateMission = async (req, res) => {
   // Extract mission data from request body
   const { id } = req.params;
-  const { title, description, location, image, is_active } = req.body;
+  const { title, description, location, is_active } = req.body;
 
   try {
     // Find the mission to update by ID using Sequelize
@@ -111,7 +133,14 @@ export const updateMission = async (req, res) => {
     existingMission.title = title;
     existingMission.description = description;
     existingMission.location = location;
-    existingMission.image = image.buffer;
+    if (req.file) {
+      existingMission.image_type = req.file.mimetype;
+
+      existingMission.image_data = req.file.location;
+
+      existingMission.image_name = req.file.originalname;
+    }
+
     existingMission.is_active = is_active;
 
     // Save the updated mission
