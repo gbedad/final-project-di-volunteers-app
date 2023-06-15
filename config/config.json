@@ -1,5 +1,0 @@
-{
-    "development": "node ./config.js",
-    "test": "node ./config.js",
-    "production": "node ./config.js"
-}
