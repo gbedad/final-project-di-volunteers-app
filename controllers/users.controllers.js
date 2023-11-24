@@ -117,6 +117,16 @@ export const register = async (req, res) => {
   const hashPassword = await bcrypt.hash(password, salt);
 
   try {
+    // Check if the email already exists in the database
+    const existingUser = await Users.findOne({ email });
+
+    if (existingUser) {
+      // Email already exists, return an error response
+      return res
+        .status(409)
+        .json({ error: 'Email already exists. Please use a different email.' });
+    }
+
     await Users.create({
       email: email.toLowerCase(),
       password: hashPassword,
@@ -467,6 +477,7 @@ export const forgotPassword = async (req, res) => {
     const token = jwt.sign({ email: oldUser.email, id: oldUser.id }, secret, {
       expiresIn: '300s',
     });
+
     const link = `http://localhost:3000/reset-password/${oldUser.id}/${token}`;
 
     sendEmail(
