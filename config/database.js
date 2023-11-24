@@ -7,7 +7,7 @@ dotenv.config();
 const { NODE_ENV } = process.env;
 console.log(NODE_ENV);
 
-const selectedConfig = dbconfig[NODE_ENV || 'development'];
+const selectedConfig = dbconfig['development'];
 
 console.log(selectedConfig.username);
 const db = new Sequelize(
