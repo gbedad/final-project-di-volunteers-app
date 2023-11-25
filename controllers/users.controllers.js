@@ -478,7 +478,7 @@ export const forgotPassword = async (req, res) => {
       expiresIn: '300s',
     });
 
-    const link = `http://localhost:3000/reset-password/${oldUser.id}/${token}`;
+    const link = `https://mycogniverse.vercel.app/reset-password/${oldUser.id}/${token}`;
 
     sendEmail(
       email,
