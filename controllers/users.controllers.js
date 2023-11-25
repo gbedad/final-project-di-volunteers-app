@@ -110,6 +110,22 @@ export const register = async (req, res) => {
     message,
     mission_id,
   } = req.body;
+  // Check if the email already exists in the database
+  console.log(email);
+  const existingUser = await Users.findOne({
+    where: {
+      email: email,
+    },
+  });
+  console.log('>>>>', existingUser);
+
+  if (existingUser) {
+    // Email already exists, return an error response
+    return res
+      .status(409)
+      .json({ error: 'Email already exists. Please use a different email.' });
+  }
+
   const firstname = capitalizeString(first_name);
   const lastname = capitalizeString(last_name);
   // console.log('Controllers.register', req.body);
@@ -117,16 +133,6 @@ export const register = async (req, res) => {
   const hashPassword = await bcrypt.hash(password, salt);
 
   try {
-    // Check if the email already exists in the database
-    const existingUser = await Users.findOne({ email });
-
-    if (existingUser) {
-      // Email already exists, return an error response
-      return res
-        .status(409)
-        .json({ error: 'Email already exists. Please use a different email.' });
-    }
-
     await Users.create({
       email: email.toLowerCase(),
       password: hashPassword,

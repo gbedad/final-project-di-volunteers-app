@@ -37,6 +37,7 @@ export const createSkills = async (req, res) => {
 
 export const updateSkills = async (req, res) => {
   console.log(req.params.userId);
+  console.log(req.body);
   try {
     const userId = req.params.userId;
     // console.log("Route", req.body)
@@ -50,16 +51,16 @@ export const updateSkills = async (req, res) => {
 
     if (!skill) {
       const skill = await Skills.create({
-        topics: req.body.topics,
-        when_day_slot: req.body.when_day_slot || null,
-        where_location: req.body.where_location || null,
+        topics: [req.body.topics] || null,
+        when_day_slot: [req.body.when_day_slot] || null,
+        where_location: [req.body.where_location] || null,
         userId,
       });
       return res.status(201).json(skill);
     }
     //   return res.status(404).json({ error: 'No skill was found' });
     // }
-    console.log('====>>>', skill);
+    // console.log('====>>>', skill);
 
     // Update the fields of the record based on the values present in the request body
     if (req.body.topics) {
