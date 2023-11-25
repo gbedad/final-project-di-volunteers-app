@@ -4,7 +4,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const { NODE_ENV } = process.env;
+// const { NODE_ENV } = process.env
+const NODE_ENV = 'development';
 console.log(NODE_ENV);
 
 let selectedConfig;
