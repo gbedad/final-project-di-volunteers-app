@@ -38,6 +38,9 @@ app.use(files_router);
 app.use(skills_router);
 app.use(missions_router);
 
+// Serve static files from the Next.js build directory
+app.use('/_next', express.static(path.join(__dirname, '.next')));
+
 // Connection to database
 try {
   await db.authenticate();
