@@ -149,6 +149,16 @@ export const register = async (req, res) => {
       'Thank you for registering on our platform'
     );
 
+    sendEmail(
+      'gerald.berrebi@gmail.com',
+      'Nouvelle inscription sur la plateforme MyCogniverse',
+      `<h4>Cher adminsistrateur${oldUser.first_name},</h4>
+      <p>Un nouveau tuteur s'est enregistré sur la plateforme pour la mission ${mission_id}:</p>
+      <p>Email : ${email}</p>
+      <p>Nom : ${first_name} ${last_name}</p>
+      <p>A très vite.</p>`
+    );
+
     res.status(200).json({ msg: 'Register Successful' });
   } catch (e) {
     console.log(e);
