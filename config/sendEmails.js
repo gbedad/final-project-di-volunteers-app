@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 
 async function send(receivers, subject, text) {
   const result = await transporter.sendMail({
-    from: 'gerald.berrebi@gmail.com',
+    from: 'My Cogniverse',
     to: receivers,
     subject: subject,
     html: text,

@@ -150,12 +150,14 @@ export const register = async (req, res) => {
     );
 
     sendEmail(
-      'gerald.berrebi@gmail.com',
+      ['gerald.berrebi@gmail.com', 'gerald@sephoraberrebi.org'],
       'Nouvelle inscription sur la plateforme MyCogniverse',
       `<h4>Cher adminsistrateur</h4>
       <p>Un nouveau tuteur s'est enregistré sur la plateforme pour la mission ${mission_id}:</p>
       <p>Email : ${email}</p>
       <p>Nom : ${first_name} ${last_name}</p>
+      <p>Téléphone : ${phone}</p>
+      <br>
       <p>A très vite.</p>`
     );
 
