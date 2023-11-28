@@ -150,7 +150,11 @@ export const register = async (req, res) => {
     );
 
     sendEmail(
-      ['gerald.berrebi@gmail.com', 'gerald@sephoraberrebi.org'],
+      [
+        'gerald.berrebi@gmail.com',
+        'gerald@sephoraberrebi.org',
+        'associationsephoraberrebi@gmail.com',
+      ],
       'Nouvelle inscription sur la plateforme MyCogniverse',
       `<h4>Cher adminsistrateur</h4>
       <p>Un nouveau tuteur s'est enregistré sur la plateforme pour la mission ${mission_id}:</p>
@@ -470,6 +474,20 @@ export const updateUserProfile = async (req, res) => {
 
     if (country) {
       userProfile.country = country;
+    }
+
+    if (street || activity) {
+      sendEmail(
+        ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
+        'Ajout adresse ou activité sur MyCogniverse',
+        `<h4>Cher adminsistrateur</h4>
+        <p>Un tuteur a mis à jour son profil:</p>
+        <p>Id du tuteur : ${userId}</p>
+        <p>Adresse : ${street ? street + ' ' + city + ' ' + zipcode : ''}</p>
+        <p>Activité : ${activity ? activity : ''}</p>
+        <br>
+        <p>A très vite.</p>`
+      );
     }
 
     // Save the updated profile
