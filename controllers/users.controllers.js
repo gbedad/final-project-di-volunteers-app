@@ -443,6 +443,23 @@ export const updateUserProfile = async (req, res) => {
     if (!userProfile) {
       return res.status(404).json({ message: 'Profile not found' });
     }
+    if (street !== userProfile.street || activity !== userProfile.activity) {
+      sendEmail(
+        ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
+        'Ajout adresse ou activité sur MyCogniverse',
+        `<h4>Cher adminsistrateur</h4>
+        <p>Un tuteur a mis à jour son profil:</p>
+        <p>Id du tuteur : ${userId}</p>
+        <p>${
+          street && street !== userProfile.street
+            ? street + ' ' + city + ' ' + zipcode
+            : ''
+        }</p>
+        <p>${activity && activity !== userProfile.activity ? activity : ''}</p>
+        <br>
+        <p>A très vite.</p>`
+      );
+    }
 
     // Update only the provided fields
     if (first_name) {
@@ -474,20 +491,6 @@ export const updateUserProfile = async (req, res) => {
 
     if (country) {
       userProfile.country = country;
-    }
-
-    if (street || activity) {
-      sendEmail(
-        ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
-        'Ajout adresse ou activité sur MyCogniverse',
-        `<h4>Cher adminsistrateur</h4>
-        <p>Un tuteur a mis à jour son profil:</p>
-        <p>Id du tuteur : ${userId}</p>
-        <p>Adresse : ${street ? street + ' ' + city + ' ' + zipcode : ''}</p>
-        <p>Activité : ${activity ? activity : ''}</p>
-        <br>
-        <p>A très vite.</p>`
-      );
     }
 
     // Save the updated profile
