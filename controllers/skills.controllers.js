@@ -2,6 +2,10 @@ import dotenv from 'dotenv';
 import Skills from '../models/skills.model.js';
 import Users from '../models/users.model.js';
 
+import sendEmail from '../config/sendEmails.js';
+
+import { compareArrays, compareStrings } from '../js-files/compareArrays.js';
+
 dotenv.config();
 
 export const createSkills = async (req, res) => {
@@ -37,7 +41,8 @@ export const createSkills = async (req, res) => {
 
 export const updateSkills = async (req, res) => {
   console.log(req.params.userId);
-  console.log(req.body);
+
+  // console.log(req.body);
   try {
     const userId = req.params.userId;
     // console.log("Route", req.body)
@@ -47,8 +52,8 @@ export const updateSkills = async (req, res) => {
         userId: userId,
       },
     });
-    console.log(userId);
 
+    let message;
     if (!skill) {
       const skill = await Skills.create({
         topics: [req.body.topics] || null,
@@ -63,6 +68,7 @@ export const updateSkills = async (req, res) => {
     // console.log('====>>>', skill);
 
     // Update the fields of the record based on the values present in the request body
+
     if (req.body.topics) {
       skill.topics = JSON.parse(req.body.topics);
     }
@@ -74,6 +80,84 @@ export const updateSkills = async (req, res) => {
     if (req.body.where_location) {
       skill.where_location = req.body.where_location;
     }
+    if (req.body.where_location || req.body.when_day_slot) {
+      if (skill._changed.size > 0) {
+        // Changes were made
+        console.log('Changes were made to the following fields:');
+        message = 'Une modification da eu lieu dand je veux aider';
+        sendEmail(
+          ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
+          'Modification sur MyCogniverse',
+          `<h4>Cher administrateur</h4>
+          <p>Un tuteur a mis à jour le lieu d'intervention ou les les jours de disponibilité sur son profil.</p>
+          <p>Id du tuteur : ${userId}</p>
+          
+          <br>
+          <p>A très vite.</p>`
+        );
+        skill._changed.forEach((fieldName) => {
+          console.log(fieldName);
+        });
+      } else {
+        // No changes were made
+        console.log('No changes were made.');
+        message = 'Pas de modification';
+      }
+    } else if (!req.body.when_day_slot) {
+      //----------------------------------------------------------
+      // Check if there were changes
+
+      skill._changed.forEach((fieldName) => {
+        console.log(fieldName);
+
+        // Transform the previous values to objects
+        const previousValues = skill._previousDataValues[fieldName];
+        const transformedPreviousValues = Array.isArray(previousValues)
+          ? previousValues.map((stringValue) => JSON.parse(stringValue))
+          : previousValues;
+
+        // Compare the values
+        const currentValue = skill.dataValues[fieldName];
+
+        console.log('Previous Values:', transformedPreviousValues);
+        console.log('Current Value:', currentValue);
+
+        const differences = compareArrays(
+          transformedPreviousValues,
+          currentValue
+        );
+        let diff = differences.length;
+        console.log(differences);
+        if (diff > 0) {
+          console.log('Changes were made to the following fields:');
+          message = 'Des changements ont eu lieu dans je veux aider';
+          sendEmail(
+            ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
+            'Modification sur MyCogniverse',
+            `<h4>Cher administrateur</h4>
+              <p>Un tuteur a mis à jour les jours ou les matières sur son profil</p>
+              <p>Id du tuteur : ${userId}</p>
+              
+              <br>
+              <p>A très vite.</p>`
+          );
+        } else {
+          console.log('No changes were made.');
+          message = 'Pas de changement';
+        }
+      });
+    }
+    //-----------------------------------------
+    // if (
+    //   previousSkills.topics !== skill.topics ||
+    //   previousSkills.when_day_slot !== skill.when_day_slot ||
+    //   previousSkills.where_location !== skill.where_location
+    // ) {
+    //   // Changes have been made, perform the necessary actions
+    //   console.log('Changes in skills');
+    // } else {
+    //   console.log('No changes in skills');
+    // }
 
     // if (req.body.interview1_comments) {
     //   skill.interview1_comments = req.body.interview1_comments;
@@ -95,7 +179,7 @@ export const updateSkills = async (req, res) => {
     await skill.save();
 
     // Return a success response
-    res.status(200).json({ message: 'Skill updated successfully' });
+    res.status(200).json({ message });
   } catch (error) {
     console.log(error);
     // Return an error response if any error occurs during the update process
