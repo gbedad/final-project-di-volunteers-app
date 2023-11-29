@@ -61,6 +61,16 @@ export const updateSkills = async (req, res) => {
         where_location: [req.body.where_location] || null,
         userId,
       });
+      sendEmail(
+        ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
+        'Modification sur MyCogniverse',
+        `<h4>Cher administrateur</h4>
+        <p>Un tuteur a commencé à remplir des données dans "JE VEUX AIDER" sur son profil.</p>
+        <p>Id du tuteur : ${userId}</p>
+        
+        <br>
+        <p>A très vite.</p>`
+      );
       return res.status(201).json(skill);
     }
     //   return res.status(404).json({ error: 'No skill was found' });
