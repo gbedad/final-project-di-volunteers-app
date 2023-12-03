@@ -12,6 +12,10 @@ const Skills = db.define(
       type: DataTypes.ARRAY(DataTypes.JSONB),
       defaultValue: [],
     },
+    hidden_topics: {
+      type: DataTypes.ARRAY(DataTypes.JSONB),
+      defaultValue: [],
+    },
     when_day_slot: {
       type: DataTypes.ARRAY(DataTypes.JSONB),
       defaultValue: [],
@@ -26,6 +30,13 @@ const Skills = db.define(
   }
 );
 
+// Synchronize the database
 // db.sync()
+//   .then(() => {
+//     console.log('Database synchronized');
+//   })
+//   .catch((error) => {
+//     console.error('Error synchronizing database:', error);
+//   });
 
 export default Skills;
