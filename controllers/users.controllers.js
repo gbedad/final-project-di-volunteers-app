@@ -272,9 +272,11 @@ export async function getUserById(req, res) {
 export const updateById = async (req, res) => {
   const { id } = req.params;
   const { newStatus } = req.body; // use "newStatus" instead of "newFieldValue"
-  // console.log(newStatus);
+  console.log(newStatus);
 
   try {
+    const response = await Users.findByPk(id);
+    const userEmail = response.email;
     const [numUpdated, updatedRows] = await Users.update(
       { status: newStatus }, // set the "status" field to the new value
       { where: { id } }
@@ -283,6 +285,20 @@ export const updateById = async (req, res) => {
     if (numUpdated === 0) {
       return res.status(404).json({ message: 'No rows found for that ID.' });
     }
+    console.log(userEmail);
+    sendEmail(
+      userEmail,
+      'Changement de statut sur MyCogniverse',
+      `<h4>Cher tuteur</h4>
+      <p>Votre statut a changé.</p>
+      <p>Il est passé à : ${newStatus}</p>
+      <p>Veuillez vous connecter sur le site pour connaitre les prochaines étapes.</p>
+      
+      <br>
+      <p>A très vite.</p>
+      <p>My Cogniverse</p>
+      `
+    );
 
     res.json({ message: 'Row updated successfully.', updatedRows });
   } catch (err) {

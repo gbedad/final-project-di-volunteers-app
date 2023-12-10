@@ -24,7 +24,6 @@ export const createSkills = async (req, res) => {
         topics,
         when_day_slot,
         where_location,
-        // hidden_topics: topics,
         userId,
       });
       res.json(skill);
@@ -60,9 +59,9 @@ export const updateSkills = async (req, res) => {
         topics: [req.body.topics] || null,
         when_day_slot: [req.body.when_day_slot] || null,
         where_location: [req.body.where_location] || null,
-        // hidden_topics: topics,
         userId,
       });
+
       sendEmail(
         ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
         'Modification sur MyCogniverse',

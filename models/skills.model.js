@@ -12,10 +12,10 @@ const Skills = db.define(
       type: DataTypes.ARRAY(DataTypes.JSONB),
       defaultValue: [],
     },
-    hidden_topics: {
-      type: DataTypes.ARRAY(DataTypes.JSONB),
-      defaultValue: [],
-    },
+    // hidden_topics: {
+    //   type: DataTypes.ARRAY(DataTypes.JSONB),
+    //   defaultValue: [],
+    // },
     when_day_slot: {
       type: DataTypes.ARRAY(DataTypes.JSONB),
       defaultValue: [],
