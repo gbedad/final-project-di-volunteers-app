@@ -66,7 +66,7 @@ export const updateSkills = async (req, res) => {
         ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
         'Modification sur MyCogniverse',
         `<h4>Cher administrateur</h4>
-        <p>Un tuteur a commencé à remplir des données dans <span style="text-transform:capitalize>"JE PEUX AIDER" </span>sur son profil.</p>
+        <p>Un tuteur a commencé à remplir des données dans <span style="text-transform:uppercase>"JE PEUX AIDER" </span>sur son profil.</p>
         <p>Id du tuteur : ${userId}</p>
         
         <br>
@@ -95,7 +95,7 @@ export const updateSkills = async (req, res) => {
       if (skill._changed.size > 0) {
         // Changes were made
         console.log('Changes were made to the following fields:');
-        message = 'Une modification da eu lieu dand je veux aider';
+        message = 'Une modification eu lieu dans JE PEUX AIDER';
         sendEmail(
           ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
           'Modification sur MyCogniverse',
@@ -141,7 +141,7 @@ export const updateSkills = async (req, res) => {
         console.log(differences);
         if (diff > 0) {
           console.log('Changes were made to the following fields:');
-          message = 'Des changements ont eu lieu dans je veux aider';
+          message = 'Des changements ont eu lieu dans JE PEUX AIDER';
           sendEmail(
             ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
             'Modification sur MyCogniverse',
