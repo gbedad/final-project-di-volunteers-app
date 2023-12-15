@@ -66,7 +66,7 @@ export const updateSkills = async (req, res) => {
         ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
         'Modification sur MyCogniverse',
         `<h4>Cher administrateur</h4>
-        <p>Un tuteur a commencé à remplir des données dans "JE VEUX AIDER" sur son profil.</p>
+        <p>Un tuteur a commencé à remplir des données dans <span style="text-transform:capitalize>"JE PEUX AIDER" </span>sur son profil.</p>
         <p>Id du tuteur : ${userId}</p>
         
         <br>
