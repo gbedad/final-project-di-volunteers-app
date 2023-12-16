@@ -145,8 +145,8 @@ export const register = async (req, res) => {
     });
     sendEmail(
       email,
-      'Registration confirmed',
-      'Thank you for registering on our platform'
+      'Inscription confirmée',
+      "Merci de vous être inscrit(e) sur notre plateforme. Vous pouvez dès à préent vous connecter à l'aide de vos email et mot de passe"
     );
 
     sendEmail(
@@ -277,6 +277,7 @@ export const updateById = async (req, res) => {
   try {
     const response = await Users.findByPk(id);
     const userEmail = response.email;
+    const userFirstName = response.first_name;
     const [numUpdated, updatedRows] = await Users.update(
       { status: newStatus }, // set the "status" field to the new value
       { where: { id } }
@@ -289,14 +290,14 @@ export const updateById = async (req, res) => {
     sendEmail(
       userEmail,
       'Changement de statut sur MyCogniverse',
-      `<h4>Cher tuteur</h4>
+      `<h4>Cher ${userFirstName}</h4>
       <p>Votre statut a changé.</p>
       <p>Il est passé à : ${newStatus}</p>
       <p>Veuillez vous connecter sur le site pour connaitre les prochaines étapes.</p>
       
       <br>
       <p>A très vite.</p>
-      <p>My Cogniverse</p>
+      <p>MyCogniverse</p>
       `
     );
 
