@@ -275,9 +275,9 @@ export const updateById = async (req, res) => {
   console.log(newStatus);
 
   try {
-    const response = await Users.findByPk(id);
-    const userEmail = response.email;
-    const userFirstName = response.first_name;
+    const user = await Users.findByPk(id);
+    const userEmail = user.email;
+
     const [numUpdated, updatedRows] = await Users.update(
       { status: newStatus }, // set the "status" field to the new value
       { where: { id } }
@@ -290,9 +290,9 @@ export const updateById = async (req, res) => {
     sendEmail(
       userEmail,
       'Changement de statut sur MyCogniverse',
-      `<h4>Cher ${userFirstName}</h4>
+      `<h4>Cher(e) ${user.first_name} ${user.last_name}</h4>
       <p>Votre statut a changé.</p>
-      <p>Il est passé à : ${newStatus}</p>
+      <p>Il est passé à : "${newStatus}"</p>
       <p>Veuillez vous connecter sur le site pour connaitre les prochaines étapes.</p>
       
       <br>
