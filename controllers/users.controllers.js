@@ -448,6 +448,7 @@ export const updateUserProfile = async (req, res) => {
     first_name,
     last_name,
     email2,
+    birth_date,
     phone,
     activity,
     street,
@@ -487,6 +488,9 @@ export const updateUserProfile = async (req, res) => {
     }
     if (email2) {
       userProfile.email2 = email2;
+    }
+    if (birth_date) {
+      userProfile.birth_date = birth_date;
     }
     if (phone) {
       userProfile.phone = phone;
