@@ -146,7 +146,7 @@ export const register = async (req, res) => {
     sendEmail(
       email,
       'Inscription confirmée',
-      "Merci de vous être inscrit(e) sur notre plateforme. Vous pouvez dès à préent vous connecter à l'aide de vos email et mot de passe"
+      "Merci de vous être inscrit(e) sur notre plateforme. Vous pouvez dès à présent vous connecter à l'aide de votre email et votre mot de passe"
     );
 
     sendEmail(
@@ -542,8 +542,8 @@ export const forgotPassword = async (req, res) => {
 
     sendEmail(
       email,
-      'Changement de votre mot de passe',
-      `<h4>Cher ${oldUser.first_name},</h4>
+      'Changement de mot de passe',
+      `<h4>Cher(e) ${oldUser.first_name},</h4>
       <p>Vous avez demandé le changement de votre mot de passe. Pour le changer, il suffit de cliquer sur ce lien :${link}.</p>
       <p>Attention, ce lien ne sera valide que pendant 5 minutes.</p>
       <p>A très vite.</p>`
