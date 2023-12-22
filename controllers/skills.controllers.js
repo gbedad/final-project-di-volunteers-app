@@ -41,6 +41,7 @@ export const createSkills = async (req, res) => {
 
 export const updateSkills = async (req, res) => {
   console.log(req.params.userId);
+  let section;
 
   // console.log(req.body);
   try {
@@ -85,13 +86,16 @@ export const updateSkills = async (req, res) => {
     }
     // console.log(req.body.when_day_slot);
     if (req.body.when_day_slot) {
+      section = 'Disponibilités';
       skill.when_day_slot = JSON.parse(req.body.when_day_slot);
     }
 
     if (req.body.where_location) {
+      section = 'Matières';
       skill.where_location = req.body.where_location;
     }
     if (req.body.where_location || req.body.when_day_slot) {
+      section = 'Lieux';
       if (skill._changed.size > 0) {
         // Changes were made
         console.log('Changes were made to the following fields:');
@@ -100,7 +104,7 @@ export const updateSkills = async (req, res) => {
           ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
           'Modification sur MyCogniverse',
           `<h4>Cher administrateur</h4>
-          <p>Un tuteur a mis à jour le lieu d'intervention ou les les jours de disponibilité sur son profil.</p>
+          <p>Un tuteur a mis à jour les ${section} sur son profil.</p>
           <p>Id du tuteur : ${userId}</p>
           
           <br>
