@@ -134,8 +134,8 @@ export const updateSkills = async (req, res) => {
         // Compare the values
         const currentValue = skill.dataValues[fieldName];
 
-        console.log('Previous Values:', transformedPreviousValues);
-        console.log('Current Value:', currentValue);
+        // console.log('Previous Values:', transformedPreviousValues);
+        // console.log('Current Value:', currentValue);
 
         const differences = compareArrays(
           transformedPreviousValues,

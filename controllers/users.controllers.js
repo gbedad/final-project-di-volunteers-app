@@ -117,7 +117,7 @@ export const register = async (req, res) => {
       email: email,
     },
   });
-  console.log('>>>>', existingUser);
+  // console.log('>>>>', existingUser);
 
   if (existingUser) {
     // Email already exists, return an error response
@@ -290,14 +290,14 @@ export const updateById = async (req, res) => {
     sendEmail(
       userEmail,
       'Changement de statut sur MyCogniverse',
-      `<h4>Cher(e) ${user.first_name} ${user.last_name}</h4>
+      `<p>Cher(e) ${user.first_name} ${user.last_name}</p>
       <p>Votre statut a changé.</p>
-      <p>Il est passé à : "${newStatus}"</p>
-      <p>Veuillez vous connecter sur le site pour connaitre les prochaines étapes.</p>
+      <p>Il est passé à : "${newStatus}".</p>
+      <p>Veuillez vous connecter sur le site <a href=mycogniverse.org>mycogniverse.org</a> pour connaitre les prochaines étapes.</p>
       
       <br>
-      <p>A très vite.</p>
-      <p>MyCogniverse</p>
+      <p>A très vite,</p>
+      <p>L'équipe de MyCogniverse</p>
       `
     );
 
@@ -338,7 +338,7 @@ export const updateReceivedFields = async (req, res) => {
     conventionReceived,
     testVoltairePassed,
   } = req.body;
-  console.log('REQ.BODY===>>>', req.body);
+  // console.log('REQ.BODY===>>>', req.body);
   try {
     // Find the user by userId
     const user = await Users.findByPk(userId);
@@ -420,7 +420,7 @@ export const updateUserAddress = async (req, res) => {
 };
 
 export const addUserInterviews = async (req, res) => {
-  console.log(req.body.interviews);
+  // console.log(req.body.interviews);
   const interviews = req.body.interviews;
   const userId = req.params.userId;
   try {
@@ -442,7 +442,7 @@ export const addUserInterviews = async (req, res) => {
 };
 
 export const updateUserProfile = async (req, res) => {
-  console.log(req.body);
+  // console.log(req.body);
   const { userId } = req.params;
   const {
     first_name,
@@ -558,16 +558,16 @@ export const forgotPassword = async (req, res) => {
 
 export const resetPasswordVerify = async (req, res) => {
   const { id, token } = req.params;
-  console.log(req.params);
+  // console.log(req.params);
   const oldUser = await Users.findOne({ where: { id: id } });
-  console.log('====>>', oldUser);
+  // console.log('====>>', oldUser);
   if (!oldUser) {
     return res.json({ status: 'User Not Exists!!' });
   }
   const secret = process.env.ACCESS_TOKEN_SECRET + oldUser.password;
   try {
     const verify = jwt.verify(token, secret);
-    console.log(verify);
+    // console.log(verify);
     if (oldUser && verify.id) {
       console.log(verify.email);
       return res.status(201).json({ status: 201, oldUser });
