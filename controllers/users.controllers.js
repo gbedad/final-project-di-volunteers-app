@@ -294,8 +294,7 @@ export const updateById = async (req, res) => {
       <p>Votre statut a changé.</p>
       <p>Il est passé à : "${newStatus}".</p>
       <p>Veuillez vous connecter sur le site <a href=mycogniverse.org>mycogniverse.org</a> pour connaitre les prochaines étapes.</p>
-      
-      <br>
+    
       <p>A très vite,</p>
       <p>L'équipe de MyCogniverse</p>
       `
