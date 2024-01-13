@@ -440,6 +440,29 @@ export const addUserInterviews = async (req, res) => {
   }
 };
 
+export const addUserPreInterview = async (req, res) => {
+  console.log(req.body.preInterview);
+  const preInterview = req.body.preInterview;
+  const userId = req.params.userId;
+  console.log(userId);
+  try {
+    const user = await Users.findByPk(userId);
+
+    if (!user) {
+      return res.status(401).json({ message: 'No user found' });
+    }
+    user.pre_interview = JSON.stringify(preInterview);
+
+    await user.save();
+    return res
+      .status(200)
+      .json({ message: 'Pre-Interview saved successfully' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.massage });
+  }
+};
+
 export const updateUserProfile = async (req, res) => {
   // console.log(req.body);
   const { userId } = req.params;

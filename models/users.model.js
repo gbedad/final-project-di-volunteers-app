@@ -87,6 +87,9 @@ const Users = db.define(
       type: DataTypes.ARRAY(DataTypes.JSONB),
       defaultValue: [],
     },
+    pre_interview: {
+      type: DataTypes.JSON,
+    },
   },
   {
     timestamps: true,

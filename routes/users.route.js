@@ -14,6 +14,7 @@ import {
   saveActivity,
   updateUserAddress,
   addUserInterviews,
+  addUserPreInterview,
   updateUserProfile,
   forgotPassword,
   resetPasswordVerify,
@@ -40,6 +41,7 @@ router.post('/update-files-received/:id', updateReceivedFields);
 router.post('/add-activity', saveActivity);
 router.post('/update-address', updateUserAddress);
 router.post('/add-interviews/:userId', addUserInterviews);
+router.post('/add-pre-interview/:userId', addUserPreInterview);
 router.patch('/update-user-profile/:userId', updateUserProfile);
 router.post('/forgot-password', forgotPassword);
 router.get('/reset-password/:id/:token', resetPasswordVerify);
