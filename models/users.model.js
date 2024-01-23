@@ -36,7 +36,7 @@ const Users = db.define(
     },
     status: {
       type: DataTypes.STRING,
-      defaultValue: 'compte créé',
+      defaultValue: 'Compte créé',
     },
     is_active: {
       type: DataTypes.BOOLEAN,

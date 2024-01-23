@@ -146,7 +146,7 @@ export const register = async (req, res) => {
     sendEmail(
       email,
       'Inscription confirmée',
-      "Merci de vous être inscrit(e) sur notre plateforme. Vous pouvez dès à présent vous connecter à l'aide de votre email et votre mot de passe"
+      "Merci de vous être inscrit(e) sur notre plateforme. Vous pouvez dès à présent vous connecter sur <a href='https://mycogniverse.org'>MyCogniverse</a> à l'aide de votre email et votre mot de passe"
     );
 
     sendEmail(

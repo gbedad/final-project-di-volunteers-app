@@ -43,7 +43,8 @@ export const updateSkills = async (req, res) => {
   console.log(req.params.userId);
   let section;
 
-  // console.log(req.body);
+  const { topics, when_day_slot, where_location } = req.body;
+  console.log(topics, where_location, when_day_slot);
   try {
     const userId = req.params.userId;
     // console.log("Route", req.body)
@@ -53,15 +54,18 @@ export const updateSkills = async (req, res) => {
         userId: userId,
       },
     });
+    console.log(skill);
 
     let message;
     if (!skill) {
       const skill = await Skills.create({
-        topics: [req.body.topics] || null,
-        when_day_slot: [req.body.when_day_slot] || null,
-        where_location: [req.body.where_location] || null,
+        topics: topics ? topics : [],
+        when_day_slot: when_day_slot ? when_day_slot : [],
+        where_location: where_location ? where_location : [],
         userId,
       });
+      // Save the updated record to the database
+      await skill.save();
 
       sendEmail(
         ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
@@ -73,128 +77,131 @@ export const updateSkills = async (req, res) => {
         <br>
         <p>A très vite.</p>`
       );
-      return res.status(201).json(skill);
+      // Return a success response
+      res.status(200).json({ message: 'Les données ont bien été créées' });
     }
     //   return res.status(404).json({ error: 'No skill was found' });
     // }
     // console.log('====>>>', skill);
-
-    // Update the fields of the record based on the values present in the request body
-
-    if (req.body.topics) {
-      skill.topics = JSON.parse(req.body.topics);
-    }
-    // console.log(req.body.when_day_slot);
-    if (req.body.when_day_slot) {
-      section = 'Disponibilités';
-      skill.when_day_slot = JSON.parse(req.body.when_day_slot);
-    }
-
-    if (req.body.where_location) {
-      section = 'Matières';
-      skill.where_location = req.body.where_location;
-    }
-    if (req.body.where_location || req.body.when_day_slot) {
-      section = 'Lieux';
-      if (skill._changed.size > 0) {
-        // Changes were made
-        console.log('Changes were made to the following fields:');
-        message = 'Des modifications ont eu lieu dans JE PEUX AIDER';
-        sendEmail(
-          ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
-          'Modification sur MyCogniverse',
-          `<h4>Cher administrateur</h4>
-          <p>Un tuteur a mis à jour les ${section} sur son profil.</p>
-          <p>Id du tuteur : ${userId}</p>
-          
-          <br>
-          <p>A très vite.</p>`
-        );
-        skill._changed.forEach((fieldName) => {
-          console.log(fieldName);
-        });
-      } else {
-        // No changes were made
-        console.log('No changes were made.');
-        message = 'Pas de modification';
+    else {
+      // Update the fields of the record based on the values present in the request body
+      if (topics) {
+        skill.topics = JSON.parse(topics);
       }
-    } else if (!req.body.when_day_slot) {
-      //----------------------------------------------------------
-      // Check if there were changes
-
-      skill._changed.forEach((fieldName) => {
-        console.log(fieldName);
-
-        // Transform the previous values to objects
-        const previousValues = skill._previousDataValues[fieldName];
-        const transformedPreviousValues = Array.isArray(previousValues)
-          ? previousValues.map((stringValue) => JSON.parse(stringValue))
-          : previousValues;
-
-        // Compare the values
-        const currentValue = skill.dataValues[fieldName];
-
-        // console.log('Previous Values:', transformedPreviousValues);
-        // console.log('Current Value:', currentValue);
-
-        const differences = compareArrays(
-          transformedPreviousValues,
-          currentValue
-        );
-        let diff = differences.length;
-        console.log(differences);
-        if (diff > 0) {
+      // console.log(req.body.when_day_slot);
+      if (when_day_slot) {
+        section = 'Disponibilités';
+        skill.when_day_slot = JSON.parse(when_day_slot);
+      }
+      if (where_location) {
+        section = 'Matières';
+        skill.where_location = where_location;
+      }
+      if (where_location || when_day_slot) {
+        section = 'Lieux';
+        if (skill._changed.size > 0) {
+          // Changes were made
           console.log('Changes were made to the following fields:');
           message = 'Des modifications ont eu lieu dans JE PEUX AIDER';
           sendEmail(
             ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
             'Modification sur MyCogniverse',
             `<h4>Cher administrateur</h4>
-              <p>Un tuteur a mis à jour les jours ou les matières sur son profil</p>
-              <p>Id du tuteur : ${userId}</p>
-              
-              <br>
-              <p>A très vite.</p>`
+        <p>Un tuteur a mis à jour les ${section} sur son profil.</p>
+        <p>Id du tuteur : ${userId}</p>
+        
+        <br>
+        <p>A très vite.</p>`
           );
+          skill._changed.forEach((fieldName) => {
+            console.log(fieldName);
+          });
         } else {
+          // No changes were made
           console.log('No changes were made.');
-          message = 'Pas de changement';
+          message = 'Pas de modification';
         }
-      });
+      } else if (!req.body.when_day_slot) {
+        //----------------------------------------------------------
+        // Check if there were changes
+
+        skill._changed.forEach((fieldName) => {
+          console.log(fieldName);
+
+          // Transform the previous values to objects
+          const previousValues = skill._previousDataValues[fieldName];
+          const transformedPreviousValues = Array.isArray(previousValues)
+            ? previousValues.map((stringValue) => JSON.parse(stringValue))
+            : previousValues;
+
+          // Compare the values
+          const currentValue = skill.dataValues[fieldName];
+
+          // console.log('Previous Values:', transformedPreviousValues);
+          // console.log('Current Value:', currentValue);
+
+          const differences = compareArrays(
+            transformedPreviousValues,
+            currentValue
+          );
+          let diff = differences.length;
+          console.log(differences);
+          if (diff > 0) {
+            console.log('Changes were made to the following fields:');
+            message = 'Des modifications ont eu lieu dans JE PEUX AIDER';
+            sendEmail(
+              [
+                'gerald.berrebi@gmail.com',
+                'associationsephoraberrebi@gmail.com',
+              ],
+              'Modification sur MyCogniverse',
+              `<h4>Cher administrateur</h4>
+            <p>Un tuteur a mis à jour les jours ou les matières sur son profil</p>
+            <p>Id du tuteur : ${userId}</p>
+            
+            <br>
+            <p>A très vite.</p>`
+            );
+          } else {
+            console.log('No changes were made.');
+            message = 'Pas de changement';
+          }
+        });
+      }
+      //-----------------------------------------
+      // if (
+      //   previousSkills.topics !== skill.topics ||
+      //   previousSkills.when_day_slot !== skill.when_day_slot ||
+      //   previousSkills.where_location !== skill.where_location
+      // ) {
+      //   // Changes have been made, perform the necessary actions
+      //   console.log('Changes in skills');
+      // } else {
+      //   console.log('No changes in skills');
+      // }
+
+      // if (req.body.interview1_comments) {
+      //   skill.interview1_comments = req.body.interview1_comments;
+      // }
+
+      // if (req.body.interview1_date) {
+      //   skill.interview1_date = req.body.interview1_date;
+      // }
+
+      // if (req.body.interview2_comments) {
+      //   skill.interview2_comments = req.body.interview2_comments;
+      // }
+
+      // if (req.body.interview2_date) {
+      //   skill.interview2_date = req.body.interview2_date;
+      // }
+
+      // Save the updated record to the database
+      await skill.save();
+
+      // Return a success response
+      res.status(200).json({ message });
     }
-    //-----------------------------------------
-    // if (
-    //   previousSkills.topics !== skill.topics ||
-    //   previousSkills.when_day_slot !== skill.when_day_slot ||
-    //   previousSkills.where_location !== skill.where_location
-    // ) {
-    //   // Changes have been made, perform the necessary actions
-    //   console.log('Changes in skills');
-    // } else {
-    //   console.log('No changes in skills');
-    // }
-
-    // if (req.body.interview1_comments) {
-    //   skill.interview1_comments = req.body.interview1_comments;
-    // }
-
-    // if (req.body.interview1_date) {
-    //   skill.interview1_date = req.body.interview1_date;
-    // }
-
-    // if (req.body.interview2_comments) {
-    //   skill.interview2_comments = req.body.interview2_comments;
-    // }
-
-    // if (req.body.interview2_date) {
-    //   skill.interview2_date = req.body.interview2_date;
-    // }
-
-    // Save the updated record to the database
-    await skill.save();
-
-    // Return a success response
-    res.status(200).json({ message });
   } catch (error) {
     console.log(error);
     // Return an error response if any error occurs during the update process
