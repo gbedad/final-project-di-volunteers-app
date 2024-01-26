@@ -154,6 +154,7 @@ export const register = async (req, res) => {
         'gerald.berrebi@gmail.com',
         'gerald@sephoraberrebi.org',
         'associationsephoraberrebi@gmail.com',
+        'noemie@sephoraberrebi.org',
       ],
       'Nouvelle inscription sur la plateforme MyCogniverse',
       `<h4>Cher adminsistrateur</h4>
@@ -485,7 +486,11 @@ export const updateUserProfile = async (req, res) => {
     }
     if (street !== userProfile.street || activity !== userProfile.activity) {
       sendEmail(
-        ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
+        [
+          'gerald.berrebi@gmail.com',
+          'associationsephoraberrebi@gmail.com',
+          'noemie@sephoraberrebi.org',
+        ],
         'Ajout adresse ou activité sur MyCogniverse',
         `<h4>Cher adminsistrateur</h4>
         <p>Un tuteur a mis à jour son profil:</p>

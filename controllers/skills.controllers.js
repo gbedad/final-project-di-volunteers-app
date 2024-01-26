@@ -68,7 +68,11 @@ export const updateSkills = async (req, res) => {
       await skill.save();
 
       sendEmail(
-        ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
+        [
+          'gerald.berrebi@gmail.com',
+          'associationsephoraberrebi@gmail.com',
+          'noemie@sephoraberrebi.org',
+        ],
         'Modification sur MyCogniverse',
         `<h4>Cher administrateur</h4>
         <p>Un tuteur a commencé à remplir des données dans <span style="text-transform:uppercase>"JE PEUX AIDER" </span>sur son profil.</p>
@@ -104,7 +108,11 @@ export const updateSkills = async (req, res) => {
           console.log('Changes were made to the following fields:');
           message = 'Des modifications ont eu lieu dans JE PEUX AIDER';
           sendEmail(
-            ['gerald.berrebi@gmail.com', 'associationsephoraberrebi@gmail.com'],
+            [
+              'gerald.berrebi@gmail.com',
+              'associationsephoraberrebi@gmail.com',
+              'noemie@sephoraberrebi.org',
+            ],
             'Modification sur MyCogniverse',
             `<h4>Cher administrateur</h4>
         <p>Un tuteur a mis à jour les ${section} sur son profil.</p>
@@ -153,6 +161,7 @@ export const updateSkills = async (req, res) => {
               [
                 'gerald.berrebi@gmail.com',
                 'associationsephoraberrebi@gmail.com',
+                'noemie@sephoraberrebi.org',
               ],
               'Modification sur MyCogniverse',
               `<h4>Cher administrateur</h4>
