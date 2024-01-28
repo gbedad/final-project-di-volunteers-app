@@ -61,9 +61,9 @@ export const updateSkills = async (req, res) => {
     if (!skill) {
       const skill = await Skills.create({
         topics: topics ? topics : [],
-        when_day_slot: when_day_slot ? when_day_slot : [],
-        where_location: where_location ? where_location : [],
-        availability: availability ? availability : [],
+        when_day_slot: when_day_slot ? JSON.parse(when_day_slot) : [],
+        where_location: where_location ? JSON.parse(where_location) : [],
+        availability: availability ? JSON.parse(availability) : [],
         userId,
       });
       // Save the updated record to the database
