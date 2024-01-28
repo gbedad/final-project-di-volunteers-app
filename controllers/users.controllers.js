@@ -478,6 +478,7 @@ export const updateUserProfile = async (req, res) => {
     city,
     zipcode,
     country,
+    mission_id,
   } = req.body;
   try {
     const userProfile = await Users.findByPk(userId);
@@ -539,6 +540,9 @@ export const updateUserProfile = async (req, res) => {
 
     if (country) {
       userProfile.country = country;
+    }
+    if (mission_id) {
+      userProfile.mission_id = mission_id;
     }
 
     // Save the updated profile

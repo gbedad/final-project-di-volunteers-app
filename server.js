@@ -27,9 +27,18 @@ app.use('/', express.static(__dirname + '/public'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// app.use(function(req, res, next) {
-//   res.header("Access-Control-Allow-Origin", "*");
-//   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+app.use('/s3-proxy', (req, res) => {
+  const s3Url =
+    'https://volunteers-app.s3.eu-central-1.amazonaws.com/documents' + req.url;
+  req.pipe(request(s3Url)).pipe(res);
+});
+
+// app.use(function (req, res, next) {
+//   res.header('Access-Control-Allow-Origin', '*');
+//   res.header(
+//     'Access-Control-Allow-Headers',
+//     'Origin, X-Requested-With, Content-Type, Accept'
+//   );
 //   next();
 // });
 

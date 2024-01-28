@@ -24,13 +24,17 @@ const Skills = db.define(
       type: DataTypes.ARRAY(DataTypes.TEXT),
       defaultValue: [],
     },
+    availability: {
+      type: DataTypes.JSON,
+      defaultValue: {},
+    },
   },
   {
     timestamps: false,
   }
 );
 
-// Synchronize the database
+//Synchronize the database
 // db.sync()
 //   .then(() => {
 //     console.log('Database synchronized');

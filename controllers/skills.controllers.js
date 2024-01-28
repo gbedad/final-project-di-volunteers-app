@@ -40,11 +40,12 @@ export const createSkills = async (req, res) => {
 };
 
 export const updateSkills = async (req, res) => {
+  console.log(req.body);
   console.log(req.params.userId);
   let section;
 
-  const { topics, when_day_slot, where_location } = req.body;
-  console.log(topics, where_location, when_day_slot);
+  const { topics, when_day_slot, where_location, availability } = req.body;
+  console.log(topics, where_location, when_day_slot, availability);
   try {
     const userId = req.params.userId;
     // console.log("Route", req.body)
@@ -62,6 +63,7 @@ export const updateSkills = async (req, res) => {
         topics: topics ? topics : [],
         when_day_slot: when_day_slot ? when_day_slot : [],
         where_location: where_location ? where_location : [],
+        availability: availability ? availability : [],
         userId,
       });
       // Save the updated record to the database
@@ -91,6 +93,9 @@ export const updateSkills = async (req, res) => {
       // Update the fields of the record based on the values present in the request body
       if (topics) {
         skill.topics = JSON.parse(topics);
+      }
+      if (availability) {
+        skill.availability = availability;
       }
       // console.log(req.body.when_day_slot);
       if (when_day_slot) {
@@ -129,6 +134,8 @@ export const updateSkills = async (req, res) => {
           console.log('No changes were made.');
           message = 'Pas de modification';
         }
+      } else if (availability) {
+        message = 'Disponibilité ajoutée ou modifiée';
       } else if (!req.body.when_day_slot) {
         //----------------------------------------------------------
         // Check if there were changes

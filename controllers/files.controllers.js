@@ -1,6 +1,10 @@
-import db from '../config/database.js';
+import dotenv from 'dotenv';
 import File from '../models/files.model.js';
 import s3 from '../config/aws.config.js';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+
+dotenv.config();
 
 // const File = db.files;
 // Code valid with AWS------
@@ -102,3 +106,26 @@ export const cancelFile = async (req, res) => {
 // 		res.json({msg: 'Error', detail: err});
 // 	});
 // }
+
+export const presignedUrl_aws_s3 = async (req, res) => {
+  try {
+    const { s3FilePath } = req.body;
+    console.log(s3FilePath);
+    // const params = { Bucket: process.env.AWS_BUCKET_NAME, Key: s3FilePath };
+    // const url = await s3.getSignedUrl('getObject', params);
+    const command = new GetObjectCommand({
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: s3FilePath,
+    });
+    console.log(command);
+    const urlString = await getSignedUrl(s3, command, { expiresIn: 3600 });
+    const urlObject = { url: urlString };
+    const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+
+    console.log(urlObject);
+    res.json(url);
+  } catch (error) {
+    console.error('Error generating presigned URL:', error);
+    res.status(500).json({ error: 'Failed to generate presigned URL' });
+  }
+};
