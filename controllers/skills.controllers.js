@@ -60,7 +60,7 @@ export const updateSkills = async (req, res) => {
     let message;
     if (!skill) {
       const skill = await Skills.create({
-        topics: topics ? topics : [],
+        topics: topics ? JSON.parse(topics) : [],
         when_day_slot: when_day_slot ? JSON.parse(when_day_slot) : [],
         where_location: where_location ? JSON.parse(where_location) : [],
         availability: availability ? JSON.parse(availability) : [],
