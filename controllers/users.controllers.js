@@ -131,7 +131,7 @@ export const register = async (req, res) => {
   console.log('Date received', birth_date);
 
   // const localDate = dayjs(birth_date).tz('Europe/Paris');
-  const parsedDate = dayjs(receivedDate).format('YYYY-MM-DD');
+  const parsedDate = dayjs(birth_date).format('YYYY-MM-DD');
   const firstname = capitalizeString(first_name);
   const lastname = capitalizeString(last_name);
   // console.log('Controllers.register', req.body);
