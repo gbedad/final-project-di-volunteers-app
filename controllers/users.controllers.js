@@ -128,6 +128,7 @@ export const register = async (req, res) => {
   }
   const serverTimezone = new Date().getTimezoneOffset();
   console.log('Server Timezone Offset:', serverTimezone);
+  console.log('Date received', birth_date);
 
   // const localDate = dayjs(birth_date).tz('Europe/Paris');
   const firstname = capitalizeString(first_name);
