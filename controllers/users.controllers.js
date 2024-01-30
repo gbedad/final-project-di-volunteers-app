@@ -9,6 +9,7 @@ import Skills from '../models/skills.model.js';
 import nodemailer from 'nodemailer';
 // import {google} from 'googleapis';
 import sendEmail from '../config/sendEmails.js';
+import dayjs from 'dayjs';
 
 dotenv.config();
 
@@ -125,7 +126,10 @@ export const register = async (req, res) => {
       .status(409)
       .json({ error: 'Email already exists. Please use a different email.' });
   }
+  const serverTimezone = new Date().getTimezoneOffset();
+  console.log('Server Timezone Offset:', serverTimezone);
 
+  // const localDate = dayjs(birth_date).tz('Europe/Paris');
   const firstname = capitalizeString(first_name);
   const lastname = capitalizeString(last_name);
   // console.log('Controllers.register', req.body);
