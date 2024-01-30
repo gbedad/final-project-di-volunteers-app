@@ -100,6 +100,10 @@ export const getUsers = async (req, res) => {
 //   }
 // };
 
+function addHours(date, hours) {
+  return new Date(date.getTime() + hours * 60 * 60 * 1000);
+}
+
 export const register = async (req, res) => {
   const {
     email,
@@ -126,13 +130,13 @@ export const register = async (req, res) => {
       .status(409)
       .json({ error: 'Email already exists. Please use a different email.' });
   }
+
   const serverTimezone = new Date().getTimezoneOffset();
   console.log('Server Timezone Offset:', serverTimezone);
   console.log('Date received:', birth_date);
 
-  const parsedDate = dayjs(birth_date, 'YYYY-MM-DD');
-  console.log('Parsed Date:', parsedDate.format('YYYY-MM-DD'));
-  const savedDate = parsedDate.format('YYYY-MM-DD');
+  const newDate = addHours(new Date(birth_date), 2);
+  console.log(newDate);
 
   // const localDate = dayjs(birth_date).tz('Europe/Paris');
   const firstname = capitalizeString(first_name);
@@ -148,7 +152,7 @@ export const register = async (req, res) => {
       first_name: firstname,
       last_name: lastname,
       phone,
-      birth_date: savedDate,
+      birth_date: newDate,
       message,
       mission_id,
     });
