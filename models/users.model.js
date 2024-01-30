@@ -22,7 +22,7 @@ const Users = db.define(
       type: DataTypes.STRING,
     },
     birth_date: {
-      type: DataTypes.DATE,
+      type: DataTypes.DATEONLY,
     },
     phone: {
       type: DataTypes.STRING,
