@@ -491,6 +491,7 @@ export const updateUserProfile = async (req, res) => {
     city,
     zipcode,
     country,
+    message,
     mission_id,
   } = req.body;
   try {
@@ -538,6 +539,9 @@ export const updateUserProfile = async (req, res) => {
     }
     if (activity) {
       userProfile.activity = activity;
+    }
+    if (message) {
+      userProfile.message = message;
     }
 
     if (street) {

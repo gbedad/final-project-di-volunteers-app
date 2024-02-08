@@ -19,6 +19,18 @@ const upload = multer({
     },
   }),
 });
+const uploadConvention = multer({
+  storage: multerS3({
+    s3: s3,
+    bucket: process.env.AWS_BUCKET_NAME,
+    //   acl: 'public-read',
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+
+    key: (req, file, cb) => {
+      cb(null, 'conventions/' + file.originalname);
+    },
+  }),
+});
 
 // const uploadFile = async (fileObject) => {
 //   const bufferStream = new stream.PassThrough();
@@ -36,5 +48,4 @@ const upload = multer({
 //   });
 //   console.log(`Uploaded file ${data.name} ${data.id}`);
 // };
-
-export default upload;
+export { upload, uploadConvention };

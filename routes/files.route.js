@@ -1,6 +1,6 @@
 import express from 'express';
 let router = express.Router();
-import upload from '../config/multer.js';
+import { upload, uploadConvention } from '../config/multer.js';
 
 import {
   uploadFile,
@@ -11,6 +11,11 @@ import { prod_tt_sasportal } from 'googleapis/build/src/apis/prod_tt_sasportal/i
 // import fileWorker from '../controllers/files.controllers.js';
 
 router.post('/upload/:userId', upload.single('file'), uploadFile);
+router.post(
+  '/upload/convention/:userId',
+  uploadConvention.single('file'),
+  uploadFile
+);
 
 router.delete('/files/cancel/:fileId', upload.single('file'), cancelFile);
 
