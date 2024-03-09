@@ -231,12 +231,13 @@ export const login = async (req, res) => {
       },
       process.env.ACCESS_TOKEN_SECRET,
       {
-        expiresIn: '7d',
+        expiresIn: '900s',
       }
     );
     res.cookie('accesstoken', token, {
       httpOnly: true,
-      maxAge: 7 * 24 * 3600 * 1000,
+      maxAge: 900 * 1000,
+      // maxAge: 1 * 24 * 3600 * 1000,
     });
     res.json({ token, user });
   } catch (error) {
