@@ -231,7 +231,7 @@ export const login = async (req, res) => {
       },
       process.env.ACCESS_TOKEN_SECRET,
       {
-        expiresIn: '900s',
+        expiresIn: '3600s',
       }
     );
     res.cookie('accesstoken', token, {
