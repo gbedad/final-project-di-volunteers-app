@@ -19,16 +19,20 @@ import {
   forgotPassword,
   resetPasswordVerify,
   renewPassword,
+  checkToken,
+  refreshTokenFunc,
 } from '../controllers/users.controllers.js';
 import { verifyToken } from '../middlewares/verifyToken.js';
 import { isAdmin } from '../middlewares/isAdmin.js';
-import { adminAuth, userAuth } from '../middlewares/auth.js';
+import { adminAuth, userAuth } from '../middlewares/authAdmin.js';
 
 const router = express.Router();
 
 router.get('/', gotoHomePage);
 router.post('/register', register);
 router.post('/login', login);
+router.get('/check-token', checkToken);
+router.post('/refresh-token', refreshTokenFunc);
 router.get('/logout', logout);
 router.get('/all-users', adminAuth, getUsers);
 // router.get('/user-by-id', getUserById);

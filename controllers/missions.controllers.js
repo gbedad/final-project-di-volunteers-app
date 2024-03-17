@@ -18,6 +18,8 @@ export const getMissions = async (req, res) => {
         'updated_at',
         'is_active',
       ],
+
+      order: [['title', 'asc']],
     });
 
     if (missions) {
@@ -54,6 +56,7 @@ export const getAllMissions = async (req, res) => {
         'updated_at',
         'is_active',
       ],
+      order: [['title', 'asc']],
     });
 
     if (missions) {

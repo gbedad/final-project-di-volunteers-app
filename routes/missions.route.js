@@ -3,7 +3,7 @@ import { upload } from '../config/multer.js';
 
 import { verifyToken } from '../middlewares/verifyToken.js';
 import { isAdmin } from '../middlewares/isAdmin.js';
-import { adminAuth, userAuth } from '../middlewares/auth.js';
+import { adminAuth, userAuth } from '../middlewares/authAdmin.js';
 
 import {
   createMission,

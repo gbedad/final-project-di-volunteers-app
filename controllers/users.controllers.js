@@ -210,6 +210,43 @@ export const updateUser = async (req, res) => {
     });
 };
 
+export const checkToken = (req, res) => {
+  const authorizationHeader = req.headers.authorization;
+  const token = authorizationHeader.split(' ')[1];
+  console.log(token);
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(500).json({ message: 'Token is invalid or expired' });
+    }
+
+    // Token is valid
+    res.status(200).json({ message: 'Token is valid' });
+  });
+};
+
+export const refreshTokenFunc = (req, res) => {
+  const refreshToken = req.body.refreshToken;
+  console.log(refreshToken);
+  if (!refreshToken) return res.sendStatus(401);
+
+  jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    const accessToken = jwt.sign(
+      {
+        userId: user.userid,
+        email: user.email,
+        role: user.role,
+      },
+      process.env.ACCESS_TOKEN_SECRET,
+      {
+        expiresIn: '2d',
+      }
+    );
+    return res.json({ accessToken });
+  });
+};
+
 export const login = async (req, res) => {
   try {
     const user = await Users.findOne({
@@ -231,15 +268,27 @@ export const login = async (req, res) => {
       },
       process.env.ACCESS_TOKEN_SECRET,
       {
-        expiresIn: '3600s',
+        expiresIn: '60m',
       }
     );
-    res.cookie('accesstoken', token, {
+
+    const refreshToken = jwt.sign(
+      { userid, email, role },
+      process.env.REFRESH_TOKEN_SECRET,
+      {
+        expiresIn: '1d', // Refresh token expires in 7 days
+      }
+    );
+    console.log('refresh', refreshToken);
+
+    res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      maxAge: 900 * 1000,
-      // maxAge: 1 * 24 * 3600 * 1000,
+
+      maxAge: 7 * 24 * 3600 * 1000,
+      //   secure: true, // Uncomment if using HTTPS
+      //   sameSite: 'none', // Uncomment if using cross-site requests
     });
-    res.json({ token, user });
+    res.json({ token, user, refreshToken });
   } catch (error) {
     console.log(error);
     res.status(404).json({ msg: 'Email not found' });
@@ -259,7 +308,7 @@ export const deleteRegistration = async (req, res) => {
 };
 
 export const logout = (req, res) => {
-  res.clearCookie('accesstoken').json({ response: 'You are Logged Out' });
+  res.clearCookie('token').json({ response: 'You are Logged Out' });
 };
 
 export async function getUserById(req, res) {

@@ -15,7 +15,7 @@ export const adminAuth = (req, res, next) => {
 
   if (token) {
     jwt.verify(token, jwtSecret, (err, decodedToken) => {
-      console.log(decodedToken);
+      // console.log(decodedToken);
       if (err) {
         return res.status(401).json({ message: 'Not authorized' });
       } else {
