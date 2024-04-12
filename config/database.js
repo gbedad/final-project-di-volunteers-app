@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // const { NODE_ENV } = process.env
-const NODE_ENV = 'development';
+const NODE_ENV = 'production';
 console.log(NODE_ENV);
 
 let selectedConfig;
