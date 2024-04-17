@@ -19,7 +19,7 @@ export const getMissions = async (req, res) => {
         'is_active',
       ],
 
-      order: [['title', 'asc']],
+      order: [['id', 'asc']],
     });
 
     if (missions) {
