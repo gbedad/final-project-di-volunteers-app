@@ -56,7 +56,7 @@ export const getUsers = async (req, res) => {
         'test_voltaire_passed',
         'activity',
         'interviews',
-        'preinterview',
+        'pre_interview',
         'email2',
       ],
       include: ['mission', 'skill', 'file'],
