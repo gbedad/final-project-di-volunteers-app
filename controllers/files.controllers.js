@@ -107,23 +107,53 @@ export const cancelFile = async (req, res) => {
 // 	});
 // }
 
+// export const presignedUrl_aws_s3 = async (req, res) => {
+//   try {
+//     const { s3FilePath } = req.body;
+//     console.log(s3FilePath);
+//     // const params = { Bucket: process.env.AWS_BUCKET_NAME, Key: s3FilePath };
+//     // const url = await s3.getSignedUrl('getObject', params);
+//     const command = new GetObjectCommand({
+//       Bucket: process.env.AWS_BUCKET_NAME,
+//       Key: s3FilePath,
+//     });
+//     console.log(command);
+//     const urlString = await getSignedUrl(s3, command, { expiresIn: 3600 });
+//     const urlObject = { url: urlString };
+//     const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+
+//     console.log(urlObject);
+//     res.json(url);
+//   } catch (error) {
+//     console.error('Error generating presigned URL:', error);
+//     res.status(500).json({ error: 'Failed to generate presigned URL' });
+//   }
+// };
+
 export const presignedUrl_aws_s3 = async (req, res) => {
   try {
     const { s3FilePath } = req.body;
-    console.log(s3FilePath);
-    // const params = { Bucket: process.env.AWS_BUCKET_NAME, Key: s3FilePath };
-    // const url = await s3.getSignedUrl('getObject', params);
+    const fileExtension = s3FilePath.split('.').pop().toLowerCase();
+    let contentType = '';
+    console.log('s3file', s3FilePath);
+
+    // Determine content type based on file extension
+    if (fileExtension === 'pdf') {
+      contentType = 'application/pdf';
+    } else if (['png', 'jpeg', 'jpg'].includes(fileExtension)) {
+      contentType = 'image/jpeg'; // Adjust as needed for PNG or other image types
+    } else {
+      throw new Error('Unsupported file type');
+    }
+
     const command = new GetObjectCommand({
       Bucket: process.env.AWS_BUCKET_NAME,
       Key: s3FilePath,
+      ResponseContentType: contentType, // Set the correct Content-Type dynamically
     });
-    console.log(command);
-    const urlString = await getSignedUrl(s3, command, { expiresIn: 3600 });
-    const urlObject = { url: urlString };
-    const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
 
-    console.log(urlObject);
-    res.json(url);
+    const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+    res.json({ url });
   } catch (error) {
     console.error('Error generating presigned URL:', error);
     res.status(500).json({ error: 'Failed to generate presigned URL' });

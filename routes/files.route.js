@@ -19,7 +19,7 @@ router.post(
 
 router.delete('/files/cancel/:fileId', upload.single('file'), cancelFile);
 
-router.post('/api/get-presigned-url', presignedUrl_aws_s3);
+router.post('/get-presigned-url', presignedUrl_aws_s3);
 // router.post('/upload', upload.any(), uploadFile);
 
 // router.get('/api/file/info', fileWorker.listAllFiles);

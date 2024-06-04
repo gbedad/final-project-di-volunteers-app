@@ -352,18 +352,18 @@ export const updateById = async (req, res) => {
       return res.status(404).json({ message: 'No rows found for that ID.' });
     }
     console.log(userEmail);
-    sendEmail(
-      userEmail,
-      'Changement de statut sur MyCogniverse',
-      `<p>Cher(e) ${user.first_name} ${user.last_name}</p>
-      <p>Votre statut a changé.</p>
-      <p>Il est passé à : "${newStatus}".</p>
-      <p>Veuillez vous connecter sur le site <a href=mycogniverse.org>mycogniverse.org</a> pour connaitre les prochaines étapes.</p>
-    
-      <p>A très vite,</p>
-      <p>L'équipe de MyCogniverse</p>
-      `
-    );
+    // sendEmail(
+    //   userEmail,
+    //   'Changement de statut sur MyCogniverse',
+    //   `<p>Cher(e) ${user.first_name} ${user.last_name}</p>
+    //   <p>Votre statut a changé.</p>
+    //   <p>Il est passé à : "${newStatus}".</p>
+    //   <p>Veuillez vous connecter sur le site <a href=mycogniverse.org>mycogniverse.org</a> pour connaitre les prochaines étapes.</p>
+
+    //   <p>A très vite,</p>
+    //   <p>L'équipe de MyCogniverse</p>
+    //   `
+    // );
 
     res.json({ message: 'Row updated successfully.', updatedRows });
   } catch (err) {
@@ -550,27 +550,27 @@ export const updateUserProfile = async (req, res) => {
     if (!userProfile) {
       return res.status(404).json({ message: 'Profile not found' });
     }
-    if (street !== userProfile.street || activity !== userProfile.activity) {
-      sendEmail(
-        [
-          'gerald.berrebi@gmail.com',
-          'associationsephoraberrebi@gmail.com',
-          'noemie@sephoraberrebi.org',
-        ],
-        'Ajout adresse ou activité sur MyCogniverse',
-        `<h4>Cher adminsistrateur</h4>
-        <p>Un tuteur a mis à jour son profil:</p>
-        <p>Id du tuteur : ${userId}</p>
-        <p>${
-          street && street !== userProfile.street
-            ? street + ' ' + city + ' ' + zipcode
-            : ''
-        }</p>
-        <p>${activity && activity !== userProfile.activity ? activity : ''}</p>
-        <br>
-        <p>A très vite.</p>`
-      );
-    }
+    // if (street !== userProfile.street || activity !== userProfile.activity) {
+    //   sendEmail(
+    //     [
+    //       'gerald.berrebi@gmail.com',
+    //       'associationsephoraberrebi@gmail.com',
+    //       'noemie@sephoraberrebi.org',
+    //     ],
+    //     'Ajout adresse ou activité sur MyCogniverse',
+    //     `<h4>Cher adminsistrateur</h4>
+    //     <p>Un tuteur a mis à jour son profil:</p>
+    //     <p>Id du tuteur : ${userId}</p>
+    //     <p>${
+    //       street && street !== userProfile.street
+    //         ? street + ' ' + city + ' ' + zipcode
+    //         : ''
+    //     }</p>
+    //     <p>${activity && activity !== userProfile.activity ? activity : ''}</p>
+    //     <br>
+    //     <p>A très vite.</p>`
+    //   );
+    // }
 
     // Update only the provided fields
     if (first_name) {
