@@ -19,6 +19,14 @@ const dbconfig = {
     port: process.env.DATABASE_PRODUCTION_PORT,
     dialect: 'postgres',
   },
+  production_aiven: {
+    username: process.env.AIVEN_USER,
+    password: process.env.AIVEN_PASSWORD,
+    database: process.env.AIVEN_DATABASE,
+    host: process.env.AIVEN_HOST,
+    port: process.env.AIVEN_PORT,
+    dialect: 'postgres',
+  },
 };
 
 export default dbconfig;

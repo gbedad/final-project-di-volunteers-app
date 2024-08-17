@@ -53,7 +53,9 @@ app.use('/_next', express.static(path.join(__dirname, '.next')));
 // Connection to database
 try {
   await db.authenticate();
-  console.log(`Database connected on port ${process.env.DATABASE_PORT}`);
+  console.log(
+    `Database connected on port ${process.env.AIVEN_PORT} || ${process.env.DATABASE_PORT}`
+  );
 } catch (err) {
   console.log(err);
 }

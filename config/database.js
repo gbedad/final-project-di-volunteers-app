@@ -12,11 +12,29 @@ let selectedConfig;
 
 if (NODE_ENV == 'production') {
   selectedConfig = dbconfig['production'];
+} else if (NODE_ENV == 'production_aiven') {
+  selectedConfig = dbconfig['production'];
 } else if (NODE_ENV == 'development') {
   selectedConfig = dbconfig['development'];
 }
 
 // const selectedConfig = dbconfig['development'];
+
+// const db = new Sequelize({
+//   dialect: 'postgres',
+//   host: process.env.AIVEN_HOST,
+//   port: process.env.AIVEN_PORT,
+//   database: process.env.AIVEN_DATABASE,
+//   username: process.env.AIVEN_USER,
+//   password: process.env.AIVEN_PASSWORD,
+//   ssl: true,
+//   dialectOptions: {
+//     ssl: {
+//       require: true,
+//       rejectUnauthorized: false,
+//     },
+//   },
+// });
 
 console.log(selectedConfig.username);
 const db = new Sequelize(
