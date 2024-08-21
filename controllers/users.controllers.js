@@ -18,6 +18,24 @@ const capitalizeString = (str) => {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 };
 
+const capitalizeFamiluName = (fullname) => {
+  const nameParts = fullname.split(/[\s-]+/);
+  if (nameParts.length < 2) {
+    return fullname;
+  }
+
+  // Capitalize composed names
+  const capitalizedNames = nameParts.map(
+    (part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+  );
+
+  // Reconstruct the name
+  const separator = fullname.includes('-') ? '-' : ' ';
+  const capitalizedFullname = capitalizedNames.join(separator);
+
+  return capitalizedFullname;
+};
+
 export const gotoHomePage = async (req, res) => {
   try {
     const missions = await Missions.findAll({
@@ -141,7 +159,7 @@ export const register = async (req, res) => {
 
   // const localDate = dayjs(birth_date).tz('Europe/Paris');
   const firstname = capitalizeString(first_name);
-  const lastname = capitalizeString(last_name);
+  const lastname = capitalizedFullname(last_name);
   // console.log('Controllers.register', req.body);
   const salt = await bcrypt.genSalt();
   const hashPassword = await bcrypt.hash(password, salt);
@@ -269,7 +287,7 @@ export const login = async (req, res) => {
       },
       process.env.ACCESS_TOKEN_SECRET,
       {
-        expiresIn: '1h',
+        expiresIn: '1d',
       }
     );
 
