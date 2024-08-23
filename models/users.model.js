@@ -90,6 +90,10 @@ const Users = db.define(
     pre_interview: {
       type: DataTypes.JSON,
     },
+    internal_thread: {
+      type: DataTypes.ARRAY(DataTypes.JSONB),
+      defaultValue: [],
+    },
   },
   {
     timestamps: true,

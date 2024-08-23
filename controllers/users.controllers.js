@@ -76,6 +76,7 @@ export const getUsers = async (req, res) => {
         'interviews',
         'pre_interview',
         'email2',
+        'internal_thread',
       ],
       include: ['mission', 'skill', 'file'],
       where: {
@@ -540,6 +541,30 @@ export const addUserPreInterview = async (req, res) => {
     return res
       .status(200)
       .json({ message: 'Pre-Interview saved successfully' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.massage });
+  }
+};
+
+export const addUserInternalThread = async (req, res) => {
+  console.log('ggg', req.body);
+  const messages = req.body;
+  const userId = req.params.userId;
+  console.log(userId);
+  console.log(messages);
+  try {
+    const user = await Users.findByPk(userId);
+
+    if (!user) {
+      return res.status(401).json({ message: 'No user found' });
+    }
+    user.internal_thread = messages.map((message) => message);
+
+    await user.save();
+    return res
+      .status(200)
+      .json({ message: 'Internal thread saved successfully' });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: error.massage });
