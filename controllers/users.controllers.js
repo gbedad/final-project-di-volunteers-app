@@ -159,7 +159,7 @@ export const register = async (req, res) => {
   console.log(newDate);
 
   // const localDate = dayjs(birth_date).tz('Europe/Paris');
-  const firstname = capitalizeString(first_name);
+  const firstname = capitalizedFullname(first_name);
   const lastname = capitalizedFullname(last_name);
   // console.log('Controllers.register', req.body);
   const salt = await bcrypt.genSalt();
