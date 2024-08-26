@@ -16,6 +16,8 @@ import files_router from './routes/files.route.js';
 import skills_router from './routes/skills.route.js';
 import missions_router from './routes/missions.route.js';
 
+import students_router from './routes/students_routes/students.route.js';
+
 dotenv.config();
 
 const app = express();
@@ -46,6 +48,8 @@ app.use(users_router);
 app.use(files_router);
 app.use(skills_router);
 app.use(missions_router);
+
+app.use(students_router);
 
 // Serve static files from the Next.js build directory
 app.use('/_next', express.static(path.join(__dirname, '.next')));
