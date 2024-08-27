@@ -21,7 +21,7 @@ import students_router from './routes/students_routes/students.route.js';
 dotenv.config();
 
 const app = express();
-
+app.enable('trust proxy');
 const corsOptions = {
   origin: 'https://www.mycogniverse.org',
   credentials: true,
@@ -44,6 +44,20 @@ app.use('/s3-proxy', (req, res) => {
   const s3Url =
     'https://volunteers-app.s3.eu-central-1.amazonaws.com/documents' + req.url;
   req.pipe(request(s3Url)).pipe(res);
+});
+
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://www.mycogniverse.org');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, Content-Length, X-Requested-With'
+  );
+  res.header('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
 });
 
 // app.use(function (req, res, next) {
