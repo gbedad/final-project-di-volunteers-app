@@ -22,7 +22,18 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+const corsOptions = {
+  origin: 'https://www.mycogniverse.org',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+
+app.options('*', cors(corsOptions)); // Handle preflight requests
+
+// app.use(cors());
 app.use(cookieParser());
 
 app.use('/', express.static(__dirname + '/public'));
