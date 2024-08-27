@@ -22,7 +22,16 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+const corsOptions = {
+  origin: ['https://www.mycogniverse.org', 'http://localhost:3000'], // Add your frontend URL and any other allowed origins
+  credentials: true, // If you're using cookies or authentication headers
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Specify allowed methods
+  allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+// app.use(cors());
 app.use(cookieParser());
 
 app.use('/', express.static(__dirname + '/public'));
