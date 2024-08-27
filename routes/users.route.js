@@ -31,7 +31,7 @@ import cors from 'cors';
 
 const router = express.Router();
 const corsOptions = {
-  origin: 'https://www.mycogniverse.org',
+  origin: ['https://www.mycogniverse.org', 'http://localhost:3000'],
   credentials: true,
 };
 

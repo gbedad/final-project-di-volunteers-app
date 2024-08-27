@@ -18,7 +18,7 @@ const capitalizeString = (str) => {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 };
 
-const capitalizeFamiluName = (fullname) => {
+const capitalizeFamilyName = (fullname) => {
   const nameParts = fullname.split(/[\s-]+/);
   if (nameParts.length < 2) {
     return fullname;
@@ -125,48 +125,38 @@ function addHours(date, hours) {
 }
 
 export const register = async (req, res) => {
-  const {
-    email,
-    password,
-    first_name,
-    last_name,
-    phone,
-    birth_date,
-    message,
-    mission_id,
-  } = req.body;
-  // Check if the email already exists in the database
-  console.log(email);
-  const existingUser = await Users.findOne({
-    where: {
-      email: email,
-    },
-  });
-  // console.log('>>>>', existingUser);
-
-  if (existingUser) {
-    // Email already exists, return an error response
-    return res
-      .status(409)
-      .json({ error: 'Email already exists. Please use a different email.' });
-  }
-
-  const serverTimezone = new Date().getTimezoneOffset();
-  console.log('Server Timezone Offset:', serverTimezone);
-  console.log('Date received:', birth_date);
-
-  const newDate = addHours(new Date(birth_date), 2);
-  console.log(newDate);
-
-  // const localDate = dayjs(birth_date).tz('Europe/Paris');
-  const firstname = capitalizedFullname(first_name);
-  const lastname = capitalizedFullname(last_name);
-  // console.log('Controllers.register', req.body);
-  const salt = await bcrypt.genSalt();
-  const hashPassword = await bcrypt.hash(password, salt);
-
   try {
-    await Users.create({
+    const {
+      email,
+      password,
+      first_name,
+      last_name,
+      phone,
+      birth_date,
+      message,
+      mission_id,
+    } = req.body;
+
+    // Check if the email already exists in the database
+    const existingUser = await Users.findOne({
+      where: {
+        email: email.toLowerCase(),
+      },
+    });
+
+    if (existingUser) {
+      return res
+        .status(409)
+        .json({ error: 'Email already exists. Please use a different email.' });
+    }
+
+    const newDate = addHours(new Date(birth_date), 2);
+    const firstname = capitalizeFamilyName(first_name);
+    const lastname = capitalizeFamilyName(last_name);
+    const salt = await bcrypt.genSalt();
+    const hashPassword = await bcrypt.hash(password, salt);
+
+    const newUser = await Users.create({
       email: email.toLowerCase(),
       password: hashPassword,
       first_name: firstname,
@@ -176,13 +166,15 @@ export const register = async (req, res) => {
       message,
       mission_id,
     });
-    sendEmail(
+
+    // Send confirmation emails
+    await sendEmail(
       email,
       'Inscription confirmée',
       "Merci de vous être inscrit(e) sur notre plateforme. Vous pouvez dès à présent vous connecter sur <a href='https://mycogniverse.org'>MyCogniverse</a> à l'aide de votre email et votre mot de passe"
     );
 
-    sendEmail(
+    await sendEmail(
       [
         'gerald.berrebi@gmail.com',
         'gerald@sephoraberrebi.org',
@@ -193,16 +185,18 @@ export const register = async (req, res) => {
       `<h4>Cher adminsistrateur</h4>
       <p>Un nouveau tuteur s'est enregistré sur la plateforme pour la mission ${mission_id}:</p>
       <p>Email : ${email}</p>
-      <p>Nom : ${first_name} ${last_name}</p>
+      <p>Nom : ${firstname} ${lastname}</p>
       <p>Téléphone : ${phone}</p>
       <br>
       <p>A très vite.</p>`
     );
 
-    res.status(200).json({ msg: 'Register Successful' });
-  } catch (e) {
-    console.log(e);
-    res.status(404).json({ msg: e.message });
+    res.status(201).json({ msg: 'Register Successful', userId: newUser.id });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({
+      error: 'An error occurred during registration. Please try again.',
+    });
   }
 };
 

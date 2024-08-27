@@ -23,7 +23,7 @@ dotenv.config();
 const app = express();
 app.enable('trust proxy');
 const corsOptions = {
-  origin: 'https://www.mycogniverse.org',
+  origin: ['https://www.mycogniverse.org', 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
