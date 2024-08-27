@@ -28,7 +28,6 @@ import { isAdmin } from '../middlewares/isAdmin.js';
 import { adminAuth, userAuth } from '../middlewares/authAdmin.js';
 
 import cors from 'cors';
-
 const router = express.Router();
 const corsOptions = {
   origin: ['https://www.mycogniverse.org', 'http://localhost:3000'],

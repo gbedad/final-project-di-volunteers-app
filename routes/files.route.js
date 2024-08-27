@@ -1,5 +1,6 @@
 import express from 'express';
 let router = express.Router();
+import cors from 'cors';
 import { upload, uploadConvention } from '../config/multer.js';
 
 import {
@@ -9,6 +10,13 @@ import {
 } from '../controllers/files.controllers.js';
 import { prod_tt_sasportal } from 'googleapis/build/src/apis/prod_tt_sasportal/index.js';
 // import fileWorker from '../controllers/files.controllers.js';
+
+const corsOptions = {
+  origin: ['https://www.mycogniverse.org', 'http://localhost:3000'],
+  credentials: true,
+};
+
+router.use(cors(corsOptions));
 
 router.post('/upload/:userId', upload.single('file'), uploadFile);
 router.post(
