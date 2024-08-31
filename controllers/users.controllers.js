@@ -21,7 +21,7 @@ const capitalizeString = (str) => {
 const capitalizeFamilyName = (fullname) => {
   const nameParts = fullname.split(/[\s-]+/);
   if (nameParts.length < 2) {
-    return fullname;
+    return capitalizeString(fullname);
   }
 
   // Capitalize composed names

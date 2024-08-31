@@ -4,6 +4,7 @@ import {
   addStudent,
   updateStudent,
   deleteStudent,
+  getSchools,
 } from '../../controllers/students_module/students.controllers.js';
 import { adminAuth } from '../../middlewares/authAdmin.js';
 
@@ -14,5 +15,7 @@ router.get('/students', getAllStudents);
 router.post('/students', addStudent);
 router.patch('/students/:id', updateStudent);
 router.delete('/students/:id', deleteStudent);
+
+router.get('/student-demand/schools', getSchools);
 
 export default router;
