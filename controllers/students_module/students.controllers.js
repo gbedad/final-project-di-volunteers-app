@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
+
+import axios from 'axios';
+
 import Students from '../../models/students/students.model.js';
-import fs from 'fs';
 
 dotenv.config();
 
@@ -94,30 +96,63 @@ export const deleteStudent = async (req, res) => {
   }
 };
 
-// Load the JSON file (this should be optimized for production use)
-const schoolsData = JSON.parse(fs.readFileSync('schools.json', 'utf8'));
+// // Load the JSON file (this should be optimized for production use)
+// const schoolsData = JSON.parse(fs.readFileSync('schools.json', 'utf8'));
+
+// export const getSchools = async (req, res) => {
+//   const { search, page = 1, limit = 20 } = req.query;
+
+//   let filteredSchools = await schoolsData;
+
+//   // Filter schools based on search query
+//   if (search) {
+//     filteredSchools = schoolsData.filter((school) =>
+//       school.nom_etablissement.toLowerCase().includes(search.toLowerCase())
+//     );
+//   }
+
+//   // Paginate results
+//   const startIndex = (page - 1) * limit;
+//   const endIndex = page * limit;
+//   const paginatedSchools = filteredSchools.slice(startIndex, endIndex);
+
+//   res.json({
+//     total: filteredSchools.length,
+//     page: parseInt(page),
+//     limit: parseInt(limit),
+//     schools: paginatedSchools,
+//   });
+// };
+
+const baseUrl =
+  'https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/records';
 
 export const getSchools = async (req, res) => {
   const { search, page = 1, limit = 20 } = req.query;
+  const offset = (page - 1) * limit;
 
-  let filteredSchools = await schoolsData;
+  try {
+    let apiUrl = `${baseUrl}?limit=${limit}&offset=${offset}`;
 
-  // Filter schools based on search query
-  if (search) {
-    filteredSchools = schoolsData.filter((school) =>
-      school.nom_etablissement.toLowerCase().includes(search.toLowerCase())
-    );
+    // Add search functionality
+    if (search) {
+      apiUrl += `&where=nom_etablissement like "%${encodeURIComponent(
+        search
+      )}%"`;
+    }
+
+    // Fetch data from API
+    const response = await axios.get(apiUrl);
+    const { total_count, results } = response.data;
+
+    res.json({
+      total: total_count,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      schools: results,
+    });
+  } catch (error) {
+    console.error('Error fetching data from API:', error);
+    res.status(500).json({ error: 'An error occurred while fetching data' });
   }
-
-  // Paginate results
-  const startIndex = (page - 1) * limit;
-  const endIndex = page * limit;
-  const paginatedSchools = filteredSchools.slice(startIndex, endIndex);
-
-  res.json({
-    total: filteredSchools.length,
-    page: parseInt(page),
-    limit: parseInt(limit),
-    schools: paginatedSchools,
-  });
 };
