@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // const { NODE_ENV } = process.env
-const NODE_ENV = 'production';
+const NODE_ENV = 'production_aiven';
 console.log(NODE_ENV);
 
 let selectedConfig;
@@ -13,40 +13,40 @@ let selectedConfig;
 if (NODE_ENV == 'production') {
   selectedConfig = dbconfig['production'];
 } else if (NODE_ENV == 'production_aiven') {
-  selectedConfig = dbconfig['production'];
+  selectedConfig = dbconfig['production_aiven'];
 } else if (NODE_ENV == 'development') {
   selectedConfig = dbconfig['development'];
 }
 
 // const selectedConfig = dbconfig['development'];
 
-// const db = new Sequelize({
-//   dialect: 'postgres',
-//   host: process.env.AIVEN_HOST,
-//   port: process.env.AIVEN_PORT,
-//   database: process.env.AIVEN_DATABASE,
-//   username: process.env.AIVEN_USER,
-//   password: process.env.AIVEN_PASSWORD,
-//   ssl: true,
-//   dialectOptions: {
-//     ssl: {
-//       require: true,
-//       rejectUnauthorized: false,
-//     },
-//   },
-// });
+const db = new Sequelize({
+  dialect: 'postgres',
+  host: process.env.AIVEN_HOST,
+  port: process.env.AIVEN_PORT,
+  database: process.env.AIVEN_DATABASE,
+  username: process.env.AIVEN_USER,
+  password: process.env.AIVEN_PASSWORD,
+
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  },
+});
 
 console.log(selectedConfig.username);
-const db = new Sequelize(
-  selectedConfig.database,
-  selectedConfig.username,
-  selectedConfig.password,
-  {
-    host: selectedConfig.host,
-    port: selectedConfig.port,
-    dialect: selectedConfig.dialect,
-  }
-);
+// const db = new Sequelize(
+//   selectedConfig.database,
+//   selectedConfig.username,
+//   selectedConfig.password,
+//   {
+//     host: selectedConfig.host,
+//     port: selectedConfig.port,
+//     dialect: selectedConfig.dialect,
+//   }
+// );
 
 export default db;
 

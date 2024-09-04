@@ -27,6 +27,20 @@ const config = {
     port: 5432,
     dialect: 'postgres',
   },
+  production_aiven: {
+    username: process.env.AIVEN_USER,
+    password: process.env.AIVEN_PASSWORD,
+    database: process.env.AIVEN_DATABASE,
+    host: process.env.AIVEN_HOST,
+    port: process.env.AIVEN_PORT,
+    dialect: 'postgres',
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+    },
+  },
 };
 
 export default config;

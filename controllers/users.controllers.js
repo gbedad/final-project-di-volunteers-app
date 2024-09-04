@@ -77,6 +77,7 @@ export const getUsers = async (req, res) => {
         'pre_interview',
         'email2',
         'internal_thread',
+        'is_available',
       ],
       include: ['mission', 'skill', 'file'],
       where: {
@@ -542,7 +543,7 @@ export const addUserPreInterview = async (req, res) => {
 };
 
 export const addUserInternalThread = async (req, res) => {
-  console.log('ggg', req.body);
+  console.log('message thread:', req.body);
   const messages = req.body;
   const userId = req.params.userId;
   console.log(userId);
@@ -747,5 +748,43 @@ export const renewPassword = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(401).json({ status: 'Something Went Wrong' });
+  }
+};
+
+export const updateUserAvailability = async (req, res) => {
+  try {
+    const { userId, isAvailable } = req.body;
+
+    // Validate input
+    if (userId === undefined || isAvailable === undefined) {
+      return res
+        .status(400)
+        .json({ message: 'User ID and availability status are required' });
+    }
+
+    // Find the user and update their availability
+    const user = await Users.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update the isAvailable field
+    user.is_available = isAvailable;
+    await user.save();
+
+    // Send a success response
+    res.status(200).json({
+      message: 'User availability updated successfully',
+      user: {
+        id: user.id,
+        isAvailable: user.isAvailable,
+      },
+    });
+  } catch (error) {
+    console.error('Error updating user availability:', error);
+    res
+      .status(500)
+      .json({ message: 'An error occurred while updating user availability' });
   }
 };

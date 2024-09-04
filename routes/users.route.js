@@ -22,6 +22,7 @@ import {
   checkToken,
   refreshTokenFunc,
   addUserInternalThread,
+  updateUserAvailability,
 } from '../controllers/users.controllers.js';
 import { verifyToken } from '../middlewares/verifyToken.js';
 import { isAdmin } from '../middlewares/isAdmin.js';
@@ -53,11 +54,13 @@ router.post('/update-files-received/:id', updateReceivedFields);
 router.post('/add-activity', saveActivity);
 router.post('/update-address', updateUserAddress);
 router.post('/add-interviews/:userId', addUserInterviews);
-router.post('/add-internalthread/:userId', addUserInternalThread);
+
 router.post('/add-pre-interview/:userId', addUserPreInterview);
 router.patch('/update-user-profile/:userId', updateUserProfile);
 router.post('/forgot-password', forgotPassword);
 router.get('/reset-password/:id/:token', resetPasswordVerify);
 router.post('/reset-password/:id/:token', renewPassword);
+router.post('/add-internalthread/:userId', addUserInternalThread);
+router.patch('/update-availability', updateUserAvailability);
 
 export default router;

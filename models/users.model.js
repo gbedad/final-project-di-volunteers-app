@@ -94,6 +94,11 @@ const Users = db.define(
       type: DataTypes.ARRAY(DataTypes.JSONB),
       defaultValue: [],
     },
+    is_available: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: true,
+    },
   },
   {
     timestamps: true,
