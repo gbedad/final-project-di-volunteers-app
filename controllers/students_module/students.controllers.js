@@ -6,6 +6,29 @@ import Students from '../../models/students/students.model.js';
 
 dotenv.config();
 
+// Function to capitalize the first letter of a string
+const capitalizeString = (str) => {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
+const capitalizeFamilyName = (fullname) => {
+  const nameParts = fullname.split(/[\s-]+/);
+  if (nameParts.length < 2) {
+    return capitalizeString(fullname);
+  }
+
+  // Capitalize composed names
+  const capitalizedNames = nameParts.map(
+    (part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+  );
+
+  // Reconstruct the name
+  const separator = fullname.includes('-') ? '-' : ' ';
+  const capitalizedFullname = capitalizedNames.join(separator);
+
+  return capitalizedFullname;
+};
+
 export const getAllStudents = async (req, res) => {
   // console.log('Reached all users', req);
   try {
@@ -44,9 +67,40 @@ export const getAllStudents = async (req, res) => {
   }
 };
 
+export const getStudentById = async (req, res) => {
+  try {
+    const { id } = req.params; // Extract the id from the request parameters
+
+    // Find the student by ID
+    const student = await Students.findByPk(id);
+
+    if (!student) {
+      // If no student is found with the given ID, return a 404 error
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // If student is found, return it
+    res.status(200).json(student);
+  } catch (error) {
+    console.error('Error fetching student:', error);
+    res
+      .status(500)
+      .json({ error: 'An error occurred while fetching the student.' });
+  }
+};
+
 export const addStudent = async (req, res) => {
   try {
-    const newStudent = await Students.create(req.body);
+    const { first_name, last_name, ...otherFields } = req.body;
+
+    // Capitalize first_name and last_name
+    const capitalizedFirstName = capitalizeFamilyName(first_name);
+    const capitalizedLastName = capitalizeFamilyName(last_name);
+    const newStudent = await Students.create({
+      first_name: capitalizedFirstName,
+      last_name: capitalizedLastName,
+      ...otherFields,
+    });
     res.status(201).json(newStudent);
   } catch (error) {
     console.error('Error adding student:', error);
@@ -56,21 +110,56 @@ export const addStudent = async (req, res) => {
   }
 };
 
+// export const updateStudent = async (req, res) => {
+//   const { id } = req.params;
+//   console.log('id: ', id);
+
+//   try {
+//     const [updated] = await Students.update(req.body, {
+//       where: { id: id },
+//     });
+//     console.log(updated);
+
+//     if (updated) {
+//       const updatedStudent = await Students.findByPk(id);
+//       res.json(updatedStudent);
+//     } else {
+//       res.status(404).json({ error: 'Student not found.' });
+//     }
+//   } catch (error) {
+//     console.error('Error updating student:', error);
+//     res
+//       .status(500)
+//       .json({ error: 'An error occurred while updating the student.' });
+//   }
+// };
 export const updateStudent = async (req, res) => {
   const { id } = req.params;
+  console.log('id: ', id);
+  console.log('Update data:', req.body);
 
   try {
-    const [updated] = await Students.update(req.body, {
-      where: { id: id },
-    });
-    if (updated) {
-      const updatedStudent = await Students.findByPk(id);
-      res.json(updatedStudent);
-    } else {
-      res.status(404).json({ error: 'Student not found.' });
+    // Find the student
+    const student = await Students.findByPk(id);
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
     }
+
+    // Update the student with the data from req.body
+    await student.update(req.body);
+
+    // Fetch the updated student to return the most current data
+    const updatedStudent = await Students.findByPk(id);
+
+    return res.status(200).json(updatedStudent);
   } catch (error) {
     console.error('Error updating student:', error);
+    if (error.name === 'SequelizeValidationError') {
+      // Handle validation errors
+      return res
+        .status(400)
+        .json({ error: error.errors.map((e) => e.message) });
+    }
     res
       .status(500)
       .json({ error: 'An error occurred while updating the student.' });
@@ -96,6 +185,47 @@ export const deleteStudent = async (req, res) => {
   }
 };
 
+export const updateStudentInterview = async (req, res) => {
+  const { id } = req.params;
+  console.log('Updating student interview for id:', id);
+  console.log('Request body:', req.body);
+
+  try {
+    const student = await Students.findByPk(id);
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    // Ensure current interviews is an array
+    let currentInterviews = Array.isArray(student.interviews)
+      ? student.interviews
+      : [];
+
+    // Add the new interview to the array
+    currentInterviews.push(req.body.interviews[0]);
+
+    // Update the student with the new interviews array
+    await student.update({
+      interviews: JSON.stringify(currentInterviews),
+    });
+
+    // Fetch the updated student
+    const updatedStudent = await Students.findByPk(id);
+
+    // Parse the interviews JSON before sending the response
+    if (updatedStudent.interviews) {
+      updatedStudent.interviews = JSON.parse(updatedStudent.interviews);
+    }
+
+    res.status(200).json(updatedStudent);
+  } catch (error) {
+    console.error('Error updating student interview:', error);
+    res.status(500).json({
+      error: 'An error occurred while updating the student interview.',
+      details: error.message,
+    });
+  }
+};
 // // Load the JSON file (this should be optimized for production use)
 // const schoolsData = JSON.parse(fs.readFileSync('schools.json', 'utf8'));
 

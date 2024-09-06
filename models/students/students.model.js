@@ -66,7 +66,7 @@ const Students = db.define(
     },
 
     interviews: {
-      type: DataTypes.ARRAY(DataTypes.JSONB),
+      type: DataTypes.JSON,
       defaultValue: [],
     },
     pre_interview: {
@@ -78,6 +78,9 @@ const Students = db.define(
     },
     launched_on: {
       type: DataTypes.DATE,
+    },
+    level: {
+      type: DataTypes.STRING,
     },
   },
   {
