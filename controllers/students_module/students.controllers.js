@@ -226,6 +226,80 @@ export const updateStudentInterview = async (req, res) => {
     });
   }
 };
+
+export const updateStudentPreInterview = async (req, res) => {
+  const { id } = req.params;
+  console.log('Updating student pre interview for id:', id);
+  console.log('Request body:', req.body);
+
+  try {
+    const student = await Students.findByPk(id);
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    // Update the student with the new interviews array
+    await student.update({
+      pre_interview: JSON.stringify(req.body.preInterview),
+    });
+
+    // Fetch the updated student
+    const updatedStudent = await Students.findByPk(id);
+
+    // Parse the interviews JSON before sending the response
+    if (updatedStudent.pre_interview) {
+      updatedStudent.pre_interview = JSON.parse(updatedStudent.pre_interview);
+    }
+
+    res.status(200).json(updatedStudent);
+  } catch (error) {
+    console.error('Error updating student interview:', error);
+    res.status(500).json({
+      error: 'An error occurred while updating the student interview.',
+      details: error.message,
+    });
+  }
+};
+
+export const updateStudentTopics = async (req, res) => {
+  const { id } = req.params;
+  console.log('Updating student topics for id:', id);
+  console.log('Request body:', req.body);
+
+  try {
+    const student = await Students.findByPk(id);
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    // Ensure current interviews is an array
+    let currentTopics = Array.isArray(student.topics) ? student.topics : [];
+
+    // Add the new topic to the array
+    currentTopics.push(req.body.topics[0]);
+
+    // Update the student with the new interviews array
+    await student.update({
+      topics: JSON.stringify(currentTopics),
+    });
+
+    // Fetch the updated student
+    const updatedStudent = await Students.findByPk(id);
+
+    // Parse the interviews JSON before sending the response
+    if (updatedStudent.topics) {
+      updatedStudent.topics = JSON.parse(updatedStudent.topics);
+    }
+
+    res.status(200).json(updatedStudent);
+  } catch (error) {
+    console.error('Error updating student topics:', error);
+    res.status(500).json({
+      error: 'An error occurred while updating the student topics.',
+      details: error.message,
+    });
+  }
+};
 // // Load the JSON file (this should be optimized for production use)
 // const schoolsData = JSON.parse(fs.readFileSync('schools.json', 'utf8'));
 

@@ -7,6 +7,8 @@ import {
   getSchools,
   getStudentById,
   updateStudentInterview,
+  updateStudentPreInterview,
+  updateStudentTopics,
 } from '../../controllers/students_module/students.controllers.js';
 import { adminAuth } from '../../middlewares/authAdmin.js';
 
@@ -21,6 +23,9 @@ router.delete('/students/:id', deleteStudent);
 router.get('/students/:id', getStudentById);
 
 router.patch('/students-interview/:id', updateStudentInterview);
+router.patch('/students-preinterview/:id', updateStudentPreInterview);
+
+router.patch('/students-topics/:id', updateStudentTopics);
 
 router.get('/student-demand/schools', getSchools);
 
