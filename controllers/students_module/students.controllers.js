@@ -272,13 +272,37 @@ export const updateStudentTopics = async (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    // Ensure current interviews is an array
-    let currentTopics = Array.isArray(student.topics) ? student.topics : [];
+    // Parse existing topics if it's a string, or use an empty array if it doesn't exist
+    let currentTopics = [];
+    if (student.topics) {
+      try {
+        currentTopics = JSON.parse(student.topics);
+      } catch (e) {
+        console.error('Error parsing existing topics:', e);
+      }
+    }
 
-    // Add the new topic to the array
-    currentTopics.push(req.body.topics[0]);
+    // Ensure currentTopics is an array
+    if (!Array.isArray(currentTopics)) {
+      currentTopics = [];
+    }
 
-    // Update the student with the new interviews array
+    // Function to check if a topic already exists
+    const topicExists = (topic) =>
+      currentTopics.some(
+        (t) => t.subject === topic.subject && t.priority === topic.priority
+      );
+
+    // Add new topics only if they don't already exist
+    if (Array.isArray(req.body.topics)) {
+      req.body.topics.forEach((newTopic) => {
+        if (!topicExists(newTopic)) {
+          currentTopics.push(newTopic);
+        }
+      });
+    }
+
+    // Update the student with the new topics array
     await student.update({
       topics: JSON.stringify(currentTopics),
     });
@@ -286,16 +310,160 @@ export const updateStudentTopics = async (req, res) => {
     // Fetch the updated student
     const updatedStudent = await Students.findByPk(id);
 
-    // Parse the interviews JSON before sending the response
+    // Parse the topics JSON before sending the response
     if (updatedStudent.topics) {
-      updatedStudent.topics = JSON.parse(updatedStudent.topics);
+      try {
+        updatedStudent.topics = JSON.parse(updatedStudent.topics);
+      } catch (e) {
+        console.error('Error parsing updated topics:', e);
+      }
     }
+
+    console.log('Saved in db:', updatedStudent.topics);
 
     res.status(200).json(updatedStudent);
   } catch (error) {
     console.error('Error updating student topics:', error);
     res.status(500).json({
       error: 'An error occurred while updating the student topics.',
+      details: error.message,
+    });
+  }
+};
+
+export const updateStudentAvailabilities = async (req, res) => {
+  const { id } = req.params;
+  console.log('Updating student availabilities for id:', id);
+  console.log('Request body:', req.body);
+
+  try {
+    const student = await Students.findByPk(id);
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    // Parse existing topics if it's a string, or use an empty array if it doesn't exist
+    let currentAvailabilities = [];
+    if (student.when_day_slot) {
+      try {
+        currentAvailabilities = JSON.parse(student.when_day_slot);
+      } catch (e) {
+        console.error('Error parsing existing availabilities:', e);
+      }
+    }
+
+    // Ensure currentTopics is an array
+    if (!Array.isArray(currentAvailabilities)) {
+      currentAvailabilities = [];
+    }
+
+    // Function to check if a topic already exists
+    const dayslotExists = (dayslot) =>
+      currentAvailabilities.some(
+        (t) => t.day === dayslot.day && t.startTime === dayslot.startTime
+      );
+
+    // Add new topics only if they don't already exist
+    if (Array.isArray(req.body.when_day_slot)) {
+      req.body.when_day_slot.forEach((newDay) => {
+        if (!dayslotExists(newDay)) {
+          currentAvailabilities.push(newDay);
+        }
+      });
+    }
+
+    // Update the student with the new topics array
+    await student.update({
+      when_day_slot: JSON.stringify(currentAvailabilities),
+    });
+
+    // Fetch the updated student
+    const updatedStudent = await Students.findByPk(id);
+
+    // Parse the topics JSON before sending the response
+    if (updatedStudent.when_day_slot) {
+      try {
+        updatedStudent.when_day_slot = JSON.parse(updatedStudent.when_day_slot);
+      } catch (e) {
+        console.error('Error parsing updated availabilities:', e);
+      }
+    }
+
+    console.log('Saved in db:', updatedStudent.when_day_slot);
+
+    res.status(200).json(updatedStudent);
+  } catch (error) {
+    console.error('Error updating student availabilities:', error);
+    res.status(500).json({
+      error: 'An error occurred while updating the student availabilities.',
+      details: error.message,
+    });
+  }
+};
+
+export const updateStudentLocations = async (req, res) => {
+  const { id } = req.params;
+  console.log('Updating student locations for id:', id);
+  console.log('Request body:', req.body);
+
+  try {
+    const student = await Students.findByPk(id);
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    // Parse existing topics if it's a string, or use an empty array if it doesn't exist
+    let currentLocations = [];
+    if (student.where_location) {
+      try {
+        currentLocations = JSON.parse(student.where_location);
+      } catch (e) {
+        console.error('Error parsing existing locations:', e);
+      }
+    }
+
+    // Ensure currentTopics is an array
+    if (!Array.isArray(currentLocations)) {
+      currentLocations = [];
+    }
+
+    // Function to check if a topic already exists
+    const locationExists = (location) =>
+      currentLocations.some((t) => t.where_location === location.wher_location);
+
+    // Add new topics only if they don't already exist
+    if (Array.isArray(req.body.where_location)) {
+      req.body.where_location.forEach((newLocation) => {
+        if (!locationExists(newLocation)) {
+          currentLocations.push(newLocation);
+        }
+      });
+    }
+
+    // Update the student with the new topics array
+    await student.update({
+      where_location: JSON.stringify(currentLocations),
+    });
+
+    // Fetch the updated student
+    const updatedStudent = await Students.findByPk(id);
+
+    // Parse the topics JSON before sending the response
+    if (updatedStudent.when_day_slot) {
+      try {
+        updatedStudent.when_day_slot = JSON.parse(updatedStudent.when_day_slot);
+      } catch (e) {
+        console.error('Error parsing updated availabilities:', e);
+      }
+    }
+
+    console.log('Saved in db:', updatedStudent.when_day_slot);
+
+    res.status(200).json(updatedStudent);
+  } catch (error) {
+    console.error('Error updating student availabilities:', error);
+    res.status(500).json({
+      error: 'An error occurred while updating the student availabilities.',
       details: error.message,
     });
   }
