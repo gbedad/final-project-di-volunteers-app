@@ -1,10 +1,11 @@
 import { Sequelize } from 'sequelize';
-import db from '../config/database.js';
+import db from '../../config/database.js';
+import Students from './students.model.js';
 
 const { DataTypes } = Sequelize;
 
-const Files = db.define(
-  'files',
+const StudentFiles = db.define(
+  'student_files',
   {
     filename: {
       type: DataTypes.STRING,
@@ -24,11 +25,12 @@ const Files = db.define(
   }
 );
 
-Files.associate = (models) => {
-  Files.belongsTo(models.Users, {
-    foreignKey: 'userId',
+// Define the association
+StudentFiles.associate = (models) => {
+  StudentFiles.belongsTo(models.Students, {
+    foreignKey: 'studentId',
     onDelete: 'CASCADE',
   });
 };
 
-export default Files;
+export default StudentFiles;

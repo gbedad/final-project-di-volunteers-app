@@ -562,7 +562,7 @@ export const addUserInternalThread = async (req, res) => {
       .json({ message: 'Internal thread saved successfully' });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: error.massage });
+    res.status(500).json({ message: error.message });
   }
 };
 

@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import axios from 'axios';
 
 import Students from '../../models/students/students.model.js';
+import StudentFiles from '../../models/students/studentsFiles.model.js';
 
 dotenv.config();
 
@@ -45,6 +46,8 @@ export const getAllStudents = async (req, res) => {
         'launched_on',
         'is_active',
         'city',
+        'address',
+        'school',
         'level',
         'is_active',
         'priority',
@@ -52,8 +55,19 @@ export const getAllStudents = async (req, res) => {
         'topics',
         'interviews',
         'pre_interview',
-        'email_parent1',
-        'email_parent2',
+        'internal_thread',
+        'parent1_firstname',
+        'parent1_lastname',
+        'parent1_phone',
+        'parent1_email',
+        'parent2_firstname',
+        'parent2_lastname',
+        'parent2_phone',
+        'parent2_email',
+        'other_firstname',
+        'other_lastname',
+        'other_phone',
+        'other_email',
         'internal_thread',
       ],
 
@@ -72,7 +86,9 @@ export const getStudentById = async (req, res) => {
     const { id } = req.params; // Extract the id from the request parameters
 
     // Find the student by ID
-    const student = await Students.findByPk(id);
+    const student = await Students.findByPk(id, {
+      include: [{ model: StudentFiles, as: 'student_files' }],
+    });
 
     if (!student) {
       // If no student is found with the given ID, return a 404 error
@@ -261,6 +277,40 @@ export const updateStudentPreInterview = async (req, res) => {
   }
 };
 
+export const updateStudentHistory = async (req, res) => {
+  const { id } = req.params;
+  console.log('Updating student school history for id:', id);
+  console.log('Request body:', req.body);
+
+  try {
+    const student = await Students.findByPk(id);
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    // Update the student with the new interviews array
+    await student.update({
+      school_history: JSON.stringify(req.body.schoolHistory),
+    });
+
+    // Fetch the updated student
+    const updatedStudent = await Students.findByPk(id);
+
+    // Parse the interviews JSON before sending the response
+    if (updatedStudent.school_history) {
+      updatedStudent.school_history = JSON.parse(updatedStudent.school_history);
+    }
+
+    res.status(200).json(updatedStudent);
+  } catch (error) {
+    console.error('Error updating student history:', error);
+    res.status(500).json({
+      error: 'An error occurred while updating the student history.',
+      details: error.message,
+    });
+  }
+};
+
 export const updateStudentTopics = async (req, res) => {
   const { id } = req.params;
   console.log('Updating student topics for id:', id);
@@ -342,37 +392,52 @@ export const updateStudentAvailabilities = async (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    // Parse existing topics if it's a string, or use an empty array if it doesn't exist
+    // Parse existing availabilities if it's a string, or use an empty array if it doesn't exist
     let currentAvailabilities = [];
     if (student.when_day_slot) {
       try {
         currentAvailabilities = JSON.parse(student.when_day_slot);
+        console.log('Parsed existing availabilities:', currentAvailabilities);
       } catch (e) {
         console.error('Error parsing existing availabilities:', e);
       }
     }
 
-    // Ensure currentTopics is an array
+    // Ensure currentAvailabilities is an array
     if (!Array.isArray(currentAvailabilities)) {
       currentAvailabilities = [];
     }
 
-    // Function to check if a topic already exists
+    console.log('Current availabilities after check:', currentAvailabilities);
+
+    // Function to check if a dayslot already exists
     const dayslotExists = (dayslot) =>
       currentAvailabilities.some(
         (t) => t.day === dayslot.day && t.startTime === dayslot.startTime
       );
 
-    // Add new topics only if they don't already exist
-    if (Array.isArray(req.body.when_day_slot)) {
-      req.body.when_day_slot.forEach((newDay) => {
-        if (!dayslotExists(newDay)) {
-          currentAvailabilities.push(newDay);
-        }
-      });
+    // Parse the when_day_slot from the request body if it's a string
+    let newDaySlots = [];
+    if (typeof req.body.when_day_slot === 'string') {
+      try {
+        newDaySlots = JSON.parse(req.body.when_day_slot);
+      } catch (e) {
+        console.error('Error parsing when_day_slot from request body:', e);
+      }
+    } else if (Array.isArray(req.body.when_day_slot)) {
+      newDaySlots = req.body.when_day_slot;
     }
 
-    // Update the student with the new topics array
+    // Add new dayslots only if they don't already exist
+    newDaySlots.forEach((newDay) => {
+      if (!dayslotExists(newDay)) {
+        currentAvailabilities.push(newDay);
+      }
+    });
+
+    console.log('Updated availabilities before saving:', currentAvailabilities);
+
+    // Update the student with the new availabilities array
     await student.update({
       when_day_slot: JSON.stringify(currentAvailabilities),
     });
@@ -380,10 +445,14 @@ export const updateStudentAvailabilities = async (req, res) => {
     // Fetch the updated student
     const updatedStudent = await Students.findByPk(id);
 
-    // Parse the topics JSON before sending the response
+    // Parse the availabilities JSON before sending the response
     if (updatedStudent.when_day_slot) {
       try {
         updatedStudent.when_day_slot = JSON.parse(updatedStudent.when_day_slot);
+        console.log(
+          'Parsed updated availabilities:',
+          updatedStudent.when_day_slot
+        );
       } catch (e) {
         console.error('Error parsing updated availabilities:', e);
       }
@@ -412,7 +481,7 @@ export const updateStudentLocations = async (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    // Parse existing topics if it's a string, or use an empty array if it doesn't exist
+    // Parse existing locations if it's a string, or use an empty array if it doesn't exist
     let currentLocations = [];
     if (student.where_location) {
       try {
@@ -422,52 +491,94 @@ export const updateStudentLocations = async (req, res) => {
       }
     }
 
-    // Ensure currentTopics is an array
+    // Ensure currentLocations is an array
     if (!Array.isArray(currentLocations)) {
       currentLocations = [];
     }
 
-    // Function to check if a topic already exists
-    const locationExists = (location) =>
-      currentLocations.some((t) => t.where_location === location.wher_location);
+    // Create a Set to store unique locations
+    const uniqueLocations = new Set(currentLocations);
 
-    // Add new topics only if they don't already exist
+    // Add new locations only if they don't already exist
     if (Array.isArray(req.body.where_location)) {
       req.body.where_location.forEach((newLocation) => {
-        if (!locationExists(newLocation)) {
-          currentLocations.push(newLocation);
-        }
+        uniqueLocations.add(newLocation);
       });
     }
 
-    // Update the student with the new topics array
+    // Convert Set back to array
+    const updatedLocations = Array.from(uniqueLocations);
+
+    console.log('Updated locations:', updatedLocations);
+
+    // Update the student with the new locations array
     await student.update({
-      where_location: JSON.stringify(currentLocations),
+      where_location: JSON.stringify(updatedLocations),
     });
 
     // Fetch the updated student
     const updatedStudent = await Students.findByPk(id);
 
-    // Parse the topics JSON before sending the response
-    if (updatedStudent.when_day_slot) {
+    // Parse the locations JSON before sending the response
+    if (updatedStudent.where_location) {
       try {
-        updatedStudent.when_day_slot = JSON.parse(updatedStudent.when_day_slot);
+        updatedStudent.where_location = JSON.parse(
+          updatedStudent.where_location
+        );
       } catch (e) {
-        console.error('Error parsing updated availabilities:', e);
+        console.error('Error parsing updated locations:', e);
       }
     }
 
-    console.log('Saved in db:', updatedStudent.when_day_slot);
+    console.log('Saved in db:', updatedStudent.where_location);
 
     res.status(200).json(updatedStudent);
   } catch (error) {
-    console.error('Error updating student availabilities:', error);
+    console.error('Error updating student locations:', error);
     res.status(500).json({
-      error: 'An error occurred while updating the student availabilities.',
+      error: 'An error occurred while updating the student locations.',
       details: error.message,
     });
   }
 };
+
+export const addStudentInternalThread = async (req, res) => {
+  try {
+    const studentId = req.params.studentId;
+    let messages = req.body.message_thread;
+
+    if (typeof messages === 'string') {
+      try {
+        messages = JSON.parse(messages);
+      } catch (parseError) {
+        return res
+          .status(400)
+          .json({ message: 'Invalid JSON format for messages' });
+      }
+    }
+
+    if (!Array.isArray(messages)) {
+      return res.status(400).json({ message: 'Expected an array of messages' });
+    }
+
+    const student = await Students.findByPk(studentId);
+    if (!student) {
+      return res.status(404).json({ message: 'No student found' });
+    }
+
+    // Replace the entire internal_thread with the new messages array
+    student.internal_thread = messages;
+    await student.save();
+
+    return res
+      .status(200)
+      .json({ message: 'Internal thread updated successfully' });
+  } catch (error) {
+    console.error('Error in addStudentInternalThread:', error);
+    res.status(500).json({ message: 'An unexpected error occurred' });
+  }
+};
+
 // // Load the JSON file (this should be optimized for production use)
 // const schoolsData = JSON.parse(fs.readFileSync('schools.json', 'utf8'));
 
@@ -496,15 +607,17 @@ export const updateStudentLocations = async (req, res) => {
 //   });
 // };
 
-const baseUrl =
+const baseEducationUrl =
   'https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-annuaire-education/records';
+
+const baseAdresseUrl = 'https://api-adresse.data.gouv.fr/search/';
 
 export const getSchools = async (req, res) => {
   const { search, page = 1, limit = 20 } = req.query;
   const offset = (page - 1) * limit;
 
   try {
-    let apiUrl = `${baseUrl}?limit=${limit}&offset=${offset}`;
+    let apiUrl = `${baseEducationUrl}?limit=${limit}&offset=${offset}`;
 
     // Add search functionality
     if (search) {
@@ -526,5 +639,33 @@ export const getSchools = async (req, res) => {
   } catch (error) {
     console.error('Error fetching data from API:', error);
     res.status(500).json({ error: 'An error occurred while fetching data' });
+  }
+};
+
+export const getAddress = async (req, res) => {
+  const { query } = req.query;
+
+  console.log(query);
+
+  if (!query) {
+    return res.status(400).json({ error: 'Query parameter is required' });
+  }
+
+  try {
+    const response = await axios.get(
+      'https://api-adresse.data.gouv.fr/search/',
+      {
+        params: {
+          q: query,
+          type: 'housenumber',
+          autocomplete: 1,
+        },
+      }
+    );
+
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching address suggestions:', error);
+    res.status(500).json({ error: 'Failed to fetch address suggestions' });
   }
 };

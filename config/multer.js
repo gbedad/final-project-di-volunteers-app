@@ -31,6 +31,18 @@ const uploadConvention = multer({
     },
   }),
 });
+const uploadStudentDocuments = multer({
+  storage: multerS3({
+    s3: s3,
+    bucket: process.env.AWS_BUCKET_NAME,
+    //   acl: 'public-read',
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+
+    key: (req, file, cb) => {
+      cb(null, 'student-documents/' + file.originalname);
+    },
+  }),
+});
 
 // const uploadFile = async (fileObject) => {
 //   const bufferStream = new stream.PassThrough();
@@ -48,4 +60,4 @@ const uploadConvention = multer({
 //   });
 //   console.log(`Uploaded file ${data.name} ${data.id}`);
 // };
-export { upload, uploadConvention };
+export { upload, uploadConvention, uploadStudentDocuments };
