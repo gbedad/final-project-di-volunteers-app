@@ -326,7 +326,7 @@ export const updateStudentTopics = async (req, res) => {
     let currentTopics = [];
     if (student.topics) {
       try {
-        currentTopics = JSON.parse(student.topics);
+        currentTopics = student.topics;
       } catch (e) {
         console.error('Error parsing existing topics:', e);
       }
@@ -354,7 +354,7 @@ export const updateStudentTopics = async (req, res) => {
 
     // Update the student with the new topics array
     await student.update({
-      topics: JSON.stringify(currentTopics),
+      topics: currentTopics,
     });
 
     // Fetch the updated student
@@ -363,7 +363,7 @@ export const updateStudentTopics = async (req, res) => {
     // Parse the topics JSON before sending the response
     if (updatedStudent.topics) {
       try {
-        updatedStudent.topics = JSON.parse(updatedStudent.topics);
+        updatedStudent.topics = updatedStudent.topics;
       } catch (e) {
         console.error('Error parsing updated topics:', e);
       }
@@ -420,7 +420,7 @@ export const updateStudentAvailabilities = async (req, res) => {
     let newDaySlots = [];
     if (typeof req.body.when_day_slot === 'string') {
       try {
-        newDaySlots = JSON.parse(req.body.when_day_slot);
+        newDaySlots = req.body.when_day_slot;
       } catch (e) {
         console.error('Error parsing when_day_slot from request body:', e);
       }
@@ -439,7 +439,7 @@ export const updateStudentAvailabilities = async (req, res) => {
 
     // Update the student with the new availabilities array
     await student.update({
-      when_day_slot: JSON.stringify(currentAvailabilities),
+      when_day_slot: currentAvailabilities,
     });
 
     // Fetch the updated student
