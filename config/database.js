@@ -5,8 +5,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // const { NODE_ENV } = process.env
-const NODE_ENV = 'production_aiven';
-console.log(NODE_ENV);
+const NODE_ENV = process.env.NODE_ENV || 'development';
+console.log(`Using DB config: ${NODE_ENV}`);
 
 let selectedConfig;
 
@@ -28,12 +28,13 @@ const db = new Sequelize({
   username: process.env.AIVEN_USER,
   password: process.env.AIVEN_PASSWORD,
 
-  dialectOptions: {
+  dialectOptions: 
+  NODE_ENV === 'production_aiven' ? {
     ssl: {
       require: true,
       rejectUnauthorized: false,
     },
-  },
+  } : undefined ,
 });
 
 console.log(selectedConfig.username);

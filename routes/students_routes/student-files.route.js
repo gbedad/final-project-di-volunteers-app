@@ -8,7 +8,7 @@ import {
   cancelFile,
   presignedUrl_aws_s3,
 } from '../../controllers/students_module/student-files.controllers.js';
-import { prod_tt_sasportal } from 'googleapis/build/src/apis/prod_tt_sasportal/index.js';
+import { adminAuth } from '../../middlewares/authAdmin.js';
 // import fileWorker from '../controllers/files.controllers.js';
 
 const corsOptions = {
@@ -20,17 +20,18 @@ router.use(cors(corsOptions));
 
 router.post(
   '/students/upload/:studentId',
+  adminAuth,
   uploadStudentDocuments.single('file'),
   uploadFile
 );
 
 router.delete(
   '/students/files/cancel/:fileId',
-  uploadStudentDocuments.single('file'),
+  adminAuth,
   cancelFile
 );
 
-router.post('/get-presigned-url', presignedUrl_aws_s3);
+router.post('/get-presigned-url', adminAuth, presignedUrl_aws_s3);
 // router.post('/upload', upload.any(), uploadFile);
 
 // router.get('/api/file/info', fileWorker.listAllFiles);

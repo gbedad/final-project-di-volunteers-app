@@ -28,7 +28,7 @@ const corsOptions = {
   origin: ['https://www.mycogniverse.org', 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-access-token'],
 };
 
 app.use(cors(corsOptions));
@@ -53,7 +53,7 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
   res.header(
     'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, Content-Length, X-Requested-With'
+    'Content-Type, Authorization, Content-Length, X-Requested-With, x-access-token'
   );
   res.header('Access-Control-Allow-Credentials', 'true');
   if (req.method === 'OPTIONS') {

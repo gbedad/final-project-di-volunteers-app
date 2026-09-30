@@ -10,6 +10,7 @@ import nodemailer from 'nodemailer';
 // import {google} from 'googleapis';
 import sendEmail from '../config/sendEmails.js';
 import dayjs from 'dayjs';
+import { getAccessToken } from '../middlewares/verifyToken.js';
 
 dotenv.config();
 
@@ -78,6 +79,8 @@ export const getUsers = async (req, res) => {
         'email2',
         'internal_thread',
         'is_available',
+        'genre',
+        'cohorte_year',
       ],
       include: ['mission', 'skill', 'file'],
       where: {
@@ -177,7 +180,7 @@ export const register = async (req, res) => {
 
     await sendEmail(
       [
-        'gerald.berrebi@gmail.com',
+
         'gerald@sephoraberrebi.org',
         'associationsephoraberrebi@gmail.com',
         'noemie@sephoraberrebi.org',
@@ -226,16 +229,16 @@ export const updateUser = async (req, res) => {
 };
 
 export const checkToken = (req, res) => {
-  const authorizationHeader = req.headers.authorization;
-  const token = authorizationHeader.split(' ')[1];
-  console.log(token);
+  const token = getAccessToken(req);
+  if (!token) {
+    return res.status(401).json({ message: 'Token is invalid or expired' });
+  }
 
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err) => {
     if (err) {
-      return res.status(500).json({ message: 'Token is invalid or expired' });
+      return res.status(401).json({ message: 'Token is invalid or expired' });
     }
 
-    // Token is valid
     res.status(200).json({ message: 'Token is valid' });
   });
 };

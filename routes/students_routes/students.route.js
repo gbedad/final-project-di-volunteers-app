@@ -19,28 +19,36 @@ import { adminAuth } from '../../middlewares/authAdmin.js';
 
 const router = express.Router();
 
-// Routes
-router.get('/students', getAllStudents);
-router.post('/students', addStudent);
-router.patch('/students/:id', updateStudent);
-router.delete('/students/:id', deleteStudent);
+router.get('/students', adminAuth, getAllStudents);
+router.post('/students', adminAuth, addStudent);
+router.patch('/students/:id', adminAuth, updateStudent);
+router.delete('/students/:id', adminAuth, deleteStudent);
 
-router.get('/students/:id', getStudentById);
+router.get('/students/:id', adminAuth, getStudentById);
 
-router.patch('/students-interview/:id', updateStudentInterview);
-router.patch('/students-preinterview/:id', updateStudentPreInterview);
-router.patch('/students-school-history/:id', updateStudentHistory);
+router.patch('/students-interview/:id', adminAuth, updateStudentInterview);
+router.patch(
+  '/students-preinterview/:id',
+  adminAuth,
+  updateStudentPreInterview
+);
+router.patch('/students-school-history/:id', adminAuth, updateStudentHistory);
 
-router.patch('/students-topics/:id', updateStudentTopics);
-router.patch('/students-availabilities/:id', updateStudentAvailabilities);
-router.patch('/students-locations/:id', updateStudentLocations);
+router.patch('/students-topics/:id', adminAuth, updateStudentTopics);
+router.patch(
+  '/students-availabilities/:id',
+  adminAuth,
+  updateStudentAvailabilities
+);
+router.patch('/students-locations/:id', adminAuth, updateStudentLocations);
 
-router.get('/student-demand/schools', getSchools);
+router.get('/student-demand/schools', adminAuth, getSchools);
 
-router.get('/student-demand/address', getAddress);
+router.get('/student-demand/address', adminAuth, getAddress);
 
 router.post(
   '/student-demand/add-internalthread/:studentId',
+  adminAuth,
   addStudentInternalThread
 );
 

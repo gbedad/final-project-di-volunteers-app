@@ -15,6 +15,10 @@ const Users = db.define(
     password: {
       type: DataTypes.STRING,
     },
+    genre: {
+    type: DataTypes.STRING,
+    enum: ["Homme", "Femme", "Autre"]
+    },
     first_name: {
       type: DataTypes.STRING,
     },
@@ -98,6 +102,10 @@ const Users = db.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       allowNull: true,
+    },
+    cohorte_year: {
+      type:DataTypes.ARRAY(DataTypes.STRING),
+      defaultValue:['2023/2024']
     },
   },
   {

@@ -28,6 +28,14 @@ const Skills = db.define(
       type: DataTypes.JSON,
       defaultValue: {},
     },
+    number_of_students: {
+      type: DataTypes.INTEGER,
+      defaultValue: 1
+    },
+    how_location: {
+      type: DataTypes.STRING,
+      enum: ['Sur site', 'A distance', 'Sur site ou à distance', 'Hybride (alternance site et à distance)']
+    }
   },
   {
     timestamps: false,

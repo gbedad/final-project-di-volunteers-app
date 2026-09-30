@@ -8,7 +8,7 @@ import {
   cancelFile,
   presignedUrl_aws_s3,
 } from '../controllers/files.controllers.js';
-import { prod_tt_sasportal } from 'googleapis/build/src/apis/prod_tt_sasportal/index.js';
+import { verifyToken } from '../middlewares/verifyToken.js';
 // import fileWorker from '../controllers/files.controllers.js';
 
 const corsOptions = {
@@ -18,16 +18,22 @@ const corsOptions = {
 
 router.use(cors(corsOptions));
 
-router.post('/upload/:userId', upload.single('file'), uploadFile);
+router.post(
+  '/upload/:userId',
+  verifyToken,
+  upload.single('file'),
+  uploadFile
+);
 router.post(
   '/upload/convention/:userId',
+  verifyToken,
   uploadConvention.single('file'),
   uploadFile
 );
 
-router.delete('/files/cancel/:fileId', upload.single('file'), cancelFile);
+router.delete('/files/cancel/:fileId', verifyToken, cancelFile);
 
-router.post('/get-presigned-url', presignedUrl_aws_s3);
+router.post('/get-presigned-url', verifyToken, presignedUrl_aws_s3);
 // router.post('/upload', upload.any(), uploadFile);
 
 // router.get('/api/file/info', fileWorker.listAllFiles);

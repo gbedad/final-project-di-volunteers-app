@@ -1,60 +1,22 @@
-import dotenv from 'dotenv';
-import jwt from 'jsonwebtoken';
+import { verifyToken } from './verifyToken.js';
 
-dotenv.config();
-// const jwtSecret =
-//   "4715aed3c946f7b0a38e6b534a9583628d84e96d10fbc04700770d572af3dce43625dd"
-
-const jwtSecret = process.env.ACCESS_TOKEN_SECRET;
-console.log('oooo', jwtSecret);
+const hasAdminAccess = (user) =>
+  user && (user.role === 'admin' || user.role === 'interviewer');
 
 export const adminAuth = (req, res, next) => {
-  const authorizationHeader = req.headers.authorization;
-  const token = authorizationHeader.split(' ')[1];
-  console.log('vvvv', token);
-
-  if (token) {
-    jwt.verify(token, jwtSecret, (err, decodedToken) => {
-      // console.log(decodedToken);
-      if (err) {
-        return res.status(401).json({ message: 'Not authorized' });
-      } else {
-        if (
-          decodedToken.role !== 'admin' &&
-          decodedToken.role !== 'interviewer'
-        ) {
-          return res.status(401).json({ message: 'Not authorized' });
-        } else {
-          next();
-        }
-      }
-    });
-  } else {
-    return res
-      .status(401)
-      .json({ message: 'Not authorized, token not available' });
-  }
+  verifyToken(req, res, () => {
+    if (!hasAdminAccess(req.user)) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    next();
+  });
 };
 
 export const userAuth = (req, res, next) => {
-  const authorizationHeader = req.headers.authorization;
-  const token = authorizationHeader.split(' ')[1];
-  console.log('vvvv', token);
-  if (token) {
-    jwt.verify(token, jwtSecret, (err, decodedToken) => {
-      if (err) {
-        return res.status(401).json({ message: 'Not authorized' });
-      } else {
-        if (decodedToken.role !== 'volunteer') {
-          return res.status(401).json({ message: 'Not authorized' });
-        } else {
-          next();
-        }
-      }
-    });
-  } else {
-    return res
-      .status(401)
-      .json({ message: 'Not authorized, token not available' });
-  }
+  verifyToken(req, res, () => {
+    if (req.user?.role !== 'volunteer') {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    next();
+  });
 };

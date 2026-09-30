@@ -9,7 +9,7 @@ import { compareArrays, compareStrings } from '../js-files/compareArrays.js';
 dotenv.config();
 
 export const createSkills = async (req, res) => {
-  const { topics, when_day_slot, where_location } = req.body;
+  const { topics, when_day_slot, where_location, how_location } = req.body;
 
   const userId = req.params.userId;
   try {
@@ -24,6 +24,7 @@ export const createSkills = async (req, res) => {
         topics,
         when_day_slot,
         where_location,
+        how_location,
         userId,
       });
       res.json(skill);
@@ -44,8 +45,8 @@ export const updateSkills = async (req, res) => {
   console.log(req.params.userId);
   let section;
 
-  const { topics, when_day_slot, where_location, availability } = req.body;
-  console.log(topics, where_location, when_day_slot, availability);
+  const { topics, when_day_slot, where_location, availability, how_location } = req.body;
+  console.log(topics, where_location, when_day_slot, availability, how_location);
   try {
     const userId = req.params.userId;
     // console.log("Route", req.body)
@@ -60,10 +61,11 @@ export const updateSkills = async (req, res) => {
     let message;
     if (!skill) {
       const skill = await Skills.create({
-        topics: topics ? JSON.parse(topics) : [],
-        when_day_slot: when_day_slot ? JSON.parse(when_day_slot) : [],
-        where_location: where_location ? JSON.parse(where_location) : [],
-        availability: availability ? availability : [],
+        topics: topics ? (Array.isArray(topics) ? topics : JSON.parse(topics)) : [],
+        when_day_slot: when_day_slot ? (Array.isArray(when_day_slot) ? when_day_slot : JSON.parse(when_day_slot)) : [],
+        where_location: where_location ? (Array.isArray(where_location) ? where_location : [where_location]) : [],
+        availability: availability || [],
+        how_location: how_location || '',
         userId,
       });
       // Save the updated record to the database
@@ -90,21 +92,22 @@ export const updateSkills = async (req, res) => {
     // }
     // console.log('====>>>', skill);
     else {
-      // Update the fields of the record based on the values present in the request body
       if (topics) {
-        skill.topics = JSON.parse(topics);
+        skill.topics = Array.isArray(topics) ? topics : JSON.parse(topics);
       }
       if (availability) {
         skill.availability = availability;
       }
-      // console.log(req.body.when_day_slot);
       if (when_day_slot) {
         section = 'Disponibilités';
-        skill.when_day_slot = JSON.parse(when_day_slot);
+        skill.when_day_slot = Array.isArray(when_day_slot) ? when_day_slot : JSON.parse(when_day_slot);
       }
       if (where_location) {
-        section = 'Matières';
-        skill.where_location = where_location;
+        section = 'Lieux';
+        skill.where_location = Array.isArray(where_location) ? where_location : [where_location];
+      }
+      if (how_location) {
+        skill.how_location = how_location;
       }
       if (where_location || when_day_slot) {
         section = 'Lieux';
