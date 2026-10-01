@@ -18,6 +18,10 @@ const Files = db.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    uploaded_at: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+    },
   },
   {
     timestamps: false,

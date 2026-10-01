@@ -20,3 +20,15 @@ export const userAuth = (req, res, next) => {
     next();
   });
 };
+
+// Admins, or the volunteer whose id is in the URL (e.g. /upload/:userId)
+export const selfOrAdmin = (param) => (req, res, next) => {
+  verifyToken(req, res, () => {
+    const user = req.user;
+    const ownId = Number(user?.userid ?? user?.userId);
+    if (!hasAdminAccess(user) && ownId !== Number(req.params[param])) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    next();
+  });
+};

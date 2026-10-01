@@ -1,45 +1,39 @@
-import stream from 'stream';
-import { S3Client } from '@aws-sdk/client-s3';
 import multerS3 from 'multer-s3';
 import multer from 'multer';
-import s3 from './aws.config.js';
-import awsConfig from './aws.config.js';
-import { google } from 'googleapis';
+import s3, {
+  PUBLIC_BUCKET,
+  PRIVATE_BUCKET,
+  safeFileName,
+} from './aws.config.js';
 
-// const upload = multer({dest: 'uploads/'})
-const upload = multer({
+// Private document upload into <folder>/<owner id>/<timestamp>-<name>
+const privateUpload = (folder, ownerParam) =>
+  multer({
+    storage: multerS3({
+      s3,
+      bucket: PRIVATE_BUCKET,
+      contentType: multerS3.AUTO_CONTENT_TYPE,
+      key: (req, file, cb) => {
+        cb(
+          null,
+          `${folder}/${req.params[ownerParam]}/${safeFileName(file.originalname)}`
+        );
+      },
+    }),
+  });
+
+const upload = privateUpload('documents', 'userId');
+const uploadConvention = privateUpload('conventions', 'userId');
+const uploadStudentDocuments = privateUpload('student-documents', 'studentId');
+
+// Mission pictures are shown to every visitor, so they stay public
+const uploadMissionImage = multer({
   storage: multerS3({
-    s3: s3,
-    bucket: process.env.AWS_BUCKET_NAME,
-    //   acl: 'public-read',
+    s3,
+    bucket: PUBLIC_BUCKET,
     contentType: multerS3.AUTO_CONTENT_TYPE,
-
     key: (req, file, cb) => {
-      cb(null, 'documents/' + file.originalname);
-    },
-  }),
-});
-const uploadConvention = multer({
-  storage: multerS3({
-    s3: s3,
-    bucket: process.env.AWS_BUCKET_NAME,
-    //   acl: 'public-read',
-    contentType: multerS3.AUTO_CONTENT_TYPE,
-
-    key: (req, file, cb) => {
-      cb(null, 'conventions/' + file.originalname);
-    },
-  }),
-});
-const uploadStudentDocuments = multer({
-  storage: multerS3({
-    s3: s3,
-    bucket: process.env.AWS_BUCKET_NAME,
-    //   acl: 'public-read',
-    contentType: multerS3.AUTO_CONTENT_TYPE,
-
-    key: (req, file, cb) => {
-      cb(null, 'student-documents/' + file.originalname);
+      cb(null, `missions/${safeFileName(file.originalname)}`);
     },
   }),
 });
@@ -60,4 +54,4 @@ const uploadStudentDocuments = multer({
 //   });
 //   console.log(`Uploaded file ${data.name} ${data.id}`);
 // };
-export { upload, uploadConvention, uploadStudentDocuments };
+export { upload, uploadConvention, uploadStudentDocuments, uploadMissionImage };

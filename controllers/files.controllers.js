@@ -1,26 +1,42 @@
 import dotenv from 'dotenv';
+import { Op } from 'sequelize';
 import File from '../models/files.model.js';
-import s3, { publicFileUrl } from '../config/aws.config.js';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
+import Users from '../models/users.model.js';
+import { fileUrl, deleteStoredFile } from '../config/aws.config.js';
 
 dotenv.config();
 
-// const File = db.files;
-// Code valid with AWS------
-export const uploadFile = async (req, res) => {
-  //   console.log(req);
-  console.log('REQ.FILE', req.file);
+const isAdmin = (user) =>
+  user && (user.role === 'admin' || user.role === 'interviewer');
 
-  const userId = req.params.userId;
-  console.log('userid', userId);
+// The access token holds "userid" after login and "userId" after a refresh
+const requesterId = (user) => Number(user?.userid ?? user?.userId);
+
+const canAccess = (user, file) =>
+  isAdmin(user) || requesterId(user) === file.userId;
+
+const folderOf = (path) =>
+  /(^|\/)conventions\//.test(path) ? 'Convention' : 'Document';
+
+const removeFile = async (file) => {
   try {
-    const { originalname, mimetype } = req.file;
+    await deleteStoredFile(file.path);
+  } catch (err) {
+    // Still remove the database entry, e.g. if the file was already gone
+    console.log('Could not delete from storage:', err.message);
+  }
+  await file.destroy();
+};
+
+export const uploadFile = async (req, res) => {
+  const userId = req.params.userId;
+  try {
+    const { originalname, mimetype, key } = req.file;
 
     const newfile = await File.create({
       filename: originalname,
       mimetype,
-      path: publicFileUrl(req.file),
+      path: key,
       userId,
     });
     res.status(200).json(newfile);
@@ -31,35 +47,15 @@ export const uploadFile = async (req, res) => {
 };
 
 export const cancelFile = async (req, res) => {
-  const fileId = req.params.fileId;
-
   try {
-    // Find the file in the database based on the provided fileId
-    const file = await File.findOne({
-      where: { id: fileId },
-    });
-
-    // Check if the file exists
+    const file = await File.findByPk(req.params.fileId);
     if (!file) {
       return res.status(404).json({ error: 'File not found' });
     }
-    const { filename } = file;
-    const params = {
-      Bucket: process.env.AWS_BUCKET_NAME,
-      Key: `documents/${filename}`,
-    };
-    console.log(filename);
-    // Delete the file from the S3 bucket
-    const response = await s3.deleteObject(params, function (err, data) {
-      if (data) {
-        console.log('File deleted successfully');
-      } else {
-        console.log('Check if you have sufficient permissions : ' + err);
-      }
-    });
-    // Perform cancellation
-    await file.destroy();
-
+    if (!canAccess(req.user, file)) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    await removeFile(file);
     res.json({ message: 'File canceled successfully' });
   } catch (err) {
     console.log(err);
@@ -67,95 +63,112 @@ export const cancelFile = async (req, res) => {
   }
 };
 
-// export const uploadFile =async (req, res) => {
-// 	try {
-// 		const { body, files } = req;
-
-// 		for (let f = 0; f < files.length; f += 1) {
-// 		  await uploadFile(files[f]);
-// 		}
-
-// 		console.log(body);
-// 		res.status(200).send('Form Submitted');
-// 	  } catch (f) {
-// 		res.send(f.message);
-// 	  }
-// }
-
-// export const listAllFiles = (req, res) => {
-// 	File.findAll({attributes: ['id', 'name']}).then(files => {
-// 	  res.json(files);
-// 	}).catch(err => {
-// 		console.log(err);
-// 		res.json({msg: 'Error', detail: err});
-// 	});
-// }
-
-// export const downloadFile = (req, res) => {
-// 	File.findById(req.params.id).then(file => {
-// 		var fileContents = Buffer.from(file.data, "base64");
-// 		var readStream = new stream.PassThrough();
-// 		readStream.end(fileContents);
-
-// 		res.set('Content-disposition', 'attachment; filename=' + file.name);
-// 		res.set('Content-Type', file.type);
-
-// 		readStream.pipe(res);
-// 	}).catch(err => {
-// 		console.log(err);
-// 		res.json({msg: 'Error', detail: err});
-// 	});
-// }
-
-// export const presignedUrl_aws_s3 = async (req, res) => {
-//   try {
-//     const { s3FilePath } = req.body;
-//     console.log(s3FilePath);
-//     // const params = { Bucket: process.env.AWS_BUCKET_NAME, Key: s3FilePath };
-//     // const url = await s3.getSignedUrl('getObject', params);
-//     const command = new GetObjectCommand({
-//       Bucket: process.env.AWS_BUCKET_NAME,
-//       Key: s3FilePath,
-//     });
-//     console.log(command);
-//     const urlString = await getSignedUrl(s3, command, { expiresIn: 3600 });
-//     const urlObject = { url: urlString };
-//     const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
-
-//     console.log(urlObject);
-//     res.json(url);
-//   } catch (error) {
-//     console.error('Error generating presigned URL:', error);
-//     res.status(500).json({ error: 'Failed to generate presigned URL' });
-//   }
-// };
-
-export const presignedUrl_aws_s3 = async (req, res) => {
+// Temporary link to view/download a file: its owner or an admin only
+export const getFileUrl = async (req, res) => {
   try {
-    const { s3FilePath } = req.body;
-    const fileExtension = s3FilePath.split('.').pop().toLowerCase();
-    let contentType = '';
-    console.log('s3file', s3FilePath);
-
-    // Determine content type based on file extension
-    if (fileExtension === 'pdf') {
-      contentType = 'application/pdf';
-    } else if (['png', 'jpeg', 'jpg'].includes(fileExtension)) {
-      contentType = 'image/jpeg'; // Adjust as needed for PNG or other image types
-    } else {
-      throw new Error('Unsupported file type');
+    const file = await File.findOne({ where: { path: req.body.path } });
+    if (!file) {
+      return res.status(404).json({ error: 'File not found' });
     }
+    if (!canAccess(req.user, file)) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    res.json({ url: await fileUrl(file.path) });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: 'Could not create the file link' });
+  }
+};
 
-    const command = new GetObjectCommand({
-      Bucket: process.env.AWS_BUCKET_NAME,
-      Key: s3FilePath,
-      ResponseContentType: contentType, // Set the correct Content-Type dynamically
+// ---- Admin documents page ----
+
+export const adminListFiles = async (req, res) => {
+  try {
+    const files = await File.findAll({
+      include: [
+        {
+          model: Users,
+          attributes: ['id', 'first_name', 'last_name', 'email', 'status'],
+        },
+      ],
+      order: [['id', 'DESC']],
     });
+    res.json(
+      files.map((f) => ({
+        id: f.id,
+        filename: f.filename,
+        mimetype: f.mimetype,
+        path: f.path,
+        type: folderOf(f.path),
+        uploaded_at: f.uploaded_at,
+        user: f.user,
+      }))
+    );
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: 'Could not list files' });
+  }
+};
 
-    const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
-    res.json({ url });
-  } catch (error) {
-    console.error('Error generating presigned URL:', error);
-    res.status(500).json({ error: 'Failed to generate presigned URL' });
+export const adminDeleteFile = async (req, res) => {
+  try {
+    const file = await File.findByPk(req.params.id);
+    if (!file) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    await removeFile(file);
+    res.json({ message: 'File deleted' });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: 'An error occurred during file deletion' });
+  }
+};
+
+// Volunteers with at least one document not yet marked as received
+export const adminMissingDocuments = async (req, res) => {
+  const flags = [
+    'cv_received',
+    'id_received',
+    'b3_received',
+    'convention_received',
+  ];
+  try {
+    const users = await Users.findAll({
+      where: {
+        role: 'volunteer',
+        [Op.or]: flags.map((flag) => ({
+          [flag]: { [Op.or]: [false, null] },
+        })),
+      },
+      attributes: [
+        'id',
+        'first_name',
+        'last_name',
+        'email',
+        'phone',
+        'status',
+        ...flags,
+      ],
+      include: [{ model: File, as: 'file', attributes: ['id', 'path'] }],
+      order: [['last_name', 'ASC']],
+    });
+    res.json(
+      users.map((u) => ({
+        id: u.id,
+        first_name: u.first_name,
+        last_name: u.last_name,
+        email: u.email,
+        phone: u.phone,
+        status: u.status,
+        cv_received: !!u.cv_received,
+        id_received: !!u.id_received,
+        b3_received: !!u.b3_received,
+        convention_received: !!u.convention_received,
+        files_uploaded: u.file.length,
+      }))
+    );
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: 'Could not list missing documents' });
   }
 };

@@ -5,7 +5,7 @@ import { uploadStudentDocuments } from '../../config/multer.js';
 import {
   uploadFile,
   cancelFile,
-  presignedUrl_aws_s3,
+  getFileUrl,
 } from '../../controllers/students_module/student-files.controllers.js';
 import { adminAuth } from '../../middlewares/authAdmin.js';
 // import fileWorker from '../controllers/files.controllers.js';
@@ -24,7 +24,7 @@ router.delete(
   cancelFile
 );
 
-router.post('/get-presigned-url', adminAuth, presignedUrl_aws_s3);
+router.post('/students/files/url', adminAuth, getFileUrl);
 // router.post('/upload', upload.any(), uploadFile);
 
 // router.get('/api/file/info', fileWorker.listAllFiles);
