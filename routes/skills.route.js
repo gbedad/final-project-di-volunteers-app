@@ -1,5 +1,4 @@
 import express from 'express';
-import cors from 'cors';
 import {
   createSkills,
   deleteSkill,
@@ -8,12 +7,6 @@ import {
 
 import { verifyToken } from '../middlewares/verifyToken.js';
 const router = express.Router();
-const corsOptions = {
-  origin: ['https://www.mycogniverse.org', 'http://localhost:3000'],
-  credentials: true,
-};
-
-router.use(cors(corsOptions));
 
 router.post('/create-skill/:userId', verifyToken, updateSkills);
 router.delete('/delete-skill/:userId', verifyToken, deleteSkill);

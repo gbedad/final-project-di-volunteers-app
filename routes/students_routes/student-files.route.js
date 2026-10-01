@@ -1,6 +1,5 @@
 import express from 'express';
 let router = express.Router();
-import cors from 'cors';
 import { uploadStudentDocuments } from '../../config/multer.js';
 
 import {
@@ -11,12 +10,6 @@ import {
 import { adminAuth } from '../../middlewares/authAdmin.js';
 // import fileWorker from '../controllers/files.controllers.js';
 
-const corsOptions = {
-  origin: ['https://www.mycogniverse.org', 'http://localhost:3000'],
-  credentials: true,
-};
-
-router.use(cors(corsOptions));
 
 router.post(
   '/students/upload/:studentId',

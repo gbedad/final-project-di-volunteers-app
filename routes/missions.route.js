@@ -1,5 +1,4 @@
 import express from 'express';
-import cors from 'cors';
 import { upload } from '../config/multer.js';
 
 import { adminAuth } from '../middlewares/authAdmin.js';
@@ -11,14 +10,8 @@ import {
   getAllMissions,
 } from '../controllers/missions.controllers.js';
 
-const corsOptions = {
-  origin: ['https://www.mycogniverse.org', 'http://localhost:3000'],
-  credentials: true,
-};
-
 const router = express.Router();
 
-router.use(cors(corsOptions));
 
 // Route for creating a new mission
 router.get('/all-missions', adminAuth, getAllMissions);

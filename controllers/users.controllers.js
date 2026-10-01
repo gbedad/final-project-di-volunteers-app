@@ -678,9 +678,11 @@ export const forgotPassword = async (req, res) => {
       expiresIn: '300s',
     });
 
-    const link = `https://mycogniverse.org/reset-password/${oldUser.id}/${token}`;
+    const clientUrl = process.env.CLIENT_URL || 'https://www.mycogniverse.org';
+    const link = `${clientUrl}/reset-password/${oldUser.id}/${token}`;
 
-    sendEmail(
+    // #3 wait for the email so failures are reported instead of crashing
+    await sendEmail(
       email,
       'Changement de mot de passe',
       `<h4>Cher(e) ${oldUser.first_name},</h4>
@@ -688,48 +690,45 @@ export const forgotPassword = async (req, res) => {
       <p>Attention, ce lien ne sera valide que pendant 5 minutes.</p>
       <p>A très vite.</p>`
     );
-    console.log(link);
     res.status(201).json({ message: 'Email sent successfully', status: 201 });
   } catch (error) {
     console.log(error);
-    res.status(401).json({ message: 'Invalid user', status: 401 });
+    res.status(500).json({ message: "L'email n'a pas pu être envoyé", status: 500 });
   }
 };
 
 export const resetPasswordVerify = async (req, res) => {
   const { id, token } = req.params;
-  // console.log(req.params);
-  const oldUser = await Users.findOne({ where: { id: id } });
-  // console.log('====>>', oldUser);
-  if (!oldUser) {
-    return res.json({ status: 'User Not Exists!!' });
-  }
-  const secret = process.env.ACCESS_TOKEN_SECRET + oldUser.password;
   try {
+    const oldUser = await Users.findOne({ where: { id: id } });
+    if (!oldUser) {
+      return res.status(404).json({ status: 404, message: 'User Not Exists!!' });
+    }
+    const secret = process.env.ACCESS_TOKEN_SECRET + oldUser.password;
     const verify = jwt.verify(token, secret);
-    // console.log(verify);
-    if (oldUser && verify.id) {
-      console.log(verify.email);
-      return res.status(201).json({ status: 201, oldUser });
+    if (verify.id) {
+      // Only send what the reset page needs, never the password hash
+      return res.status(201).json({ status: 201, email: verify.email });
     } else {
       return res
         .status(401)
         .json({ status: 401, message: 'User does not exist' });
     }
   } catch (error) {
-    console.log(error);
-    return res.status(401).json({ status: 401, message: error.message });
+    console.log(error.message);
+    return res
+      .status(401)
+      .json({ status: 401, message: 'Lien invalide ou expiré' });
   }
 };
 
 export const renewPassword = async (req, res) => {
   const { id, token } = req.params;
   const { password } = req.body;
-  console.log(id);
   try {
     const oldUser = await Users.findOne({ where: { id: id } });
     if (!oldUser) {
-      return res.json({ status: 'User Not Exists!!' });
+      return res.status(404).json({ status: 404, message: 'User Not Exists!!' });
     }
     const secret = process.env.ACCESS_TOKEN_SECRET + oldUser.password;
 

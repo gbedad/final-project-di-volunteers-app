@@ -27,14 +27,7 @@ import {
 import { verifyToken } from '../middlewares/verifyToken.js';
 import { adminAuth } from '../middlewares/authAdmin.js';
 
-import cors from 'cors';
 const router = express.Router();
-const corsOptions = {
-  origin: ['https://www.mycogniverse.org', 'http://localhost:3000'],
-  credentials: true,
-};
-
-router.use(cors(corsOptions));
 
 router.get('/', gotoHomePage);
 router.post('/register', register);
