@@ -1,5 +1,6 @@
 import Missions from '../models/missions.model.js';
 import fs from 'fs';
+import { publicFileUrl } from '../config/aws.config.js';
 
 // Controller function to get the list of missions
 export const getMissions = async (req, res) => {
@@ -100,7 +101,7 @@ export const createMission = async (req, res) => {
       location,
       image_type: req.file.mimetype,
       image_name: req.file.originalname,
-      image_data: req.file.location,
+      image_data: publicFileUrl(req.file),
       is_active,
     });
     console.log(Buffer.from(newMission.image_data));
@@ -139,7 +140,7 @@ export const updateMission = async (req, res) => {
     if (req.file) {
       existingMission.image_type = req.file.mimetype;
 
-      existingMission.image_data = req.file.location;
+      existingMission.image_data = publicFileUrl(req.file);
 
       existingMission.image_name = req.file.originalname;
     }

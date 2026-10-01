@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import File from '../models/files.model.js';
-import s3 from '../config/aws.config.js';
+import s3, { publicFileUrl } from '../config/aws.config.js';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 
@@ -15,12 +15,12 @@ export const uploadFile = async (req, res) => {
   const userId = req.params.userId;
   console.log('userid', userId);
   try {
-    const { originalname, mimetype, location } = req.file;
+    const { originalname, mimetype } = req.file;
 
     const newfile = await File.create({
       filename: originalname,
       mimetype,
-      path: location,
+      path: publicFileUrl(req.file),
       userId,
     });
     res.status(200).json(newfile);
