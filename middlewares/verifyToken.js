@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
+import Users from '../models/users.model.js';
 
 dotenv.config();
 
@@ -28,11 +29,24 @@ export function verifyToken(req, res, next) {
       .json({ message: 'Not authorized, token not available' });
   }
 
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, async (err, user) => {
     if (err) {
       return res.status(401).json({ message: 'Not authorized' });
     }
-    req.user = user;
-    next();
+    try {
+      // The role in the token may be outdated: always use the current one,
+      // so that removing someone's rights takes effect immediately
+      const current = await Users.findByPk(user.userid ?? user.userId, {
+        attributes: ['id', 'role'],
+      });
+      if (!current) {
+        return res.status(401).json({ message: 'Not authorized' });
+      }
+      req.user = { ...user, userid: current.id, role: current.role };
+      next();
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ message: 'Authentication error' });
+    }
   });
 }

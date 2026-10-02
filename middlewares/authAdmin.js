@@ -1,16 +1,23 @@
 import { verifyToken } from './verifyToken.js';
 
-const hasAdminAccess = (user) =>
-  user && (user.role === 'admin' || user.role === 'interviewer');
+// Staff: everyone working on applications (interviewers included)
+export const STAFF_ROLES = ['superadmin', 'admin', 'interviewer'];
+// Managers: can also edit missions, delete documents, name interviewers
+export const MANAGER_ROLES = ['superadmin', 'admin'];
 
-export const adminAuth = (req, res, next) => {
+const hasAdminAccess = (user) => !!user && STAFF_ROLES.includes(user.role);
+
+const requireRoles = (roles) => (req, res, next) => {
   verifyToken(req, res, () => {
-    if (!hasAdminAccess(req.user)) {
+    if (!roles.includes(req.user?.role)) {
       return res.status(403).json({ message: 'Not authorized' });
     }
     next();
   });
 };
+
+export const adminAuth = requireRoles(STAFF_ROLES);
+export const managerAuth = requireRoles(MANAGER_ROLES);
 
 export const userAuth = (req, res, next) => {
   verifyToken(req, res, () => {
@@ -27,6 +34,20 @@ export const selfOrAdmin = (param) => (req, res, next) => {
     const user = req.user;
     const ownId = Number(user?.userid ?? user?.userId);
     if (!hasAdminAccess(user) && ownId !== Number(req.params[param])) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    next();
+  });
+};
+
+// The account owner, or an admin/superadmin (e.g. deleting an account)
+export const selfOrManager = (param) => (req, res, next) => {
+  verifyToken(req, res, () => {
+    const ownId = Number(req.user?.userid ?? req.user?.userId);
+    if (
+      !MANAGER_ROLES.includes(req.user?.role) &&
+      ownId !== Number(req.params[param])
+    ) {
       return res.status(403).json({ message: 'Not authorized' });
     }
     next();

@@ -6,14 +6,16 @@ import { fileUrl, deleteStoredFile } from '../config/aws.config.js';
 
 dotenv.config();
 
-const isAdmin = (user) =>
-  user && (user.role === 'admin' || user.role === 'interviewer');
+const STAFF = ['superadmin', 'admin', 'interviewer'];
+const MANAGERS = ['superadmin', 'admin'];
 
 // The access token holds "userid" after login and "userId" after a refresh
 const requesterId = (user) => Number(user?.userid ?? user?.userId);
 
-const canAccess = (user, file) =>
-  isAdmin(user) || requesterId(user) === file.userId;
+const isOwner = (user, file) => requesterId(user) === file.userId;
+const canView = (user, file) => STAFF.includes(user?.role) || isOwner(user, file);
+const canDelete = (user, file) =>
+  MANAGERS.includes(user?.role) || isOwner(user, file);
 
 const folderOf = (path) =>
   /(^|\/)conventions\//.test(path) ? 'Convention' : 'Document';
@@ -52,7 +54,7 @@ export const cancelFile = async (req, res) => {
     if (!file) {
       return res.status(404).json({ error: 'File not found' });
     }
-    if (!canAccess(req.user, file)) {
+    if (!canDelete(req.user, file)) {
       return res.status(403).json({ error: 'Not authorized' });
     }
     await removeFile(file);
@@ -70,7 +72,7 @@ export const getFileUrl = async (req, res) => {
     if (!file) {
       return res.status(404).json({ error: 'File not found' });
     }
-    if (!canAccess(req.user, file)) {
+    if (!canView(req.user, file)) {
       return res.status(403).json({ error: 'Not authorized' });
     }
     res.json({ url: await fileUrl(file.path) });

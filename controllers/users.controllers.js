@@ -11,6 +11,8 @@ import nodemailer from 'nodemailer';
 import sendEmail from '../config/sendEmails.js';
 import dayjs from 'dayjs';
 import { getAccessToken } from '../middlewares/verifyToken.js';
+import Files from '../models/files.model.js';
+import { deleteStoredFile } from '../config/aws.config.js';
 
 dotenv.config();
 
@@ -128,6 +130,54 @@ function addHours(date, hours) {
   return new Date(date.getTime() + hours * 60 * 60 * 1000);
 }
 
+const escapeHtml = (text = '') =>
+  String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+const clientUrl = () =>
+  (process.env.CLIENT_URL || 'https://www.mycogniverse.org').replace(/\/$/, '');
+
+// Comma-separated list in ADMIN_EMAILS overrides the default recipients
+const adminEmails = () =>
+  process.env.ADMIN_EMAILS
+    ? process.env.ADMIN_EMAILS.split(',').map((e) => e.trim())
+    : [
+        'gerald@sephoraberrebi.org',
+        'associationsephoraberrebi@gmail.com',
+        'noemie@sephoraberrebi.org',
+      ];
+
+const notifyRegistration = async (user) => {
+  const mission = user.mission_id
+    ? await Missions.findByPk(user.mission_id, { attributes: ['id', 'title'] })
+    : null;
+  const missionTitle = mission ? escapeHtml(mission.title) : 'non précisée';
+  const url = clientUrl();
+
+  await sendEmail(
+    user.email,
+    'Inscription confirmée',
+    `<p>Bonjour ${escapeHtml(user.first_name)},</p>
+    <p>Merci de vous être inscrit(e) sur MyCogniverse. Vous pouvez dès à présent vous connecter sur <a href="${url}/login">MyCogniverse</a> avec votre e-mail et votre mot de passe pour suivre l'avancement de votre candidature.</p>
+    <p>A très vite.</p>`
+  );
+
+  await sendEmail(
+    adminEmails(),
+    `Nouvelle candidature : ${user.first_name} ${user.last_name}`,
+    `<h4>Nouvelle inscription sur MyCogniverse</h4>
+    <p><b>Mission :</b> <a href="${url}/missions">${missionTitle}</a></p>
+    <p><b>Nom :</b> ${escapeHtml(user.first_name)} ${escapeHtml(user.last_name)}<br>
+    <b>Email :</b> ${escapeHtml(user.email)}<br>
+    <b>Téléphone :</b> ${escapeHtml(user.phone)}</p>
+    <p><b>Motivation :</b><br>${escapeHtml(user.message).replace(/\n/g, '<br>')}</p>
+    <p><a href="${url}/login?candidat=${user.id}" style="display:inline-block;padding:10px 16px;background:#00695c;color:#fff;text-decoration:none;border-radius:4px">Voir la fiche du candidat</a></p>`
+  );
+};
+
 export const register = async (req, res) => {
   try {
     const {
@@ -140,6 +190,12 @@ export const register = async (req, res) => {
       message,
       mission_id,
     } = req.body;
+
+    const missing = ['email', 'password', 'first_name', 'last_name', 'phone', 'birth_date']
+      .filter((field) => !req.body[field] || !String(req.body[field]).trim());
+    if (missing.length > 0 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Missing or invalid fields', missing });
+    }
 
     // Check if the email already exists in the database
     const existingUser = await Users.findOne({
@@ -171,31 +227,13 @@ export const register = async (req, res) => {
       mission_id,
     });
 
-    // Send confirmation emails
-    await sendEmail(
-      email,
-      'Inscription confirmée',
-      "Merci de vous être inscrit(e) sur notre plateforme. Vous pouvez dès à présent vous connecter sur <a href='https://mycogniverse.org'>MyCogniverse</a> à l'aide de votre email et votre mot de passe"
-    );
-
-    await sendEmail(
-      [
-
-        'gerald@sephoraberrebi.org',
-        'associationsephoraberrebi@gmail.com',
-        'noemie@sephoraberrebi.org',
-      ],
-      'Nouvelle inscription sur la plateforme MyCogniverse',
-      `<h4>Cher adminsistrateur</h4>
-      <p>Un nouveau tuteur s'est enregistré sur la plateforme pour la mission ${mission_id}:</p>
-      <p>Email : ${email}</p>
-      <p>Nom : ${firstname} ${lastname}</p>
-      <p>Téléphone : ${phone}</p>
-      <br>
-      <p>A très vite.</p>`
-    );
-
+    // Answer first: a failing email must not make the registration fail
     res.status(201).json({ msg: 'Register Successful', userId: newUser.id });
+
+    notifyRegistration(newUser).catch((err) =>
+      console.error('Registration emails not sent:', err.message)
+    );
+    return;
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({
@@ -314,9 +352,36 @@ export const login = async (req, res) => {
 };
 
 export const deleteRegistration = async (req, res) => {
-  // console.log(req.params.id);
   try {
-    const count = await Users.destroy({ where: { id: req.params.id } });
+    const target = await Users.findByPk(req.params.id, {
+      include: [{ model: Files, as: 'file', attributes: ['id', 'path'] }],
+    });
+    if (!target) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+    // Anyone can delete their own account; only a superadmin can delete
+    // someone else's admin account; one superadmin must always remain
+    const isSelf = target.id === Number(req.user.userid);
+    if (
+      !isSelf &&
+      ['admin', 'superadmin'].includes(target.role) &&
+      req.user.role !== 'superadmin'
+    ) {
+      return res.status(403).json({ msg: 'Not authorized' });
+    }
+    if (
+      target.role === 'superadmin' &&
+      (await Users.count({ where: { role: 'superadmin' } })) <= 1
+    ) {
+      return res.status(409).json({ msg: 'Il doit rester au moins un superadmin' });
+    }
+    // Remove the person's documents from storage, not only from the database
+    for (const file of target.file) {
+      await deleteStoredFile(file.path).catch((err) =>
+        console.log('Could not delete from storage:', err.message)
+      );
+    }
+    const count = await Users.destroy({ where: { id: target.id } });
     console.log(`deleted row(s): ${count}`);
     res.status(200).json({ msg: `You have cancelled your registration.` });
   } catch (error) {

@@ -7,7 +7,7 @@ import {
   cancelFile,
   getFileUrl,
 } from '../../controllers/students_module/student-files.controllers.js';
-import { adminAuth } from '../../middlewares/authAdmin.js';
+import { adminAuth, managerAuth } from '../../middlewares/authAdmin.js';
 // import fileWorker from '../controllers/files.controllers.js';
 
 
@@ -20,7 +20,7 @@ router.post(
 
 router.delete(
   '/students/files/cancel/:fileId',
-  adminAuth,
+  managerAuth,
   cancelFile
 );
 

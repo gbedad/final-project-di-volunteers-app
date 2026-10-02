@@ -11,7 +11,7 @@ import {
   adminMissingDocuments,
 } from '../controllers/files.controllers.js';
 import { verifyToken } from '../middlewares/verifyToken.js';
-import { adminAuth, selfOrAdmin } from '../middlewares/authAdmin.js';
+import { adminAuth, managerAuth, selfOrAdmin } from '../middlewares/authAdmin.js';
 // import fileWorker from '../controllers/files.controllers.js';
 
 
@@ -34,7 +34,7 @@ router.post('/files/url', verifyToken, getFileUrl);
 
 // Admin documents page
 router.get('/admin/files', adminAuth, adminListFiles);
-router.delete('/admin/files/:id', adminAuth, adminDeleteFile);
+router.delete('/admin/files/:id', managerAuth, adminDeleteFile);
 router.get('/admin/missing-documents', adminAuth, adminMissingDocuments);
 // router.post('/upload', upload.any(), uploadFile);
 

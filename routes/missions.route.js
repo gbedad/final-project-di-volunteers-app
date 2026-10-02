@@ -1,7 +1,7 @@
 import express from 'express';
 import { uploadMissionImage } from '../config/multer.js';
 
-import { adminAuth } from '../middlewares/authAdmin.js';
+import { adminAuth, managerAuth } from '../middlewares/authAdmin.js';
 
 import {
   createMission,
@@ -18,13 +18,13 @@ router.get('/all-missions', adminAuth, getAllMissions);
 router.get('/missions', getMissions);
 router.post(
   '/missions/create',
-  adminAuth,
+  managerAuth,
   uploadMissionImage.single('image'),
   createMission
 );
 router.patch(
   '/missions/update/:id',
-  adminAuth,
+  managerAuth,
   uploadMissionImage.single('image'),
   updateMission
 );

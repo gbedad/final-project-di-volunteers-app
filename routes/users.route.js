@@ -25,7 +25,18 @@ import {
   updateUserAvailability,
 } from '../controllers/users.controllers.js';
 import { verifyToken } from '../middlewares/verifyToken.js';
-import { adminAuth } from '../middlewares/authAdmin.js';
+import {
+  adminAuth,
+  managerAuth,
+  selfOrManager,
+} from '../middlewares/authAdmin.js';
+import {
+  getTeam,
+  findUserByEmail,
+  updateUserRole,
+  inviteMember,
+  resendInvitation,
+} from '../controllers/team.controllers.js';
 
 const router = express.Router();
 
@@ -37,7 +48,7 @@ router.post('/refresh-token', refreshTokenFunc);
 router.get('/logout', logout);
 router.get('/all-users', adminAuth, getUsers);
 router.put('/update/:id', verifyToken, updateUser);
-router.delete('/delete-registration/:id', verifyToken, deleteRegistration);
+router.delete('/delete-registration/:id', selfOrManager('id'), deleteRegistration);
 router.get('/user-by-id/:id', verifyToken, getUserById);
 router.patch('/update-status/:id', adminAuth, updateById);
 router.patch('/update-active-user/:id', adminAuth, setActiveUser);
@@ -52,5 +63,12 @@ router.get('/reset-password/:id/:token', resetPasswordVerify);
 router.post('/reset-password/:id/:token', renewPassword);
 router.post('/add-internalthread/:userId', adminAuth, addUserInternalThread);
 router.patch('/update-availability', verifyToken, updateUserAvailability);
+
+// Team page: superadmins manage every role, admins name interviewers
+router.get('/admin/team', managerAuth, getTeam);
+router.get('/admin/users/lookup', managerAuth, findUserByEmail);
+router.patch('/admin/users/:id/role', managerAuth, updateUserRole);
+router.post('/admin/team/invite', managerAuth, inviteMember);
+router.post('/admin/team/:id/resend-invite', managerAuth, resendInvitation);
 
 export default router;
