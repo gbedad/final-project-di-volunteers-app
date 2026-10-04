@@ -48,13 +48,18 @@ export const applicationProgress = async (userId) => {
   const has = (type) =>
     files.some((f) => f.doc_type === type && isAvailable(f));
 
-  const profile = !!(user.city && user.activity);
-  const wishes = !!(
-    skill &&
-    hasItems(skill.topics) &&
-    hasItems(skill.when_day_slot) &&
-    (hasItems(skill.where_location) || skill.how_location === 'A distance')
-  );
+  // What is filled in, item by item, to tell the volunteer what is missing
+  const details = {
+    address: !!user.city,
+    activity: !!user.activity,
+    topics: !!skill && hasItems(skill.topics),
+    slots: !!skill && hasItems(skill.when_day_slot),
+    places:
+      !!skill &&
+      (hasItems(skill.where_location) || skill.how_location === 'A distance'),
+  };
+  const profile = details.address && details.activity;
+  const wishes = details.topics && details.slots && details.places;
   const documents = { cv: has('cv'), id: has('id'), b3: has('b3') };
   // The criminal record (B3) is only needed for the final validation
   const readyToSubmit = profile && wishes && documents.cv && documents.id;
@@ -64,6 +69,7 @@ export const applicationProgress = async (userId) => {
     profile,
     wishes,
     documents,
+    details,
     readyToSubmit,
     canSubmit: readyToSubmit && EARLY_STATUSES.includes(user.status),
   };
