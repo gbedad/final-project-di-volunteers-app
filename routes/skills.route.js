@@ -6,9 +6,15 @@ import {
 } from '../controllers/skills.controllers.js';
 
 import { verifyToken } from '../middlewares/verifyToken.js';
+import { syncStatusAfter } from '../services/application.js';
 const router = express.Router();
 
-router.post('/create-skill/:userId', verifyToken, updateSkills);
+router.post(
+  '/create-skill/:userId',
+  verifyToken,
+  syncStatusAfter((req) => req.params.userId),
+  updateSkills
+);
 router.delete('/delete-skill/:userId', verifyToken, deleteSkill);
 
 export default router;

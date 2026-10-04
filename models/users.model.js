@@ -103,6 +103,11 @@ const Users = db.define(
       defaultValue: false,
       allowNull: true,
     },
+    // Documents an admin received on paper: ['cv', 'id', 'b3', 'convention']
+    paper_documents: {
+      type: DataTypes.JSONB,
+      defaultValue: [],
+    },
     cohorte_year: {
       type:DataTypes.ARRAY(DataTypes.STRING),
       defaultValue:['2023/2024']

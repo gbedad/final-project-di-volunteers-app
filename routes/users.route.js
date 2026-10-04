@@ -10,7 +10,6 @@ import {
   updateById,
   getUserById,
   setActiveUser,
-  updateReceivedFields,
   saveActivity,
   updateUserAddress,
   addUserInterviews,
@@ -37,6 +36,10 @@ import {
   inviteMember,
   resendInvitation,
 } from '../controllers/team.controllers.js';
+import { syncStatusAfter } from '../services/application.js';
+
+// Recompute the application status after profile changes
+const syncFromBody = syncStatusAfter((req) => req.body.userId);
 
 const router = express.Router();
 
@@ -52,12 +55,16 @@ router.delete('/delete-registration/:id', selfOrManager('id'), deleteRegistratio
 router.get('/user-by-id/:id', verifyToken, getUserById);
 router.patch('/update-status/:id', adminAuth, updateById);
 router.patch('/update-active-user/:id', adminAuth, setActiveUser);
-router.post('/update-files-received/:id', verifyToken, updateReceivedFields);
-router.post('/add-activity', verifyToken, saveActivity);
-router.post('/update-address', verifyToken, updateUserAddress);
+router.post('/add-activity', verifyToken, syncFromBody, saveActivity);
+router.post('/update-address', verifyToken, syncFromBody, updateUserAddress);
 router.post('/add-interviews/:userId', adminAuth, addUserInterviews);
 router.post('/add-pre-interview/:userId', adminAuth, addUserPreInterview);
-router.patch('/update-user-profile/:userId', verifyToken, updateUserProfile);
+router.patch(
+  '/update-user-profile/:userId',
+  verifyToken,
+  syncStatusAfter((req) => req.params.userId),
+  updateUserProfile
+);
 router.post('/forgot-password', forgotPassword);
 router.get('/reset-password/:id/:token', resetPasswordVerify);
 router.post('/reset-password/:id/:token', renewPassword);

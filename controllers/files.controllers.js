@@ -3,6 +3,15 @@ import { Op } from 'sequelize';
 import File from '../models/files.model.js';
 import Users from '../models/users.model.js';
 import { fileUrl, deleteStoredFile } from '../config/aws.config.js';
+import {
+  DOC_TYPES,
+  updateReceivedFlag,
+  applicationProgress,
+  submitApplication as submit,
+  documentsStatus,
+  setPaperDocument,
+  RECEIVED_FLAGS,
+} from '../services/application.js';
 
 dotenv.config();
 
@@ -17,8 +26,17 @@ const canView = (user, file) => STAFF.includes(user?.role) || isOwner(user, file
 const canDelete = (user, file) =>
   MANAGERS.includes(user?.role) || isOwner(user, file);
 
-const folderOf = (path) =>
-  /(^|\/)conventions\//.test(path) ? 'Convention' : 'Document';
+const TYPE_LABELS = {
+  cv: 'CV',
+  id: "Pièce d'identité",
+  b3: 'Casier judiciaire',
+  convention: 'Convention',
+  other: 'Autre document',
+};
+
+const typeLabel = (file) =>
+  TYPE_LABELS[file.doc_type] ||
+  (/(^|\/)conventions\//.test(file.path) ? 'Convention' : 'Autre document');
 
 const removeFile = async (file) => {
   try {
@@ -28,19 +46,28 @@ const removeFile = async (file) => {
     console.log('Could not delete from storage:', err.message);
   }
   await file.destroy();
+  await updateReceivedFlag(file.userId, file.doc_type);
 };
 
 export const uploadFile = async (req, res) => {
   const userId = req.params.userId;
   try {
     const { originalname, mimetype, key } = req.file;
+    const isConvention = /^conventions\//.test(key);
+    const docType = isConvention
+      ? 'convention'
+      : DOC_TYPES.includes(req.query.type)
+      ? req.query.type
+      : 'other';
 
     const newfile = await File.create({
       filename: originalname,
       mimetype,
       path: key,
+      doc_type: docType,
       userId,
     });
+    await updateReceivedFlag(Number(userId), docType);
     res.status(200).json(newfile);
   } catch (err) {
     console.log(err);
@@ -57,6 +84,7 @@ export const cancelFile = async (req, res) => {
     if (!canDelete(req.user, file)) {
       return res.status(403).json({ error: 'Not authorized' });
     }
+    res.locals.userId = file.userId;
     await removeFile(file);
     res.json({ message: 'File canceled successfully' });
   } catch (err) {
@@ -101,7 +129,8 @@ export const adminListFiles = async (req, res) => {
         filename: f.filename,
         mimetype: f.mimetype,
         path: f.path,
-        type: folderOf(f.path),
+        type: typeLabel(f),
+        doc_type: f.doc_type,
         uploaded_at: f.uploaded_at,
         user: f.user,
       }))
@@ -118,6 +147,7 @@ export const adminDeleteFile = async (req, res) => {
     if (!file) {
       return res.status(404).json({ error: 'File not found' });
     }
+    res.locals.userId = file.userId;
     await removeFile(file);
     res.json({ message: 'File deleted' });
   } catch (err) {
@@ -172,5 +202,70 @@ export const adminMissingDocuments = async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: 'Could not list missing documents' });
+  }
+};
+
+// ---- Volunteer application checklist ----
+
+export const getApplication = async (req, res) => {
+  try {
+    const progress = await applicationProgress(req.params.userId);
+    if (!progress) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(progress);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: 'Could not load the application' });
+  }
+};
+
+export const submitApplication = async (req, res) => {
+  try {
+    const result = await submit(req.params.userId);
+    if (result.error) {
+      return res.status(result.code).json({ error: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: 'Could not submit the application' });
+  }
+};
+
+// ---- Admin: documents received (uploaded file or paper) ----
+
+export const getDocumentsStatus = async (req, res) => {
+  try {
+    const status = await documentsStatus(req.params.userId);
+    if (!status) return res.status(404).json({ error: 'User not found' });
+    res.json(status);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: 'Could not load the documents' });
+  }
+};
+
+// Body: { type, paper: true|false } or { voltaire: true|false }
+export const updateDocumentsStatus = async (req, res) => {
+  const { userId } = req.params;
+  const { type, paper, voltaire } = req.body;
+  try {
+    if (typeof voltaire === 'boolean') {
+      await Users.update(
+        { test_voltaire_passed: voltaire },
+        { where: { id: userId } }
+      );
+      return res.json(await documentsStatus(userId));
+    }
+    if (!RECEIVED_FLAGS[type] || typeof paper !== 'boolean') {
+      return res.status(400).json({ error: 'Invalid document' });
+    }
+    const status = await setPaperDocument(userId, type, paper);
+    if (!status) return res.status(404).json({ error: 'User not found' });
+    res.json(status);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: 'Could not update the documents' });
   }
 };

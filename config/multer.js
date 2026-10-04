@@ -14,9 +14,19 @@ const privateUpload = (folder, ownerParam) =>
       bucket: PRIVATE_BUCKET,
       contentType: multerS3.AUTO_CONTENT_TYPE,
       key: (req, file, cb) => {
+        // The document type in the name makes the bucket easy to browse:
+        // documents/155/cv-1790...-dupont.pdf
+        const type =
+          folder === 'conventions'
+            ? 'convention'
+            : ['cv', 'id', 'b3'].includes(req.query.type)
+            ? req.query.type
+            : 'autre';
         cb(
           null,
-          `${folder}/${req.params[ownerParam]}/${safeFileName(file.originalname)}`
+          `${folder}/${req.params[ownerParam]}/${type}-${safeFileName(
+            file.originalname
+          )}`
         );
       },
     }),

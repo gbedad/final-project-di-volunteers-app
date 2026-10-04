@@ -22,6 +22,10 @@ const Files = db.define(
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
+    // cv, id, b3, other or convention
+    doc_type: {
+      type: DataTypes.STRING,
+    },
   },
   {
     timestamps: false,

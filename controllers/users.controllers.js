@@ -9,6 +9,7 @@ import Skills from '../models/skills.model.js';
 import nodemailer from 'nodemailer';
 // import {google} from 'googleapis';
 import sendEmail from '../config/sendEmails.js';
+import { escapeHtml, clientUrl, adminEmails } from '../config/notify.js';
 import dayjs from 'dayjs';
 import { getAccessToken } from '../middlewares/verifyToken.js';
 import Files from '../models/files.model.js';
@@ -130,26 +131,6 @@ function addHours(date, hours) {
   return new Date(date.getTime() + hours * 60 * 60 * 1000);
 }
 
-const escapeHtml = (text = '') =>
-  String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-
-const clientUrl = () =>
-  (process.env.CLIENT_URL || 'https://www.mycogniverse.org').replace(/\/$/, '');
-
-// Comma-separated list in ADMIN_EMAILS overrides the default recipients
-const adminEmails = () =>
-  process.env.ADMIN_EMAILS
-    ? process.env.ADMIN_EMAILS.split(',').map((e) => e.trim())
-    : [
-        'gerald@sephoraberrebi.org',
-        'associationsephoraberrebi@gmail.com',
-        'noemie@sephoraberrebi.org',
-      ];
-
 const notifyRegistration = async (user) => {
   const mission = user.mission_id
     ? await Missions.findByPk(user.mission_id, { attributes: ['id', 'title'] })
@@ -225,6 +206,8 @@ export const register = async (req, res) => {
       birth_date: newDate,
       message,
       mission_id,
+      // The volunteer can fill in the application right away
+      status: 'A renseigner',
     });
 
     // Answer first: a failing email must not make the registration fail
