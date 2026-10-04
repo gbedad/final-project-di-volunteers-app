@@ -193,5 +193,24 @@ export const submitApplication = async (userId) => {
       'Voir la fiche du candidat'
     )}</p>`
   ).catch((err) => console.log('Submission email not sent:', err.message));
+
+  // Confirmation to the volunteer
+  sendEmail(
+    user.email,
+    'Nous avons bien reçu votre dossier de candidature',
+    `<p>Bonjour ${escapeHtml(user.first_name)},</p>
+    <p>Merci ! Nous avons bien reçu votre dossier de candidature pour devenir tuteur bénévole de l'association Séphora Berrebi.</p>
+    <p>Nous allons l'étudier et vous contacterons prochainement pour organiser un entretien.</p>
+    <p>Vous pouvez suivre l'avancement de votre candidature à tout moment depuis votre espace :</p>
+    <p>${emailButton(`${clientUrl()}/login`, 'Accéder à mon espace')}</p>
+    ${
+      progress.documents.b3
+        ? ''
+        : "<p>Pour la validation finale, il vous sera demandé un extrait de casier judiciaire (B3) : vous pouvez dès maintenant le demander en ligne et le déposer dans l'onglet « Mes documents ».</p>"
+    }
+    <p>À très vite,<br>L'équipe MyCogniverse</p>`
+  ).catch((err) =>
+    console.log('Volunteer confirmation email not sent:', err.message)
+  );
   return { status: 'A interviewer' };
 };
