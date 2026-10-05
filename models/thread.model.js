@@ -21,7 +21,7 @@ export const InternalMessages = db.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    // "message", or "whatsapp" when the author contacted the volunteer
+    // "message", or "whatsapp" / "email" when the author contacted the volunteer
     kind: {
       type: DataTypes.STRING,
       allowNull: false,

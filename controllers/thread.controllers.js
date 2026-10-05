@@ -73,13 +73,20 @@ const notifyMentions = async ({ author, subject, message, team }) => {
   }
 };
 
-// Body: { content, mentions: [userId] } or { kind: 'whatsapp' }
+// Contacts recorded in the discussion when a team member reaches the
+// volunteer from the application (the message itself is written elsewhere)
+const CONTACT_TEXT = {
+  whatsapp: (name) => `a contacté ${name} par WhatsApp`,
+  email: (name) => `a ouvert un e-mail à ${name}`,
+};
+
+// Body: { content, mentions: [userId] } or { kind: 'whatsapp' | 'email' }
 export const addMessage = async (req, res) => {
   const subjectId = Number(req.params.userId);
   const me = currentUserId(req);
-  const kind = req.body.kind === 'whatsapp' ? 'whatsapp' : 'message';
-  // Interviewers don't take part in the discussion, but their WhatsApp
-  // contacts are recorded in it
+  const kind = CONTACT_TEXT[req.body.kind] ? req.body.kind : 'message';
+  // Interviewers don't take part in the discussion, but their contacts
+  // (WhatsApp, e-mail) are recorded in it
   if (kind === 'message' && !MANAGER_ROLES.includes(req.user.role)) {
     return res.status(403).json({ message: 'Not authorized' });
   }
@@ -95,8 +102,8 @@ export const addMessage = async (req, res) => {
     let content;
     let mentions = [];
     let team = [];
-    if (kind === 'whatsapp') {
-      content = `a contacté ${fullName(subject)} par WhatsApp`;
+    if (kind !== 'message') {
+      content = CONTACT_TEXT[kind](fullName(subject));
     } else {
       content = String(req.body.content || '').trim();
       if (!content) return res.status(400).json({ error: 'Message vide' });
