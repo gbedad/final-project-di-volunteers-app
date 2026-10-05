@@ -20,7 +20,6 @@ import {
   renewPassword,
   checkToken,
   refreshTokenFunc,
-  addUserInternalThread,
   updateUserAvailability,
 } from '../controllers/users.controllers.js';
 import { verifyToken } from '../middlewares/verifyToken.js';
@@ -41,6 +40,12 @@ import {
   getCohorts,
   updateCohorts,
 } from '../controllers/cohorts.controllers.js';
+import {
+  getThread,
+  addMessage,
+  deleteMessage,
+  getUnreadCounts,
+} from '../controllers/thread.controllers.js';
 
 // Recompute the application status after profile changes
 const syncFromBody = syncStatusAfter((req) => req.body.userId);
@@ -72,12 +77,17 @@ router.patch(
 router.post('/forgot-password', forgotPassword);
 router.get('/reset-password/:id/:token', resetPasswordVerify);
 router.post('/reset-password/:id/:token', renewPassword);
-router.post('/add-internalthread/:userId', adminAuth, addUserInternalThread);
 router.patch('/update-availability', verifyToken, updateUserAvailability);
 
 // Cohorts of a volunteer (academic years)
 router.get('/admin/users/:userId/cohorts', adminAuth, getCohorts);
 router.put('/admin/users/:userId/cohorts', adminAuth, updateCohorts);
+
+// Internal team discussion about a volunteer
+router.get('/admin/thread/unread', adminAuth, getUnreadCounts);
+router.get('/admin/users/:userId/thread', adminAuth, getThread);
+router.post('/admin/users/:userId/thread', adminAuth, addMessage);
+router.delete('/admin/thread/:messageId', adminAuth, deleteMessage);
 
 // Team page: superadmins manage every role, admins name interviewers
 router.get('/admin/team', managerAuth, getTeam);
