@@ -11,6 +11,7 @@ const __dirname = path.dirname(__filename);
 console.log(__dirname);
 import db from './config/database.js';
 import corsOptions from './config/cors.js';
+import { scheduleCohortRenewal } from './services/cohorts.js';
 
 import users_router from './routes/users.route.js';
 import files_router from './routes/files.route.js';
@@ -73,6 +74,9 @@ try {
 }
 
 // Connection to server
+// Adds the new academic year to active volunteers (checked every 6 hours)
+scheduleCohortRenewal();
+
 app.listen(process.env.PORT || 3030, () => {
   console.log(`server running on port ${process.env.PORT}`);
 });

@@ -13,6 +13,7 @@ import { escapeHtml, clientUrl, adminEmails } from '../config/notify.js';
 import dayjs from 'dayjs';
 import { getAccessToken } from '../middlewares/verifyToken.js';
 import Files from '../models/files.model.js';
+import { onMembershipChange } from '../services/cohorts.js';
 import { deleteStoredFile } from '../config/aws.config.js';
 
 dotenv.config();
@@ -430,6 +431,8 @@ export const updateById = async (req, res) => {
     //   `
     // );
 
+    // First validation: validation date and cohort of the academic year
+    await onMembershipChange(id, { justValidated: newStatus === 'Validé' });
     res.json({ message: 'Row updated successfully.', updatedRows });
   } catch (err) {
     console.error(err);
@@ -450,6 +453,7 @@ export const setActiveUser = async (req, res) => {
       return res.status(404).json({ error: 'Record not found' }); // return an error response if the record doesn't exist
     }
     const updatedRecord = await record.update({ is_active: isActive }); // update the is_active field to false
+    await onMembershipChange(record.id);
     return res.json(updatedRecord); // return the updated record as a JSON response
   } catch (err) {
     console.error(err);

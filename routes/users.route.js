@@ -37,6 +37,10 @@ import {
   resendInvitation,
 } from '../controllers/team.controllers.js';
 import { syncStatusAfter } from '../services/application.js';
+import {
+  getCohorts,
+  updateCohorts,
+} from '../controllers/cohorts.controllers.js';
 
 // Recompute the application status after profile changes
 const syncFromBody = syncStatusAfter((req) => req.body.userId);
@@ -70,6 +74,10 @@ router.get('/reset-password/:id/:token', resetPasswordVerify);
 router.post('/reset-password/:id/:token', renewPassword);
 router.post('/add-internalthread/:userId', adminAuth, addUserInternalThread);
 router.patch('/update-availability', verifyToken, updateUserAvailability);
+
+// Cohorts of a volunteer (academic years)
+router.get('/admin/users/:userId/cohorts', adminAuth, getCohorts);
+router.put('/admin/users/:userId/cohorts', adminAuth, updateCohorts);
 
 // Team page: superadmins manage every role, admins name interviewers
 router.get('/admin/team', managerAuth, getTeam);

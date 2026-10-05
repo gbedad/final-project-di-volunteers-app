@@ -108,9 +108,14 @@ const Users = db.define(
       type: DataTypes.JSONB,
       defaultValue: [],
     },
+    // Academic years the volunteer belonged to, e.g. ['2024/2025', '2025/2026']
     cohorte_year: {
-      type:DataTypes.ARRAY(DataTypes.STRING),
-      defaultValue:['2023/2024']
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      defaultValue: [],
+    },
+    // Date the application was first validated (status "Validé")
+    validated_at: {
+      type: DataTypes.DATE,
     },
   },
   {
