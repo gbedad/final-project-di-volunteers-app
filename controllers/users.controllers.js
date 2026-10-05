@@ -419,10 +419,57 @@ export const updateById = async (req, res) => {
 
     // First validation: validation date and cohort of the academic year
     await onMembershipChange(id, { justValidated: newStatus === 'Validé' });
-    res.json({ message: 'Row updated successfully.', updatedRows });
+    res.json({ message: 'Row updated successfully.', status: newStatus });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error updating row.' });
+  }
+};
+
+// Statuses an admin can choose (same list as the client)
+export const STATUSES = [
+  'Compte créé',
+  'A renseigner',
+  'A télécharger',
+  'A interviewer',
+  'A finaliser',
+  'Validé',
+  'A conserver',
+  'Déclinée',
+];
+
+// Several volunteers at once from the dashboard.
+// Body: { ids: [1, 2], status?: 'Déclinée', is_active?: false }
+export const bulkUpdateUsers = async (req, res) => {
+  const ids = [...new Set((req.body.ids || []).map(Number))].filter(Boolean);
+  const { status, is_active } = req.body;
+  const changes = {};
+  if (status !== undefined) {
+    if (!STATUSES.includes(status)) {
+      return res.status(400).json({ error: 'Statut inconnu' });
+    }
+    changes.status = status;
+  }
+  if (is_active !== undefined) changes.is_active = !!is_active;
+  if (!ids.length || !Object.keys(changes).length) {
+    return res.status(400).json({ error: 'Rien à modifier' });
+  }
+  try {
+    // Only volunteers: team accounts are managed on the Team page
+    const users = await Users.findAll({
+      where: { id: ids, role: 'volunteer' },
+      attributes: ['id', 'status'],
+    });
+    for (const user of users) {
+      await Users.update(changes, { where: { id: user.id } });
+      await onMembershipChange(user.id, {
+        justValidated: status === 'Validé' && user.status !== 'Validé',
+      });
+    }
+    res.json({ updated: users.map((u) => u.id), ...changes });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Modification impossible' });
   }
 };
 

@@ -20,6 +20,7 @@ import {
   checkToken,
   refreshTokenFunc,
   updateUserAvailability,
+  bulkUpdateUsers,
 } from '../controllers/users.controllers.js';
 import {
   adminAuth,
@@ -67,6 +68,8 @@ router.delete(
 router.get('/user-by-id/:id', selfOrAdmin('id'), getUserById);
 router.patch('/update-status/:id', adminAuth, updateById);
 router.patch('/update-active-user/:id', adminAuth, setActiveUser);
+// Dashboard: change the status / active flag of several volunteers
+router.patch('/admin/users/bulk', managerAuth, bulkUpdateUsers);
 router.post('/add-activity', selfOrAdminBody(), syncFromBody, saveActivity);
 router.post(
   '/update-address',
