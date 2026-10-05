@@ -2,7 +2,7 @@ import { Op } from 'sequelize';
 import db from '../config/database.js';
 import Users from '../models/users.model.js';
 import { InternalMessages, ThreadReads } from '../models/thread.model.js';
-import { STAFF_ROLES } from '../middlewares/authAdmin.js';
+import { MANAGER_ROLES } from '../middlewares/authAdmin.js';
 import sendEmail from '../config/sendEmails.js';
 import { escapeHtml, clientUrl, emailButton } from '../config/notify.js';
 
@@ -13,9 +13,10 @@ const fullName = (user) =>
 
 const currentUserId = (req) => Number(req.user.userid ?? req.user.userId);
 
+// Admins and superadmins: the people taking part in the discussion
 const teamMembers = () =>
   Users.findAll({
-    where: { role: { [Op.in]: STAFF_ROLES } },
+    where: { role: { [Op.in]: MANAGER_ROLES } },
     attributes: ['id', 'first_name', 'last_name', 'email'],
     order: [['first_name', 'ASC']],
   });
@@ -41,7 +42,7 @@ export const getThread = async (req, res) => {
     res.json({
       me,
       messages,
-      team: team.map((u) => ({ id: u.id, name: fullName(u) })),
+      team: team.map((u) => ({ id: u.id, name: fullName(u), email: u.email })),
     });
   } catch (err) {
     console.log(err);
@@ -77,6 +78,11 @@ export const addMessage = async (req, res) => {
   const subjectId = Number(req.params.userId);
   const me = currentUserId(req);
   const kind = req.body.kind === 'whatsapp' ? 'whatsapp' : 'message';
+  // Interviewers don't take part in the discussion, but their WhatsApp
+  // contacts are recorded in it
+  if (kind === 'message' && !MANAGER_ROLES.includes(req.user.role)) {
+    return res.status(403).json({ message: 'Not authorized' });
+  }
   try {
     const subject = await Users.findByPk(subjectId, {
       attributes: ['id', 'first_name', 'last_name'],

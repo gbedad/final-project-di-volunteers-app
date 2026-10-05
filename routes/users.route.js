@@ -5,7 +5,6 @@ import {
   login,
   getUsers,
   deleteRegistration,
-  updateUser,
   logout,
   updateById,
   getUserById,
@@ -22,10 +21,11 @@ import {
   refreshTokenFunc,
   updateUserAvailability,
 } from '../controllers/users.controllers.js';
-import { verifyToken } from '../middlewares/verifyToken.js';
 import {
   adminAuth,
   managerAuth,
+  selfOrAdmin,
+  selfOrAdminBody,
   selfOrManager,
 } from '../middlewares/authAdmin.js';
 import {
@@ -59,35 +59,44 @@ router.get('/check-token', checkToken);
 router.post('/refresh-token', refreshTokenFunc);
 router.get('/logout', logout);
 router.get('/all-users', adminAuth, getUsers);
-router.put('/update/:id', verifyToken, updateUser);
-router.delete('/delete-registration/:id', selfOrManager('id'), deleteRegistration);
-router.get('/user-by-id/:id', verifyToken, getUserById);
+router.delete(
+  '/delete-registration/:id',
+  selfOrManager('id'),
+  deleteRegistration
+);
+router.get('/user-by-id/:id', selfOrAdmin('id'), getUserById);
 router.patch('/update-status/:id', adminAuth, updateById);
 router.patch('/update-active-user/:id', adminAuth, setActiveUser);
-router.post('/add-activity', verifyToken, syncFromBody, saveActivity);
-router.post('/update-address', verifyToken, syncFromBody, updateUserAddress);
+router.post('/add-activity', selfOrAdminBody(), syncFromBody, saveActivity);
+router.post(
+  '/update-address',
+  selfOrAdminBody(),
+  syncFromBody,
+  updateUserAddress
+);
 router.post('/add-interviews/:userId', adminAuth, addUserInterviews);
 router.post('/add-pre-interview/:userId', adminAuth, addUserPreInterview);
 router.patch(
   '/update-user-profile/:userId',
-  verifyToken,
+  selfOrAdmin('userId'),
   syncStatusAfter((req) => req.params.userId),
   updateUserProfile
 );
 router.post('/forgot-password', forgotPassword);
 router.get('/reset-password/:id/:token', resetPasswordVerify);
 router.post('/reset-password/:id/:token', renewPassword);
-router.patch('/update-availability', verifyToken, updateUserAvailability);
+router.patch('/update-availability', selfOrAdminBody(), updateUserAvailability);
 
 // Cohorts of a volunteer (academic years)
 router.get('/admin/users/:userId/cohorts', adminAuth, getCohorts);
 router.put('/admin/users/:userId/cohorts', adminAuth, updateCohorts);
 
-// Internal team discussion about a volunteer
-router.get('/admin/thread/unread', adminAuth, getUnreadCounts);
-router.get('/admin/users/:userId/thread', adminAuth, getThread);
+// Internal discussion between admins about a volunteer; interviewers can
+// only log a WhatsApp contact (checked in addMessage)
+router.get('/admin/thread/unread', managerAuth, getUnreadCounts);
+router.get('/admin/users/:userId/thread', managerAuth, getThread);
 router.post('/admin/users/:userId/thread', adminAuth, addMessage);
-router.delete('/admin/thread/:messageId', adminAuth, deleteMessage);
+router.delete('/admin/thread/:messageId', managerAuth, deleteMessage);
 
 // Team page: superadmins manage every role, admins name interviewers
 router.get('/admin/team', managerAuth, getTeam);

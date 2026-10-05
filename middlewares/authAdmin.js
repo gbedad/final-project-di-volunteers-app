@@ -28,17 +28,26 @@ export const userAuth = (req, res, next) => {
   });
 };
 
-// Admins, or the volunteer whose id is in the URL (e.g. /upload/:userId)
-export const selfOrAdmin = (param) => (req, res, next) => {
+// Team members, or the volunteer whose own id is given by getId(req)
+export const selfOrAdminFrom = (getId) => (req, res, next) => {
   verifyToken(req, res, () => {
     const user = req.user;
     const ownId = Number(user?.userid ?? user?.userId);
-    if (!hasAdminAccess(user) && ownId !== Number(req.params[param])) {
+    const targetId = Number(getId(req));
+    if (!hasAdminAccess(user) && (!targetId || ownId !== targetId)) {
       return res.status(403).json({ message: 'Not authorized' });
     }
     next();
   });
 };
+
+// Admins, or the volunteer whose id is in the URL (e.g. /upload/:userId)
+export const selfOrAdmin = (param) =>
+  selfOrAdminFrom((req) => req.params[param]);
+
+// Same, with the id sent in the request body ({ userId })
+export const selfOrAdminBody = (field = 'userId') =>
+  selfOrAdminFrom((req) => req.body?.[field]);
 
 // The account owner, or an admin/superadmin (e.g. deleting an account)
 export const selfOrManager = (param) => (req, res, next) => {

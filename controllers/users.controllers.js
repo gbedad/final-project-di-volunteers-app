@@ -225,30 +225,6 @@ export const register = async (req, res) => {
   }
 };
 
-export const updateUser = async (req, res) => {
-  const id = req.params.id;
-  // console.log(req.body);
-  Users.update(req.body, {
-    where: { id: id },
-  })
-    .then((num) => {
-      if (num == 1) {
-        res.send({
-          message: 'User was updated successfully.',
-        });
-      } else {
-        res.send({
-          message: `Cannot update User with id=${id}. Maybe User was not found or req.body is empty!`,
-        });
-      }
-    })
-    .catch((err) => {
-      res.status(500).send({
-        message: 'Error updating User with id=' + id,
-      });
-    });
-};
-
 export const checkToken = (req, res) => {
   const token = getAccessToken(req);
   if (!token) {
@@ -377,10 +353,21 @@ export const logout = (req, res) => {
   res.clearCookie('token').json({ response: 'You are Logged Out' });
 };
 
+// Never sent to anyone
+const PRIVATE_FIELDS = ['password'];
+// Team notes about the volunteer, not shown to the volunteer
+const STAFF_ONLY_FIELDS = ['interviews', 'pre_interview', 'internal_thread'];
+
+// Allowed for the account owner and the team (route: selfOrAdmin)
 export async function getUserById(req, res) {
   try {
+    const hidden =
+      req.user?.role === 'volunteer'
+        ? [...PRIVATE_FIELDS, ...STAFF_ONLY_FIELDS]
+        : PRIVATE_FIELDS;
     const user = await Users.findOne({
       where: { id: req.params.id },
+      attributes: { exclude: hidden },
       include: ['mission', 'skill', 'file'],
     });
 

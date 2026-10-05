@@ -5,16 +5,16 @@ import {
   updateSkills,
 } from '../controllers/skills.controllers.js';
 
-import { verifyToken } from '../middlewares/verifyToken.js';
+import { selfOrAdmin } from '../middlewares/authAdmin.js';
 import { syncStatusAfter } from '../services/application.js';
 const router = express.Router();
 
 router.post(
   '/create-skill/:userId',
-  verifyToken,
+  selfOrAdmin('userId'),
   syncStatusAfter((req) => req.params.userId),
   updateSkills
 );
-router.delete('/delete-skill/:userId', verifyToken, deleteSkill);
+router.delete('/delete-skill/:userId', selfOrAdmin('userId'), deleteSkill);
 
 export default router;
