@@ -4,6 +4,7 @@ import Users from '../models/users.model.js';
 import Skills from '../models/skills.model.js';
 import Files from '../models/files.model.js';
 import sendEmail from '../config/sendEmails.js';
+import { recordStatusChange } from './statusHistory.js';
 import {
   escapeHtml,
   clientUrl,
@@ -93,6 +94,7 @@ export const syncEarlyStatus = async (userId) => {
     progress.profile && progress.wishes ? 'A télécharger' : 'A renseigner';
   if (EARLY_RANK[next] > EARLY_RANK[progress.status]) {
     await Users.update({ status: next }, { where: { id: userId } });
+    await recordStatusChange(userId, progress.status, next);
     console.log(`Application ${userId}: ${progress.status} -> ${next}`);
   }
 };
@@ -176,6 +178,7 @@ export const submitApplication = async (userId) => {
     return { error: 'Le dossier est incomplet ou déjà envoyé', code: 409 };
   }
   await Users.update({ status: 'A interviewer' }, { where: { id: userId } });
+  await recordStatusChange(userId, progress.status, 'A interviewer');
   const user = await Users.findByPk(userId, {
     attributes: ['id', 'first_name', 'last_name', 'email', 'phone'],
   });

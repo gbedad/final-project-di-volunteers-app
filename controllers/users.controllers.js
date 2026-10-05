@@ -14,6 +14,7 @@ import dayjs from 'dayjs';
 import { getAccessToken } from '../middlewares/verifyToken.js';
 import Files from '../models/files.model.js';
 import { onMembershipChange } from '../services/cohorts.js';
+import { recordStatusChange } from '../services/statusHistory.js';
 import { deleteStoredFile } from '../config/aws.config.js';
 
 dotenv.config();
@@ -209,6 +210,8 @@ export const register = async (req, res) => {
       // The volunteer can fill in the application right away
       status: 'A renseigner',
     });
+
+    await recordStatusChange(newUser.id, null, newUser.status);
 
     // Answer first: a failing email must not make the registration fail
     res.status(201).json({ msg: 'Register Successful', userId: newUser.id });
@@ -418,6 +421,7 @@ export const updateById = async (req, res) => {
     // );
 
     // First validation: validation date and cohort of the academic year
+    await recordStatusChange(user.id, user.status, newStatus, req.user.userid);
     await onMembershipChange(id, { justValidated: newStatus === 'Validé' });
     res.json({ message: 'Row updated successfully.', status: newStatus });
   } catch (err) {
@@ -462,6 +466,9 @@ export const bulkUpdateUsers = async (req, res) => {
     });
     for (const user of users) {
       await Users.update(changes, { where: { id: user.id } });
+      if (status !== undefined) {
+        await recordStatusChange(user.id, user.status, status, req.user.userid);
+      }
       await onMembershipChange(user.id, {
         justValidated: status === 'Validé' && user.status !== 'Validé',
       });

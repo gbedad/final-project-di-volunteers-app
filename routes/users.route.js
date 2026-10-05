@@ -41,6 +41,7 @@ import {
   getCohorts,
   updateCohorts,
 } from '../controllers/cohorts.controllers.js';
+import { getAnalytics } from '../controllers/analytics.controllers.js';
 import {
   getThread,
   addMessage,
@@ -100,6 +101,9 @@ router.get('/admin/thread/unread', managerAuth, getUnreadCounts);
 router.get('/admin/users/:userId/thread', managerAuth, getThread);
 router.post('/admin/users/:userId/thread', adminAuth, addMessage);
 router.delete('/admin/thread/:messageId', managerAuth, deleteMessage);
+
+// Admin "Analyse" page
+router.get('/admin/analytics', managerAuth, getAnalytics);
 
 // Team page: superadmins manage every role, admins name interviewers
 router.get('/admin/team', managerAuth, getTeam);
