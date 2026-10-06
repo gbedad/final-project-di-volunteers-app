@@ -688,8 +688,9 @@ export const updateUserProfile = async (req, res) => {
     if (last_name) {
       userProfile.last_name = last_name;
     }
-    if (email2) {
-      userProfile.email2 = email2;
+    // The alternative e-mail is optional: an empty value removes it
+    if (email2 !== undefined) {
+      userProfile.email2 = email2 ? email2.trim() : null;
     }
     if (birth_date) {
       userProfile.birth_date = birth_date;
