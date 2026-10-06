@@ -1,6 +1,10 @@
 import express from 'express';
 let router = express.Router();
-import { upload, uploadConvention } from '../config/multer.js';
+import {
+  upload,
+  uploadConvention,
+  uploadConventionTemplate,
+} from '../config/multer.js';
 
 import {
   uploadFile,
@@ -13,6 +17,8 @@ import {
   submitApplication,
   getDocumentsStatus,
   updateDocumentsStatus,
+  getConventionTemplate,
+  uploadConventionTemplateDone,
 } from '../controllers/files.controllers.js';
 import { syncStatusAfter } from '../services/application.js';
 
@@ -31,11 +37,24 @@ router.post(
   upload.single('file'),
   uploadFile
 );
+// ?type=final: convention countersigned by the president (team only)
+const countersignedByTeam = (req, res, next) =>
+  req.query.type === 'final' ? managerAuth(req, res, next) : next();
 router.post(
   '/upload/convention/:userId',
   selfOrAdmin('userId'),
+  countersignedByTeam,
   uploadConvention.single('file'),
   uploadFile
+);
+
+// Model of the convention: downloaded by volunteers, replaced by the team
+router.get('/convention/template', verifyToken, getConventionTemplate);
+router.post(
+  '/admin/convention/template',
+  managerAuth,
+  uploadConventionTemplate.single('file'),
+  uploadConventionTemplateDone
 );
 
 router.delete('/files/cancel/:fileId', verifyToken, syncFromFile, cancelFile);

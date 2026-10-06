@@ -18,7 +18,9 @@ const privateUpload = (folder, ownerParam) =>
         // documents/155/cv-1790...-dupont.pdf
         const type =
           folder === 'conventions'
-            ? 'convention'
+            ? req.query.type === 'final'
+              ? 'convention-contresignee'
+              : 'convention'
             : ['cv', 'id', 'b3', 'honorability'].includes(req.query.type)
             ? req.query.type
             : 'autre';
@@ -35,6 +37,19 @@ const privateUpload = (folder, ownerParam) =>
 const upload = privateUpload('documents', 'userId');
 const uploadConvention = privateUpload('conventions', 'userId');
 const uploadStudentDocuments = privateUpload('student-documents', 'studentId');
+
+// Model of the convention, replaced by each new upload (one fixed key)
+export const CONVENTION_TEMPLATE_KEY = 'templates/convention-modele';
+const uploadConventionTemplate = multer({
+  storage: multerS3({
+    s3,
+    bucket: PRIVATE_BUCKET,
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+    metadata: (req, file, cb) =>
+      cb(null, { filename: encodeURIComponent(file.originalname) }),
+    key: (req, file, cb) => cb(null, CONVENTION_TEMPLATE_KEY),
+  }),
+});
 
 // Mission pictures are shown to every visitor, so they stay public
 const uploadMissionImage = multer({
@@ -64,4 +79,10 @@ const uploadMissionImage = multer({
 //   });
 //   console.log(`Uploaded file ${data.name} ${data.id}`);
 // };
-export { upload, uploadConvention, uploadStudentDocuments, uploadMissionImage };
+export {
+  upload,
+  uploadConvention,
+  uploadConventionTemplate,
+  uploadStudentDocuments,
+  uploadMissionImage,
+};

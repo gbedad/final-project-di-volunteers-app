@@ -2,11 +2,22 @@ import dotenv from 'dotenv';
 import { Op } from 'sequelize';
 import File from '../models/files.model.js';
 import Users from '../models/users.model.js';
-import { fileUrl, deleteStoredFile } from '../config/aws.config.js';
+import {
+  fileUrl,
+  deleteStoredFile,
+  privateFileInfo,
+  privateDownloadUrl,
+} from '../config/aws.config.js';
+import { CONVENTION_TEMPLATE_KEY } from '../config/multer.js';
+import {
+  notifyConventionSigned,
+  notifyConventionCountersigned,
+} from '../services/convention.js';
 import {
   DOC_TYPES,
   updateReceivedFlag,
   honorabilityDeadline,
+  conventionState,
   applicationProgress,
   submitApplication as submit,
   documentsStatus,
@@ -32,7 +43,8 @@ const TYPE_LABELS = {
   id: "Pièce d'identité",
   b3: 'Casier judiciaire',
   honorability: "Attestation d'honorabilité",
-  convention: 'Convention',
+  convention: 'Convention signée par le bénévole',
+  convention_final: 'Convention contresignée',
   other: 'Autre document',
 };
 
@@ -57,7 +69,9 @@ export const uploadFile = async (req, res) => {
     const { originalname, mimetype, key } = req.file;
     const isConvention = /^conventions\//.test(key);
     const docType = isConvention
-      ? 'convention'
+      ? req.query.type === 'final'
+        ? 'convention_final'
+        : 'convention'
       : DOC_TYPES.includes(req.query.type)
       ? req.query.type
       : 'other';
@@ -71,6 +85,30 @@ export const uploadFile = async (req, res) => {
     });
     await updateReceivedFlag(Number(userId), docType);
     res.status(200).json(newfile);
+
+    // Convention: tell the team it is to countersign, then the volunteer
+    // that it is complete
+    if (docType === 'convention' || docType === 'convention_final') {
+      const volunteer = await Users.findByPk(userId, {
+        attributes: [
+          'id',
+          'first_name',
+          'last_name',
+          'email',
+          'email2',
+          'honorability_received',
+        ],
+      });
+      if (volunteer && docType === 'convention') {
+        notifyConventionSigned(volunteer);
+      } else if (volunteer) {
+        const files = await File.findAll({
+          where: { userId },
+          attributes: ['path', 'doc_type', 'uploaded_at'],
+        });
+        notifyConventionCountersigned(volunteer, honorabilityDeadline(files));
+      }
+    }
   } catch (err) {
     console.log(err);
     res.status(500).send('An error occurred during file upload');
@@ -84,6 +122,13 @@ export const cancelFile = async (req, res) => {
       return res.status(404).json({ error: 'File not found' });
     }
     if (!canDelete(req.user, file)) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    // The countersigned convention can only be replaced by the team
+    if (
+      file.doc_type === 'convention_final' &&
+      !MANAGERS.includes(req.user?.role)
+    ) {
       return res.status(403).json({ error: 'Not authorized' });
     }
     res.locals.userId = file.userId;
@@ -184,7 +229,7 @@ export const adminMissingDocuments = async (req, res) => {
         {
           model: File,
           as: 'file',
-          attributes: ['id', 'path', 'doc_type', 'uploaded_at'],
+          attributes: ['id', 'path', 'filename', 'doc_type', 'uploaded_at'],
         },
       ],
       order: [['last_name', 'ASC']],
@@ -193,6 +238,7 @@ export const adminMissingDocuments = async (req, res) => {
     const rows = users.map((u) => {
       const due = honorabilityDeadline(u.file);
       const honorabilityNeeded = !!u.convention_received;
+      const convention = conventionState(u.file, !!u.convention_received);
       return {
         id: u.id,
         first_name: u.first_name,
@@ -204,6 +250,8 @@ export const adminMissingDocuments = async (req, res) => {
         id_received: !!u.id_received,
         b3_received: !!u.b3_received,
         convention_received: !!u.convention_received,
+        // to_sign | to_countersign | complete
+        convention_state: convention.state,
         // null: not asked yet (no convention)
         honorability_received: honorabilityNeeded
           ? !!u.honorability_received
@@ -228,6 +276,32 @@ export const adminMissingDocuments = async (req, res) => {
     console.log(err);
     res.status(500).json({ error: 'Could not list missing documents' });
   }
+};
+
+// ---- Model of the convention (uploaded by the team) ----
+
+// Download link of the current model; null when none was uploaded yet
+export const getConventionTemplate = async (req, res) => {
+  try {
+    const info = await privateFileInfo(CONVENTION_TEMPLATE_KEY);
+    if (!info) return res.json({ template: null });
+    const filename = info.filename || 'convention-mycogniverse.pdf';
+    res.json({
+      template: {
+        filename,
+        updated_at: info.updated_at,
+        url: await privateDownloadUrl(CONVENTION_TEMPLATE_KEY, filename),
+      },
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: 'Could not load the convention model' });
+  }
+};
+
+export const uploadConventionTemplateDone = async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Aucun fichier' });
+  res.json({ filename: req.file.originalname });
 };
 
 // ---- Volunteer application checklist ----

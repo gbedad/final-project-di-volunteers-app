@@ -15,6 +15,7 @@ import { getAccessToken } from '../middlewares/verifyToken.js';
 import Files from '../models/files.model.js';
 import { onMembershipChange } from '../services/cohorts.js';
 import { recordStatusChange } from '../services/statusHistory.js';
+import { notifyConventionToSign } from '../services/convention.js';
 
 // Limits of the "why do you apply" text (same as the client)
 const MOTIVATION_MIN = 15;
@@ -434,6 +435,10 @@ export const updateById = async (req, res) => {
 
     // First validation: validation date and cohort of the academic year
     await recordStatusChange(user.id, user.status, newStatus, req.user.userid);
+    // Interview passed: the volunteer is invited to sign the convention
+    if (newStatus === 'A finaliser' && user.status !== 'A finaliser') {
+      notifyConventionToSign(user);
+    }
     await onMembershipChange(id, { justValidated: newStatus === 'Validé' });
     res.json({ message: 'Row updated successfully.', status: newStatus });
   } catch (err) {
@@ -474,12 +479,15 @@ export const bulkUpdateUsers = async (req, res) => {
     // Only volunteers: team accounts are managed on the Team page
     const users = await Users.findAll({
       where: { id: ids, role: 'volunteer' },
-      attributes: ['id', 'status'],
+      attributes: ['id', 'status', 'first_name', 'email', 'email2'],
     });
     for (const user of users) {
       await Users.update(changes, { where: { id: user.id } });
       if (status !== undefined) {
         await recordStatusChange(user.id, user.status, status, req.user.userid);
+        if (status === 'A finaliser' && user.status !== 'A finaliser') {
+          notifyConventionToSign(user);
+        }
       }
       await onMembershipChange(user.id, {
         justValidated: status === 'Validé' && user.status !== 'Validé',

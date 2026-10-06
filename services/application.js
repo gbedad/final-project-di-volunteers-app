@@ -27,8 +27,16 @@ export const DOC_TYPES = [
   'b3',
   'honorability',
   'other',
+  // Signed by the volunteer, then countersigned by the president
   'convention',
+  'convention_final',
 ];
+
+// File type that makes a document "received" when it differs from the
+// document itself: the convention is complete once countersigned
+const RECEIVED_FILE_TYPE = { convention: 'convention_final' };
+const documentOf = (fileType) =>
+  fileType === 'convention_final' ? 'convention' : fileType;
 
 // Admin checkboxes kept in sync with the uploaded documents
 export const RECEIVED_FLAGS = {
@@ -40,10 +48,12 @@ export const RECEIVED_FLAGS = {
 };
 
 // The attestation d'honorabilité is due one month after the convention is
-// signed; the signing date is taken as the upload date of the convention
+// signed by both sides: the date of the countersigned convention
 export const honorabilityDeadline = (files) => {
   const dates = files
-    .filter((f) => f.doc_type === 'convention' && isAvailable(f) && f.uploaded_at)
+    .filter(
+      (f) => f.doc_type === 'convention_final' && isAvailable(f) && f.uploaded_at
+    )
     .map((f) => new Date(f.uploaded_at));
   if (!dates.length) return null;
   const due = new Date(Math.min(...dates));
@@ -52,6 +62,32 @@ export const honorabilityDeadline = (files) => {
 };
 
 const hasItems = (value) => Array.isArray(value) && value.length > 0;
+
+const fileInfo = (file) =>
+  file && {
+    path: file.path,
+    filename: file.filename,
+    uploaded_at: file.uploaded_at,
+  };
+const latest = (files, type) =>
+  files
+    .filter((f) => f.doc_type === type && isAvailable(f))
+    .sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at))[0];
+
+// Where the convention stands: "to_sign" (by the volunteer),
+// "to_countersign" (by the president) or "complete" (countersigned file, or
+// ticked as received on paper)
+export const conventionState = (files, receivedOnPaper = false) => {
+  const signed = latest(files, 'convention');
+  const final = latest(files, 'convention_final');
+  return {
+    state:
+      final || receivedOnPaper ? 'complete' : signed ? 'to_countersign' : 'to_sign',
+    signed: fileInfo(signed) || null,
+    final: fileInfo(final) || null,
+    paper: !!receivedOnPaper && !final,
+  };
+};
 
 // Modalities that can be done without a site
 const REMOTE_OK = ['A distance', 'Sur site ou à distance'];
@@ -80,7 +116,7 @@ export const applicationProgress = async (userId) => {
   const skill = await Skills.findOne({ where: { userId } });
   const files = await Files.findAll({
     where: { userId },
-    attributes: ['path', 'doc_type', 'uploaded_at'],
+    attributes: ['path', 'filename', 'doc_type', 'uploaded_at'],
   });
   const has = (type) =>
     files.some((f) => f.doc_type === type && isAvailable(f));
@@ -102,7 +138,9 @@ export const applicationProgress = async (userId) => {
     // Received as a file or on paper (ticked by an admin)
     honorability: !!user.honorability_received || has('honorability'),
   };
-  const conventionSigned = !!user.convention_received || has('convention');
+  const convention = conventionState(files, !!user.convention_received);
+  // The attestation d'honorabilité is asked once the convention is complete
+  const conventionSigned = convention.state === 'complete';
   const due = honorabilityDeadline(files);
   // The criminal record (B3) is only needed for the final validation
   const readyToSubmit = profile && wishes && documents.cv && documents.id;
@@ -114,6 +152,7 @@ export const applicationProgress = async (userId) => {
     documents,
     details,
     conventionSigned,
+    convention,
     honorabilityDue: due,
     readyToSubmit,
     canSubmit: readyToSubmit && EARLY_STATUSES.includes(user.status),
@@ -158,7 +197,8 @@ export const syncStatusAfter = (getUserId) => (req, res, next) => {
 
 // A document counts as received when a file is uploaded or an admin
 // received it on paper; uploading/deleting files never undoes a paper tick
-export const updateReceivedFlag = async (userId, type) => {
+export const updateReceivedFlag = async (userId, fileType) => {
+  const type = documentOf(fileType);
   const flag = RECEIVED_FLAGS[type];
   if (!flag || !userId) return;
   const user = await Users.findByPk(userId, {
@@ -166,7 +206,7 @@ export const updateReceivedFlag = async (userId, type) => {
   });
   if (!user) return;
   const files = await Files.findAll({
-    where: { userId, doc_type: type },
+    where: { userId, doc_type: RECEIVED_FILE_TYPE[type] || type },
     attributes: ['path'],
   });
   const received =
@@ -187,7 +227,8 @@ export const documentsStatus = async (userId) => {
   });
   const paper = user.paper_documents || [];
   const documents = Object.keys(RECEIVED_FLAGS).map((type) => {
-    const file = files.find((f) => f.doc_type === type && isAvailable(f));
+    const fileType = RECEIVED_FILE_TYPE[type] || type;
+    const file = files.find((f) => f.doc_type === fileType && isAvailable(f));
     return {
       type,
       file: file
@@ -200,6 +241,7 @@ export const documentsStatus = async (userId) => {
   const due = honorabilityDeadline(files);
   return {
     documents,
+    convention: conventionState(files, paper.includes('convention')),
     test_voltaire_passed: !!user.test_voltaire_passed,
     honorability_due: due,
   };

@@ -2,6 +2,7 @@ import {
   S3Client,
   GetObjectCommand,
   DeleteObjectCommand,
+  HeadObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import dotenv from 'dotenv';
@@ -47,6 +48,40 @@ export const fileUrl = async (path, expiresIn = 3600) =>
   isPrivatePath(path)
     ? getSignedUrl(s3, new GetObjectCommand(locate(path)), { expiresIn })
     : path;
+
+// Date and original name of a private file, or null if it doesn't exist
+export const privateFileInfo = async (key) => {
+  try {
+    const head = await s3.send(
+      new HeadObjectCommand({ Bucket: PRIVATE_BUCKET, Key: key })
+    );
+    return {
+      updated_at: head.LastModified,
+      filename: head.Metadata?.filename
+        ? decodeURIComponent(head.Metadata.filename)
+        : null,
+    };
+  } catch (err) {
+    if (err.$metadata?.httpStatusCode === 404 || err.name === 'NotFound') {
+      return null;
+    }
+    throw err;
+  }
+};
+
+// 1h signed link that downloads the private file under the given name
+export const privateDownloadUrl = (key, filename, expiresIn = 3600) =>
+  getSignedUrl(
+    s3,
+    new GetObjectCommand({
+      Bucket: PRIVATE_BUCKET,
+      Key: key,
+      ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(
+        filename
+      )}`,
+    }),
+    { expiresIn }
+  );
 
 export const deleteStoredFile = (path) =>
   s3.send(new DeleteObjectCommand(locate(path)));
