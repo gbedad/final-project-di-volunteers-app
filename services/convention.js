@@ -74,3 +74,22 @@ export const notifyConventionCountersigned = (user, honorabilityDue) =>
     ${signature}`,
     'Convention countersigned'
   );
+
+// Status "Validé": welcome message to the new tutor
+export const notifyApplicationValidated = (user) =>
+  send(
+    user.email2 || user.email,
+    "Bienvenue parmi les tuteurs bénévoles de l'association Séphora Berrebi",
+    `<p>Bonjour ${escapeHtml(user.first_name)},</p>
+    <p>Votre candidature est <b>validée</b> : bienvenue parmi les tuteurs bénévoles de l'association Séphora Berrebi !</p>
+    <p>Nous recherchons maintenant, parmi les demandes de tutorat, l'élève qui correspond le mieux à vos souhaits et à vos disponibilités, et nous revenons vers vous très vite.</p>
+    <p>D'ici là, pensez à tenir à jour vos disponibilités dans votre espace.</p>
+    ${
+      user.honorability_received
+        ? ''
+        : "<p>N'oubliez pas de déposer votre <b>attestation d'honorabilité</b> dans l'onglet « Mes documents », si ce n'est pas encore fait.</p>"
+    }
+    <p>${emailButton(`${clientUrl()}/login`, 'Accéder à mon espace')}</p>
+    <p>Merci pour votre engagement,<br>L'équipe MyCogniverse</p>`,
+    'Application validated'
+  );
