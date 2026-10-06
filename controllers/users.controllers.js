@@ -245,7 +245,6 @@ export const checkToken = (req, res) => {
 
 export const refreshTokenFunc = (req, res) => {
   const refreshToken = req.body.refreshToken;
-  console.log(refreshToken);
   if (!refreshToken) return res.sendStatus(401);
 
   jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
@@ -294,10 +293,10 @@ export const login = async (req, res) => {
       { userid, email, role },
       process.env.REFRESH_TOKEN_SECRET,
       {
-        expiresIn: '1d', // Refresh token expires in 7 days
+        // Renews the 1-day access token without logging in again
+        expiresIn: '7d',
       }
     );
-    console.log('refresh', refreshToken);
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
