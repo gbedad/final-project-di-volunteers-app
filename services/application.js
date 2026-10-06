@@ -53,6 +53,14 @@ export const honorabilityDeadline = (files) => {
 
 const hasItems = (value) => Array.isArray(value) && value.length > 0;
 
+// Modalities that can be done without a site
+const REMOTE_OK = ['A distance', 'Sur site ou à distance'];
+// "Modalités et lieux" is filled in with a remote-compatible modality, or
+// with at least one site
+const placesFilled = (skill) =>
+  REMOTE_OK.includes(skill.how_location) ||
+  (skill.where_location || []).some(Boolean);
+
 // Files lost with the old AWS bucket don't count as uploaded
 export const isAvailable = (file) => !file.path.includes('amazonaws.com');
 
@@ -83,9 +91,7 @@ export const applicationProgress = async (userId) => {
     activity: !!user.activity,
     topics: !!skill && hasItems(skill.topics),
     slots: !!skill && hasItems(skill.when_day_slot),
-    places:
-      !!skill &&
-      (hasItems(skill.where_location) || skill.how_location === 'A distance'),
+    places: !!skill && placesFilled(skill),
   };
   const profile = details.address && details.activity;
   const wishes = details.topics && details.slots && details.places;
