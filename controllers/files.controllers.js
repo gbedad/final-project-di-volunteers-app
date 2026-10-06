@@ -223,6 +223,7 @@ export const adminMissingDocuments = async (req, res) => {
         'email',
         'phone',
         'status',
+        'paper_documents',
         ...flags,
       ],
       include: [
@@ -237,8 +238,15 @@ export const adminMissingDocuments = async (req, res) => {
     const now = new Date();
     const rows = users.map((u) => {
       const due = honorabilityDeadline(u.file);
-      const honorabilityNeeded = !!u.convention_received;
-      const convention = conventionState(u.file, !!u.convention_received);
+      // Asked once the convention is complete
+      const honorabilityNeeded = conventionState(
+        u.file,
+        (u.paper_documents || []).includes('convention')
+      ).state === 'complete';
+      const convention = conventionState(
+        u.file,
+        (u.paper_documents || []).includes('convention')
+      );
       return {
         id: u.id,
         first_name: u.first_name,

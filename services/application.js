@@ -110,6 +110,7 @@ export const applicationProgress = async (userId) => {
       'activity',
       'convention_received',
       'honorability_received',
+      'paper_documents',
     ],
   });
   if (!user) return null;
@@ -138,7 +139,11 @@ export const applicationProgress = async (userId) => {
     // Received as a file or on paper (ticked by an admin)
     honorability: !!user.honorability_received || has('honorability'),
   };
-  const convention = conventionState(files, !!user.convention_received);
+  // Complete with the countersigned file, or ticked "reçue sur papier"
+  const convention = conventionState(
+    files,
+    (user.paper_documents || []).includes('convention')
+  );
   // The attestation d'honorabilité is asked once the convention is complete
   const conventionSigned = convention.state === 'complete';
   const due = honorabilityDeadline(files);
