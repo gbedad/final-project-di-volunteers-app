@@ -725,9 +725,8 @@ export const updateUserProfile = async (req, res) => {
     // Save the updated profile
     await userProfile.save();
 
-    return res
-      .status(200)
-      .json({ message: 'Profile updated successfully', userProfile });
+    // Only the confirmation: the full record (password hash…) stays here
+    return res.status(200).json({ message: 'Profile updated successfully' });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Error updating user profile' });
