@@ -15,6 +15,10 @@ import { getAccessToken } from '../middlewares/verifyToken.js';
 import Files from '../models/files.model.js';
 import { onMembershipChange } from '../services/cohorts.js';
 import { recordStatusChange } from '../services/statusHistory.js';
+
+// Limits of the "why do you apply" text (same as the client)
+const MOTIVATION_MIN = 15;
+const MOTIVATION_MAX = 1000;
 import { deleteStoredFile } from '../config/aws.config.js';
 
 dotenv.config();
@@ -177,6 +181,15 @@ export const register = async (req, res) => {
       .filter((field) => !req.body[field] || !String(req.body[field]).trim());
     if (missing.length > 0 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'Missing or invalid fields', missing });
+    }
+    const motivation = String(message || '').trim();
+    if (
+      motivation.length < MOTIVATION_MIN ||
+      motivation.length > MOTIVATION_MAX
+    ) {
+      return res.status(400).json({
+        error: `La motivation doit faire entre ${MOTIVATION_MIN} et ${MOTIVATION_MAX} caractères`,
+      });
     }
 
     // Check if the email already exists in the database
@@ -701,6 +714,11 @@ export const updateUserProfile = async (req, res) => {
       userProfile.activity = activity;
     }
     if (message) {
+      if (String(message).trim().length > MOTIVATION_MAX) {
+        return res
+          .status(400)
+          .json({ message: `${MOTIVATION_MAX} caractères maximum` });
+      }
       userProfile.message = message;
     }
 
