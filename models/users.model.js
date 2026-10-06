@@ -66,6 +66,11 @@ const Users = db.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    // Attestation d'honorabilité, due one month after the convention
+    honorability_received: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
 
     test_voltaire_passed: {
       type: DataTypes.BOOLEAN,

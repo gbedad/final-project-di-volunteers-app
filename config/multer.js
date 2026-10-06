@@ -19,7 +19,7 @@ const privateUpload = (folder, ownerParam) =>
         const type =
           folder === 'conventions'
             ? 'convention'
-            : ['cv', 'id', 'b3'].includes(req.query.type)
+            : ['cv', 'id', 'b3', 'honorability'].includes(req.query.type)
             ? req.query.type
             : 'autre';
         cb(

@@ -6,6 +6,7 @@ import { fileUrl, deleteStoredFile } from '../config/aws.config.js';
 import {
   DOC_TYPES,
   updateReceivedFlag,
+  honorabilityDeadline,
   applicationProgress,
   submitApplication as submit,
   documentsStatus,
@@ -30,6 +31,7 @@ const TYPE_LABELS = {
   cv: 'CV',
   id: "Pièce d'identité",
   b3: 'Casier judiciaire',
+  honorability: "Attestation d'honorabilité",
   convention: 'Convention',
   other: 'Autre document',
 };
@@ -156,22 +158,19 @@ export const adminDeleteFile = async (req, res) => {
   }
 };
 
-// Volunteers with at least one document not yet marked as received
+// Volunteers with at least one document not yet marked as received. The
+// attestation d'honorabilité only counts once the convention is signed.
 export const adminMissingDocuments = async (req, res) => {
   const flags = [
     'cv_received',
     'id_received',
     'b3_received',
     'convention_received',
+    'honorability_received',
   ];
   try {
     const users = await Users.findAll({
-      where: {
-        role: 'volunteer',
-        [Op.or]: flags.map((flag) => ({
-          [flag]: { [Op.or]: [false, null] },
-        })),
-      },
+      where: { role: 'volunteer' },
       attributes: [
         'id',
         'first_name',
@@ -181,11 +180,20 @@ export const adminMissingDocuments = async (req, res) => {
         'status',
         ...flags,
       ],
-      include: [{ model: File, as: 'file', attributes: ['id', 'path'] }],
+      include: [
+        {
+          model: File,
+          as: 'file',
+          attributes: ['id', 'path', 'doc_type', 'uploaded_at'],
+        },
+      ],
       order: [['last_name', 'ASC']],
     });
-    res.json(
-      users.map((u) => ({
+    const now = new Date();
+    const rows = users.map((u) => {
+      const due = honorabilityDeadline(u.file);
+      const honorabilityNeeded = !!u.convention_received;
+      return {
         id: u.id,
         first_name: u.first_name,
         last_name: u.last_name,
@@ -196,8 +204,25 @@ export const adminMissingDocuments = async (req, res) => {
         id_received: !!u.id_received,
         b3_received: !!u.b3_received,
         convention_received: !!u.convention_received,
+        // null: not asked yet (no convention)
+        honorability_received: honorabilityNeeded
+          ? !!u.honorability_received
+          : null,
+        honorability_due: due,
+        honorability_late:
+          honorabilityNeeded && !u.honorability_received && !!due && due < now,
         files_uploaded: u.file.length,
-      }))
+      };
+    });
+    res.json(
+      rows.filter(
+        (r) =>
+          !r.cv_received ||
+          !r.id_received ||
+          !r.b3_received ||
+          !r.convention_received ||
+          r.honorability_received === false
+      )
     );
   } catch (err) {
     console.log(err);

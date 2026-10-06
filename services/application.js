@@ -21,7 +21,14 @@ export const EARLY_STATUSES = [
   'A télécharger',
 ];
 
-export const DOC_TYPES = ['cv', 'id', 'b3', 'other', 'convention'];
+export const DOC_TYPES = [
+  'cv',
+  'id',
+  'b3',
+  'honorability',
+  'other',
+  'convention',
+];
 
 // Admin checkboxes kept in sync with the uploaded documents
 export const RECEIVED_FLAGS = {
@@ -29,6 +36,19 @@ export const RECEIVED_FLAGS = {
   id: 'id_received',
   b3: 'b3_received',
   convention: 'convention_received',
+  honorability: 'honorability_received',
+};
+
+// The attestation d'honorabilité is due one month after the convention is
+// signed; the signing date is taken as the upload date of the convention
+export const honorabilityDeadline = (files) => {
+  const dates = files
+    .filter((f) => f.doc_type === 'convention' && isAvailable(f) && f.uploaded_at)
+    .map((f) => new Date(f.uploaded_at));
+  if (!dates.length) return null;
+  const due = new Date(Math.min(...dates));
+  due.setMonth(due.getMonth() + 1);
+  return due;
 };
 
 const hasItems = (value) => Array.isArray(value) && value.length > 0;
@@ -38,13 +58,21 @@ export const isAvailable = (file) => !file.path.includes('amazonaws.com');
 
 export const applicationProgress = async (userId) => {
   const user = await Users.findByPk(userId, {
-    attributes: ['id', 'status', 'city', 'zipcode', 'activity'],
+    attributes: [
+      'id',
+      'status',
+      'city',
+      'zipcode',
+      'activity',
+      'convention_received',
+      'honorability_received',
+    ],
   });
   if (!user) return null;
   const skill = await Skills.findOne({ where: { userId } });
   const files = await Files.findAll({
     where: { userId },
-    attributes: ['path', 'doc_type'],
+    attributes: ['path', 'doc_type', 'uploaded_at'],
   });
   const has = (type) =>
     files.some((f) => f.doc_type === type && isAvailable(f));
@@ -61,7 +89,15 @@ export const applicationProgress = async (userId) => {
   };
   const profile = details.address && details.activity;
   const wishes = details.topics && details.slots && details.places;
-  const documents = { cv: has('cv'), id: has('id'), b3: has('b3') };
+  const documents = {
+    cv: has('cv'),
+    id: has('id'),
+    b3: has('b3'),
+    // Received as a file or on paper (ticked by an admin)
+    honorability: !!user.honorability_received || has('honorability'),
+  };
+  const conventionSigned = !!user.convention_received || has('convention');
+  const due = honorabilityDeadline(files);
   // The criminal record (B3) is only needed for the final validation
   const readyToSubmit = profile && wishes && documents.cv && documents.id;
 
@@ -71,6 +107,8 @@ export const applicationProgress = async (userId) => {
     wishes,
     documents,
     details,
+    conventionSigned,
+    honorabilityDue: due,
     readyToSubmit,
     canSubmit: readyToSubmit && EARLY_STATUSES.includes(user.status),
   };
@@ -153,7 +191,12 @@ export const documentsStatus = async (userId) => {
       received: !!file || paper.includes(type),
     };
   });
-  return { documents, test_voltaire_passed: !!user.test_voltaire_passed };
+  const due = honorabilityDeadline(files);
+  return {
+    documents,
+    test_voltaire_passed: !!user.test_voltaire_passed,
+    honorability_due: due,
+  };
 };
 
 export const setPaperDocument = async (userId, type, received) => {
@@ -209,7 +252,7 @@ export const submitApplication = async (userId) => {
     ${
       progress.documents.b3
         ? ''
-        : "<p>Pour la validation finale, il vous sera demandé un extrait de casier judiciaire (B3) : vous pouvez dès maintenant le demander en ligne et le déposer dans l'onglet « Mes documents ».</p>"
+        : "<p>Avant la signature de la convention, il vous sera demandé un extrait de casier judiciaire (B3) : vous pouvez dès maintenant le demander en ligne et le déposer dans l'onglet « Mes documents ».</p>"
     }
     <p>À très vite,<br>L'équipe MyCogniverse</p>`
   ).catch((err) =>
