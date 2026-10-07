@@ -2,6 +2,7 @@ import { Op, literal } from 'sequelize';
 import jwt from 'jsonwebtoken';
 import Users from '../models/users.model.js';
 import sendEmail from '../config/sendEmails.js';
+import { formatName } from '../services/names.js';
 
 export const ROLES = ['volunteer', 'interviewer', 'admin', 'superadmin'];
 
@@ -27,12 +28,6 @@ const STAFF_ROLE_LABELS = {
 
 const clientUrl = () =>
   (process.env.CLIENT_URL || 'https://www.mycogniverse.org').replace(/\/$/, '');
-
-const capitalize = (name) =>
-  name
-    .trim()
-    .toLowerCase()
-    .replace(/(^|[\s-])\S/g, (letter) => letter.toUpperCase());
 
 // Same secret as the password reset: the link stops working once a
 // password has been chosen (the stored hash changes)
@@ -164,8 +159,8 @@ export const inviteMember = async (req, res) => {
     const inviter = await Users.findByPk(req.user.userid);
     const member = await Users.create({
       email,
-      first_name: capitalize(first_name),
-      last_name: capitalize(last_name),
+      first_name: formatName(first_name),
+      last_name: formatName(last_name),
       role,
       password: null,
     });

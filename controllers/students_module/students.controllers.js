@@ -4,32 +4,11 @@ import axios from 'axios';
 
 import Students from '../../models/students/students.model.js';
 import StudentFiles from '../../models/students/studentsFiles.model.js';
+import { formatName } from '../../services/names.js';
 
 dotenv.config();
 
 // Function to capitalize the first letter of a string
-const capitalizeString = (str) => {
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-};
-
-const capitalizeFamilyName = (fullname) => {
-  const nameParts = fullname.split(/[\s-]+/);
-  if (nameParts.length < 2) {
-    return capitalizeString(fullname);
-  }
-
-  // Capitalize composed names
-  const capitalizedNames = nameParts.map(
-    (part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
-  );
-
-  // Reconstruct the name
-  const separator = fullname.includes('-') ? '-' : ' ';
-  const capitalizedFullname = capitalizedNames.join(separator);
-
-  return capitalizedFullname;
-};
-
 export const getAllStudents = async (req, res) => {
   // console.log('Reached all users', req);
   try {
@@ -110,8 +89,8 @@ export const addStudent = async (req, res) => {
     const { first_name, last_name, ...otherFields } = req.body;
 
     // Capitalize first_name and last_name
-    const capitalizedFirstName = capitalizeFamilyName(first_name);
-    const capitalizedLastName = capitalizeFamilyName(last_name);
+    const capitalizedFirstName = formatName(first_name);
+    const capitalizedLastName = formatName(last_name);
     const newStudent = await Students.create({
       first_name: capitalizedFirstName,
       last_name: capitalizedLastName,
@@ -162,7 +141,12 @@ export const updateStudent = async (req, res) => {
     }
 
     // Update the student with the data from req.body
-    await student.update(req.body);
+    // Same way of writing names as everywhere else
+    const changes = { ...req.body };
+    for (const field of ['first_name', 'last_name']) {
+      if (field in changes) changes[field] = formatName(changes[field]);
+    }
+    await student.update(changes);
 
     // Fetch the updated student to return the most current data
     const updatedStudent = await Students.findByPk(id);

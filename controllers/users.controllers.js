@@ -24,32 +24,11 @@ import {
 const MOTIVATION_MIN = 15;
 const MOTIVATION_MAX = 1000;
 import { deleteStoredFile } from '../config/aws.config.js';
+import { formatName } from '../services/names.js';
 
 dotenv.config();
 
 // Function to capitalize the first letter of a string
-const capitalizeString = (str) => {
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-};
-
-const capitalizeFamilyName = (fullname) => {
-  const nameParts = fullname.split(/[\s-]+/);
-  if (nameParts.length < 2) {
-    return capitalizeString(fullname);
-  }
-
-  // Capitalize composed names
-  const capitalizedNames = nameParts.map(
-    (part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
-  );
-
-  // Reconstruct the name
-  const separator = fullname.includes('-') ? '-' : ' ';
-  const capitalizedFullname = capitalizedNames.join(separator);
-
-  return capitalizedFullname;
-};
-
 export const gotoHomePage = async (req, res) => {
   try {
     const missions = await Missions.findAll({
@@ -210,8 +189,8 @@ export const register = async (req, res) => {
     }
 
     const newDate = addHours(new Date(birth_date), 2);
-    const firstname = capitalizeFamilyName(first_name);
-    const lastname = capitalizeFamilyName(last_name);
+    const firstname = formatName(first_name);
+    const lastname = formatName(last_name);
     const salt = await bcrypt.genSalt();
     const hashPassword = await bcrypt.hash(password, salt);
 
@@ -720,10 +699,10 @@ export const updateUserProfile = async (req, res) => {
 
     // Update only the provided fields
     if (first_name) {
-      userProfile.first_name = first_name;
+      userProfile.first_name = formatName(first_name);
     }
     if (last_name) {
-      userProfile.last_name = last_name;
+      userProfile.last_name = formatName(last_name);
     }
     // The alternative e-mail is optional: an empty value removes it
     if (email2 !== undefined) {
