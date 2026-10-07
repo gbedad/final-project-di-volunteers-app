@@ -24,6 +24,8 @@ const Binomes = db.define(
     decline_reason: { type: DataTypes.TEXT },
     ended_at: { type: DataTypes.DATE },
     end_reason: { type: DataTypes.TEXT },
+    // Last monthly reminder sent to the tutor (no session report)
+    reminded_at: { type: DataTypes.DATE },
   },
   { timestamps: false }
 );

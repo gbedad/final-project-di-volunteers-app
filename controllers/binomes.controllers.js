@@ -5,6 +5,9 @@ import Binomes from '../models/binomes.model.js';
 import Users from '../models/users.model.js';
 import Students from '../models/students/students.model.js';
 import { findTutors, OPEN_PAIR_STATUSES } from '../services/matching.js';
+import Seances from '../models/seances.model.js';
+import { pairStats, ATTENDANCES } from '../services/followUp.js';
+import { MANAGER_ROLES } from '../middlewares/authAdmin.js';
 import {
   notifyPairProposed,
   notifyPairAnswered,
@@ -31,7 +34,64 @@ const syncStudentStatus = async (studentId) => {
   }
 };
 
+// Reports of several pairs, grouped by pair
+const sessionsByPair = async (pairIds) => {
+  const sessions = pairIds.length
+    ? await Seances.findAll({
+        where: { binome_id: { [Op.in]: pairIds } },
+        order: [['date', 'DESC'], ['id', 'DESC']],
+        raw: true,
+      })
+    : [];
+  const groups = {};
+  for (const session of sessions) {
+    (groups[session.binome_id] = groups[session.binome_id] || []).push(session);
+  }
+  return groups;
+};
+
 // ---- Team ----
+
+// Every pair with its student, tutor, figures and alerts (page "Binômes")
+export const listPairs = async (req, res) => {
+  try {
+    const pairs = await Binomes.findAll({ order: [['proposed_at', 'DESC']], raw: true });
+    const students = await Students.findAll({
+      where: { id: [...new Set(pairs.map((p) => p.student_id))] },
+      attributes: ['id', 'first_name', 'last_name', 'level', 'is_demo'],
+      raw: true,
+    });
+    const tutors = await Users.findAll({
+      where: { id: [...new Set(pairs.map((p) => p.tutor_id).filter(Boolean))] },
+      attributes: ['id', 'first_name', 'last_name'],
+      raw: true,
+    });
+    const sessions = await sessionsByPair(pairs.map((p) => p.id));
+    res.json(
+      pairs.map((p) => ({
+        ...p,
+        student: students.find((x) => x.id === p.student_id) || null,
+        tutor: tutors.find((x) => x.id === p.tutor_id) || null,
+        stats: pairStats(p, sessions[p.id] || []),
+      }))
+    );
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: 'Could not list the pairs' });
+  }
+};
+
+export const pairSessions = async (req, res) => {
+  try {
+    const pair = await Binomes.findByPk(req.params.id, { raw: true });
+    if (!pair) return res.status(404).json({ error: 'Binôme introuvable' });
+    const sessions = (await sessionsByPair([pair.id]))[pair.id] || [];
+    res.json({ sessions, stats: pairStats(pair, sessions) });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: 'Could not list the reports' });
+  }
+};
 
 export const getMatches = async (req, res) => {
   try {
@@ -56,10 +116,12 @@ export const listStudentPairs = async (req, res) => {
       attributes: TUTOR_FIELDS,
       raw: true,
     });
+    const sessions = await sessionsByPair(pairs.map((p) => p.id));
     res.json(
       pairs.map((p) => ({
         ...p,
         tutor: tutors.find((t) => t.id === p.tutor_id) || null,
+        stats: pairStats(p, sessions[p.id] || []),
       }))
     );
   } catch (err) {
@@ -175,11 +237,14 @@ export const myPairs = async (req, res) => {
       ],
       raw: true,
     });
+    const sessions = await sessionsByPair(pairs.map((p) => p.id));
     res.json(
       pairs.map((p) => {
         const s = students.find((x) => x.id === p.student_id) || {};
         return {
           ...p,
+          sessions: sessions[p.id] || [],
+          stats: pairStats(p, sessions[p.id] || []),
           student: {
             first_name: s.first_name,
             initial: s.last_name ? `${s.last_name[0]}.` : '',
@@ -226,5 +291,62 @@ export const answerPair = async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "La réponse n'a pas pu être enregistrée" });
+  }
+};
+
+// Body: { date, duration_minutes, attendance, work, progress, remark }
+export const addSession = async (req, res) => {
+  try {
+    const pair = await Binomes.findByPk(req.params.id);
+    if (!pair || pair.tutor_id !== me(req)) {
+      return res.status(404).json({ error: 'Binôme introuvable' });
+    }
+    if (!['actif', 'en pause'].includes(pair.status)) {
+      return res
+        .status(409)
+        .json({ error: 'Ce binôme n’est pas en cours' });
+    }
+    const { date, attendance } = req.body;
+    if (!date || new Date(date) > new Date()) {
+      return res.status(400).json({ error: 'Date de séance invalide' });
+    }
+    if (!ATTENDANCES.includes(attendance)) {
+      return res.status(400).json({ error: 'Présence invalide' });
+    }
+    const duration = Number(req.body.duration_minutes) || null;
+    const progress = Number(req.body.progress) || null;
+    const session = await Seances.create({
+      binome_id: pair.id,
+      author_id: me(req),
+      date,
+      attendance,
+      duration_minutes:
+        attendance === 'présent' && duration ? Math.min(Math.max(duration, 15), 600) : null,
+      progress: progress && progress >= 1 && progress <= 5 ? progress : null,
+      work: req.body.work?.trim() || null,
+      remark: req.body.remark?.trim() || null,
+    });
+    res.status(201).json(session);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Le compte-rendu n'a pas pu être enregistré" });
+  }
+};
+
+// The tutor can remove a report written in the last 30 days; admins any
+export const deleteSession = async (req, res) => {
+  try {
+    const session = await Seances.findByPk(req.params.id);
+    if (!session) return res.status(404).json({ error: 'Compte-rendu introuvable' });
+    const manager = MANAGER_ROLES.includes(req.user?.role);
+    const recent = Date.now() - new Date(session.created_at) < 30 * 86400000;
+    if (!manager && (session.author_id !== me(req) || !recent)) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    await session.destroy();
+    res.json({ deleted: session.id });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Le compte-rendu n'a pas pu être supprimé" });
   }
 };

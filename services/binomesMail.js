@@ -64,3 +64,20 @@ export const notifyPairAnswered = (tutor, student, binome) =>
     <p>${emailButton(`${clientUrl()}/login?eleve=${student.id}`, "Voir la fiche de l'élève")}</p>`,
     'Pair answered'
   );
+
+// No session report for a month: reminder to the tutor
+export const notifySessionReminder = (tutor, student, lastReport) =>
+  send(
+    tutor.email2 || tutor.email,
+    `Comment se passe le tutorat avec ${student.first_name} ?`,
+    `<p>Bonjour ${escapeHtml(tutor.first_name)},</p>
+    <p>${
+      lastReport
+        ? `Votre dernier compte-rendu pour ${escapeHtml(student.first_name)} date du ${new Date(lastReport).toLocaleDateString('fr-FR')}.`
+        : `Nous n'avons pas encore de compte-rendu pour ${escapeHtml(student.first_name)}.`
+    } Pourriez-vous nous dire en quelques mots comment se passent les séances ?</p>
+    <p>Un compte-rendu par mois suffit (date, durée, ce que vous avez travaillé, comment va l'élève) : cela ne prend qu'une minute, depuis l'onglet « Mes élèves » de votre espace.</p>
+    <p>${emailButton(`${clientUrl()}/login?onglet=eleves`, 'Écrire mon compte-rendu')}</p>
+    <p>Merci pour votre engagement,<br>L'équipe MyCogniverse</p>`,
+    'Session reminder'
+  );
