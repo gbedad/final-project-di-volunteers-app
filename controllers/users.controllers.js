@@ -25,6 +25,7 @@ const MOTIVATION_MIN = 15;
 const MOTIVATION_MAX = 1000;
 import { deleteStoredFile } from '../config/aws.config.js';
 import { formatName } from '../services/names.js';
+import { availabilityOf, usedPlaces } from '../services/availability.js';
 
 dotenv.config();
 
@@ -72,6 +73,7 @@ export const getUsers = async (req, res) => {
         'is_available',
         'genre',
         'cohorte_year',
+        'unavailable_until',
       ],
       include: ['mission', 'skill', 'file'],
       where: {
@@ -79,8 +81,14 @@ export const getUsers = async (req, res) => {
       },
       order: [['created_at', 'desc']],
     });
-    // console.log(users);
-    res.json(users);
+    // Can each tutor take a new student now (computed)
+    const used = await usedPlaces(users.map((u) => u.id));
+    res.json(
+      users.map((u) => {
+        const user = u.toJSON();
+        return { ...user, availability: availabilityOf(user, used[u.id] || 0) };
+      })
+    );
     // if (users.role === 'volunteer') {
     //     res.json(users)
     // }
@@ -382,7 +390,10 @@ export async function getUserById(req, res) {
       });
     }
 
-    return res.json(user);
+    // Can this tutor take a new student now (computed)
+    const data = user.toJSON();
+    const used = await usedPlaces([user.id]);
+    return res.json({ ...data, availability: availabilityOf(data, used[user.id] || 0) });
   } catch (err) {
     console.error(err);
     return res.status(500).json({
@@ -884,5 +895,28 @@ export const updateUserAvailability = async (req, res) => {
     res
       .status(500)
       .json({ message: 'An error occurred while updating user availability' });
+  }
+};
+
+// Body: { until: 'YYYY-MM-DD' } or { until: null }: the tutor is not
+// available for a new student until that date (by the tutor or the team)
+export const setUnavailableUntil = async (req, res) => {
+  const { until } = req.body;
+  if (until !== null && !/^\d{4}-\d{2}-\d{2}$/.test(String(until))) {
+    return res.status(400).json({ error: 'Date invalide' });
+  }
+  if (until && until < new Date().toISOString().slice(0, 10)) {
+    return res.status(400).json({ error: 'La date est déjà passée' });
+  }
+  try {
+    const [updated] = await Users.update(
+      { unavailable_until: until || null },
+      { where: { id: req.params.id, role: 'volunteer' } }
+    );
+    if (!updated) return res.status(404).json({ error: 'Bénévole introuvable' });
+    res.json({ unavailable_until: until || null });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "La disponibilité n'a pas pu être enregistrée" });
   }
 };

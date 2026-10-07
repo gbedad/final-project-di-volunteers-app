@@ -2,6 +2,7 @@
 // their skills (read only)
 import Users from '../models/users.model.js';
 import StatusChanges from '../models/statusChanges.model.js';
+import { availabilityOf, usedPlaces } from './availability.js';
 
 export const LEVELS = [
   'CP',
@@ -325,6 +326,7 @@ export const computeAnalytics = async ({ scope = 'active' } = {}) => {
       'is_active',
       'created_at',
       'updated_at',
+      'unavailable_until',
     ],
     include: ['skill', 'mission'],
   });
@@ -334,9 +336,14 @@ export const computeAnalytics = async ({ scope = 'active' } = {}) => {
   const changes = await StatusChanges.findAll({ raw: true }).catch(() => []);
   const inScope = SCOPES[scope] || SCOPES.active;
   const tutors = volunteers.filter(inScope);
+  // Tutors who can take a new student now (whatever the scope)
+  const used = await usedPlaces(volunteers.map((v) => v.id));
+  const available = volunteers.filter(
+    (v) => availabilityOf(v, used[v.id] || 0).state === 'available'
+  ).length;
   return {
     scope: SCOPES[scope] ? scope : 'active',
-    tutors: tutorsSection(tutors),
+    tutors: { ...tutorsSection(tutors), available },
     supply: supplySection(tutors),
     recruitment: recruitmentSection(volunteers, changes),
   };

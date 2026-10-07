@@ -93,7 +93,7 @@ export const conventionState = (files, receivedOnPaper = false) => {
 const REMOTE_OK = ['A distance', 'Sur site ou à distance'];
 // "Modalités et lieux" is filled in with a remote-compatible modality, or
 // with at least one site
-const placesFilled = (skill) =>
+export const placesFilled = (skill) =>
   REMOTE_OK.includes(skill.how_location) ||
   (skill.where_location || []).some(Boolean);
 

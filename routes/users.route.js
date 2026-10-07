@@ -21,6 +21,7 @@ import {
   refreshTokenFunc,
   updateUserAvailability,
   bulkUpdateUsers,
+  setUnavailableUntil,
 } from '../controllers/users.controllers.js';
 import {
   adminAuth,
@@ -102,6 +103,8 @@ router.post('/forgot-password', forgotPassword);
 router.get('/reset-password/:id/:token', resetPasswordVerify);
 router.post('/reset-password/:id/:token', renewPassword);
 router.patch('/update-availability', selfOrAdminBody(), updateUserAvailability);
+// Not available for a new student until a date (tutor or team)
+router.patch('/users/:id/unavailable', selfOrAdmin('id'), setUnavailableUntil);
 
 // Cohorts of a volunteer (academic years)
 router.get('/admin/users/:userId/cohorts', adminAuth, getCohorts);

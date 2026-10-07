@@ -4,6 +4,7 @@ import { Op } from 'sequelize';
 import Users from '../models/users.model.js';
 import Binomes from '../models/binomes.model.js';
 import { LEVELS } from './analytics.js';
+import { isPaused } from './availability.js';
 
 // Pairs that use one of the tutor's places
 export const OPEN_PAIR_STATUSES = ['proposé', 'actif', 'en pause'];
@@ -80,7 +81,15 @@ export const findTutors = async (student, { scope = 'active' } = {}) => {
   if (scope === 'active') where.is_active = true;
   const tutors = await Users.findAll({
     where,
-    attributes: ['id', 'first_name', 'last_name', 'email', 'is_active', 'city'],
+    attributes: [
+      'id',
+      'first_name',
+      'last_name',
+      'email',
+      'is_active',
+      'city',
+      'unavailable_until',
+    ],
     include: ['skill'],
   });
   const openPairs = await Binomes.findAll({
@@ -93,7 +102,8 @@ export const findTutors = async (student, { scope = 'active' } = {}) => {
   const studentLevel = levelIndex(student.level);
   const wanted = (student.topics || []).filter((t) => t?.subject);
 
-  const results = tutors.map((tutor) => {
+  // Tutors unavailable for a while are not proposed
+  const results = tutors.filter((t) => !isPaused(t)).map((tutor) => {
     const skill = tutor.skill || {};
     const topics = (skill.topics || []).map(parse).filter(Boolean);
     // Subjects: taught by the tutor at the student's level
