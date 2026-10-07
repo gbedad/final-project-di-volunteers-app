@@ -29,7 +29,7 @@ const Students = db.define(
     },
     status: {
       type: DataTypes.STRING,
-      defaultValue: 'Compte créé',
+      defaultValue: 'Nouvelle demande',
     },
     is_active: {
       type: DataTypes.BOOLEAN,
@@ -141,6 +141,41 @@ const Students = db.define(
     school_history: {
       type: DataTypes.JSON,
       defaultValue: null,
+    },
+    // Who referred the student (school, social worker, family…) and contact
+    referral_source: {
+      type: DataTypes.STRING,
+    },
+    referral_contact: {
+      type: DataTypes.STRING,
+    },
+    // Remise à niveau, méthodologie, préparation du brevet…
+    goals: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      defaultValue: [],
+    },
+    needs: {
+      type: DataTypes.TEXT,
+    },
+    // Health-related information (dys…): only seen by the team
+    special_needs: {
+      type: DataTypes.TEXT,
+    },
+    // Same modalities as the tutors (sur site, à distance…)
+    how_location: {
+      type: DataTypes.STRING,
+    },
+    // Lycée: générale, technologique, professionnelle
+    track: {
+      type: DataTypes.STRING,
+    },
+    parental_consent_at: {
+      type: DataTypes.DATE,
+    },
+    // Fictitious student used to try the features (removable at once)
+    is_demo: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
     file_name: {
       type: DataTypes.STRING,

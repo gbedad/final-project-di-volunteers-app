@@ -15,7 +15,15 @@ import {
   updateStudentHistory,
   addStudentInternalThread,
 } from '../../controllers/students_module/students.controllers.js';
-import { adminAuth } from '../../middlewares/authAdmin.js';
+import { adminAuth, managerAuth } from '../../middlewares/authAdmin.js';
+import {
+  listStudents,
+  getStudent,
+  createStudent,
+  updateStudentFields,
+  deleteStudentRecord,
+  searchSchools,
+} from '../../controllers/students_module/admin-students.controllers.js';
 
 const router = express.Router();
 
@@ -51,5 +59,13 @@ router.post(
   adminAuth,
   addStudentInternalThread
 );
+
+// Admin pages "Élèves": the team reads, admins enter and edit
+router.get('/admin/students', adminAuth, listStudents);
+router.post('/admin/students', managerAuth, createStudent);
+router.get('/admin/students/:id', adminAuth, getStudent);
+router.patch('/admin/students/:id', managerAuth, updateStudentFields);
+router.delete('/admin/students/:id', managerAuth, deleteStudentRecord);
+router.get('/admin/schools', adminAuth, searchSchools);
 
 export default router;
