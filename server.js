@@ -17,6 +17,7 @@ import users_router from './routes/users.route.js';
 import files_router from './routes/files.route.js';
 import skills_router from './routes/skills.route.js';
 import missions_router from './routes/missions.route.js';
+import binomes_router from './routes/binomes.route.js';
 
 import students_router from './routes/students_routes/students.route.js';
 import student_files_router from './routes/students_routes/student-files.route.js';
@@ -56,6 +57,7 @@ app.use(users_router);
 app.use(files_router);
 app.use(skills_router);
 app.use(missions_router);
+app.use(binomes_router);
 
 app.use(students_router);
 app.use(student_files_router);
