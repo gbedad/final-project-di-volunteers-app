@@ -270,6 +270,13 @@ export const login = async (req, res) => {
     });
     const match = await bcrypt.compare(req.body.password, user.password);
     if (!match) return res.status(400).json({ msg: 'Wrong password' });
+    // Former volunteer: account kept, but no access any more
+    if (user.status === 'Archivé') {
+      return res.status(403).json({
+        code: 'archived',
+        msg: "Votre compte est archivé. Pour reprendre votre engagement, contactez l'association.",
+      });
+    }
     const userid = user.id;
     const email = user.email;
     const role = user.role;

@@ -93,7 +93,8 @@ const profileOf = (user) => {
 const SCOPES = {
   active: (u) => u.is_active === true,
   validated: (u) => u.status === 'Validé',
-  all: () => true,
+  // Archived volunteers no longer count in the tutors' figures
+  all: (u) => u.status !== 'Archivé',
 };
 
 const tutorsSection = (tutors) => {

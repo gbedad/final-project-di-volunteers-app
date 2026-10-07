@@ -66,6 +66,13 @@ const Users = db.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    // Former volunteer kept without deleting the account (status "Archivé")
+    archived_at: {
+      type: DataTypes.DATE,
+    },
+    archive_reason: {
+      type: DataTypes.TEXT,
+    },
     // Attestation d'honorabilité, due one month after the convention
     honorability_received: {
       type: DataTypes.BOOLEAN,

@@ -42,6 +42,11 @@ import {
   updateCohorts,
 } from '../controllers/cohorts.controllers.js';
 import {
+  archive,
+  unarchive,
+  archiveMany,
+} from '../controllers/archive.controllers.js';
+import {
   getAnalytics,
   getStudentAnalytics,
 } from '../controllers/analytics.controllers.js';
@@ -74,6 +79,10 @@ router.patch('/update-status/:id', adminAuth, updateById);
 router.patch('/update-active-user/:id', adminAuth, setActiveUser);
 // Dashboard: change the status / active flag of several volunteers
 router.patch('/admin/users/bulk', managerAuth, bulkUpdateUsers);
+// Former volunteers: archived (account kept, no login), or back
+router.post('/admin/users/bulk-archive', managerAuth, archiveMany);
+router.post('/admin/users/:id/archive', managerAuth, archive);
+router.post('/admin/users/:id/unarchive', managerAuth, unarchive);
 router.post('/add-activity', selfOrAdminBody(), syncFromBody, saveActivity);
 router.post(
   '/update-address',

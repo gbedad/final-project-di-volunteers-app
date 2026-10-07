@@ -37,10 +37,14 @@ export function verifyToken(req, res, next) {
       // The role in the token may be outdated: always use the current one,
       // so that removing someone's rights takes effect immediately
       const current = await Users.findByPk(user.userid ?? user.userId, {
-        attributes: ['id', 'role'],
+        attributes: ['id', 'role', 'status'],
       });
       if (!current) {
         return res.status(401).json({ message: 'Not authorized' });
+      }
+      // An archived volunteer's session stops working at once
+      if (current.role === 'volunteer' && current.status === 'Archivé') {
+        return res.status(403).json({ code: 'archived', message: 'Compte archivé' });
       }
       req.user = { ...user, userid: current.id, role: current.role };
       next();

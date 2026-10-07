@@ -8,6 +8,7 @@ import { findTutors, OPEN_PAIR_STATUSES } from '../services/matching.js';
 import Seances from '../models/seances.model.js';
 import { pairStats, ATTENDANCES } from '../services/followUp.js';
 import { MANAGER_ROLES } from '../middlewares/authAdmin.js';
+import { onMembershipChange } from '../services/cohorts.js';
 import {
   notifyPairProposed,
   notifyPairAnswered,
@@ -201,7 +202,23 @@ export const updatePair = async (req, res) => {
     }
     await binome.update(changes);
     await syncStudentStatus(binome.student_id);
-    res.json(binome);
+    // No student left: the admin is asked whether the tutor stays active
+    let tutorFree = null;
+    if (['end', 'cancel'].includes(req.body.action) && binome.tutor_id) {
+      const open = await Binomes.count({
+        where: {
+          tutor_id: binome.tutor_id,
+          status: { [Op.in]: OPEN_PAIR_STATUSES },
+        },
+      });
+      const tutor = await Users.findByPk(binome.tutor_id, {
+        attributes: ['id', 'first_name', 'last_name', 'is_active'],
+      });
+      if (!open && tutor?.is_active) {
+        tutorFree = { id: tutor.id, name: fullName(tutor) };
+      }
+    }
+    res.json({ ...binome.toJSON(), tutorFree });
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "Le binôme n'a pas pu être modifié" });
@@ -282,6 +299,14 @@ export const answerPair = async (req, res) => {
       decline_reason: req.body.accept ? null : req.body.reason || null,
     });
     await syncStudentStatus(binome.student_id);
+    // A tutor who takes a student is an active tutor (cohort of the year too)
+    if (req.body.accept) {
+      const [updated] = await Users.update(
+        { is_active: true },
+        { where: { id: binome.tutor_id, is_active: { [Op.not]: true } } }
+      );
+      if (updated) await onMembershipChange(binome.tutor_id);
+    }
     res.json(binome);
     const tutor = await Users.findByPk(binome.tutor_id, { attributes: TUTOR_FIELDS });
     const student = await Students.findByPk(binome.student_id, {
