@@ -13,6 +13,7 @@ import db from './config/database.js';
 import corsOptions from './config/cors.js';
 import { scheduleCohortRenewal } from './services/cohorts.js';
 import { scheduleSessionReminders } from './services/followUp.js';
+import { scheduleConsentReminders } from './services/parentalConsent.js';
 
 import users_router from './routes/users.route.js';
 import files_router from './routes/files.route.js';
@@ -85,6 +86,7 @@ try {
 scheduleCohortRenewal();
 // Monthly session report reminders to the tutors (checked every 6 hours)
 scheduleSessionReminders();
+scheduleConsentReminders();
 
 app.listen(process.env.PORT || 3030, () => {
   console.log(`server running on port ${process.env.PORT}`);

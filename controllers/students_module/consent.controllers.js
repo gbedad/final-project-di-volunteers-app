@@ -9,19 +9,17 @@ import ParentalConsents from '../../models/students/parentalConsents.model.js';
 import Users from '../../models/users.model.js';
 import { formatName } from '../../services/names.js';
 import {
-  LINK_DAYS,
   MAX_ATTEMPTS,
   RELATIONS,
   TEXTS_VERSION,
   buildConsentPdf,
   consentItems,
-  consentLink,
   consentState,
+  consentOverview,
+  createConsentRequest,
   hashToken,
-  newToken,
-  parentName,
   parentOf,
-  sendConsentRequest,
+  parentWithEmail,
   sendSignedEmails,
   storeConsentPdf,
   whatsappMessage,
@@ -97,32 +95,12 @@ export const requestConsent = async (req, res) => {
     if (channel === 'whatsapp' && !parent.phone) {
       return res.status(400).json({ error: "Ce responsable n'a pas de téléphone" });
     }
-    // A new link replaces the ones still waiting
-    await ParentalConsents.update(
-      { cancelled_at: new Date() },
-      {
-        where: {
-          student_id: student.id,
-          signed_at: null,
-          cancelled_at: null,
-        },
-      }
-    );
-    const token = newToken();
-    const expiresAt = new Date(Date.now() + LINK_DAYS * 86400000);
-    const row = await ParentalConsents.create({
-      student_id: student.id,
-      token_hash: hashToken(token),
+    const { row, link, expiresAt } = await createConsentRequest({
+      student,
+      n,
       channel,
-      sent_to: channel === 'email' ? parent.email : parent.phone,
-      parent_name: parentName(parent) || null,
-      requested_by: userIdOf(req),
-      expires_at: expiresAt,
+      requestedBy: userIdOf(req),
     });
-    const link = consentLink(token);
-    if (channel === 'email') {
-      sendConsentRequest({ parent, student, link, expiresAt });
-    }
     const me = await Users.findByPk(userIdOf(req), { attributes: ['first_name'] });
     res.status(201).json({
       ...publicRow(row),
@@ -133,6 +111,41 @@ export const requestConsent = async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "La demande n'a pas pu être créée" });
+  }
+};
+
+// Body: { ids: [student ids] }. An e-mail to the first responsible with an
+// address; students already signed or waiting are left out
+export const bulkRequestConsents = async (req, res) => {
+  const ids = (req.body.ids || []).map(Number).filter(Boolean).slice(0, 200);
+  const result = { sent: [], no_email: [], skipped: [] };
+  try {
+    const students = await Students.findAll({ where: { id: { [Op.in]: ids } } });
+    const overview = await consentOverview(students);
+    for (const student of students) {
+      const name = `${student.first_name} ${student.last_name || ''}`.trim();
+      const state = overview[student.id]?.state;
+      if (state !== 'missing') {
+        result.skipped.push({ id: student.id, name, state });
+        continue;
+      }
+      const n = parentWithEmail(student);
+      if (!n) {
+        result.no_email.push({ id: student.id, name });
+        continue;
+      }
+      const { parent } = await createConsentRequest({
+        student,
+        n,
+        channel: 'email',
+        requestedBy: userIdOf(req),
+      });
+      result.sent.push({ id: student.id, name, email: parent.email });
+    }
+    res.json(result);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Les demandes n'ont pas pu être envoyées", ...result });
   }
 };
 

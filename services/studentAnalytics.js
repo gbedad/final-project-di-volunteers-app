@@ -6,6 +6,7 @@ import Binomes from '../models/binomes.model.js';
 import Seances from '../models/seances.model.js';
 import { computeAnalytics, LEVELS } from './analytics.js';
 import { STUDENT_STATUSES } from './students.js';
+import { consentOverview } from './parentalConsent.js';
 
 const DAY = 86400000;
 const WAITING = ['Nouvelle demande', 'En attente de tuteur'];
@@ -38,6 +39,7 @@ export const computeStudentAnalytics = async ({ includeDemo = false } = {}) => {
         'referral_source',
         'created_at',
         'is_demo',
+        'parental_consent_at',
       ],
     })
   ).map((s) => s.toJSON());
@@ -165,5 +167,19 @@ export const computeStudentAnalytics = async ({ includeDemo = false } = {}) => {
     byReferral: toList(countBy(students, (s) => s.referral_source)),
   };
 
-  return { requests, gap, pairs: pairsSection, profile };
+  // ---- Parental consent of the current requests ----
+  const overview = Object.values(await consentOverview(students)).filter(
+    (c) => c.needed
+  );
+  const consent = {
+    signed: overview.filter((c) => c.state === 'signed' || c.state === 'paper').length,
+    pending: overview.filter((c) => c.state === 'pending').length,
+    missing: overview.filter((c) => c.state === 'missing').length,
+    // A tutor proposed or working with the student, without the consent
+    pairsWithout: overview.filter(
+      (c) => c.open_pair && c.state !== 'signed' && c.state !== 'paper'
+    ).length,
+  };
+
+  return { requests, gap, pairs: pairsSection, profile, consent };
 };

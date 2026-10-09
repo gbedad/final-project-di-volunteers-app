@@ -63,4 +63,13 @@ export const LIST_FIELDS = [
   'is_demo',
   'parental_consent_at',
   'created_at',
+  // Responsibles: to ask for the consent from the list
+  'parent1_firstname',
+  'parent1_lastname',
+  'parent1_email',
+  'parent1_phone',
+  'parent2_firstname',
+  'parent2_lastname',
+  'parent2_email',
+  'parent2_phone',
 ];

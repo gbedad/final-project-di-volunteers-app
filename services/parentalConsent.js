@@ -5,10 +5,14 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { Op } from 'sequelize';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import s3, { PRIVATE_BUCKET } from '../config/aws.config.js';
 import sendEmail from '../config/sendEmails.js';
+import ParentalConsents from '../models/students/parentalConsents.model.js';
+import Students from '../models/students/students.model.js';
+import Binomes from '../models/binomes.model.js';
 import {
   adminEmails,
   clientUrl,
@@ -125,12 +129,19 @@ const send = (to, subject, html, label, attachments) =>
   );
 
 // Subject and body of the e-mail asking for the parent's consent
-export const consentRequestEmail = ({ parent, student, link, expiresAt }) => ({
-  subject: `Accompagnement scolaire de ${student.first_name} : votre accord`,
+// reminder: sent automatically when the first link was not used
+export const consentRequestEmail = ({ parent, student, link, expiresAt, reminder }) => ({
+  subject: `${reminder ? 'Rappel : ' : ''}Accompagnement scolaire de ${student.first_name} : votre accord`,
   html: `<p>Bonjour${parent.first_name ? ` ${escapeHtml(parent.first_name)}` : ''},</p>
-    <p>L'association Séphora Berrebi va proposer un accompagnement scolaire gratuit à <b>${escapeHtml(
-      student.first_name
-    )}</b>, assuré par un tuteur bénévole.</p>
+    ${
+      reminder
+        ? `<p>Il y a quelques jours, nous vous avons demandé votre accord pour l'accompagnement scolaire de <b>${escapeHtml(
+            student.first_name
+          )}</b>. Nous ne l'avons pas encore reçu : voici un nouveau lien.</p>`
+        : `<p>L'association Séphora Berrebi va proposer un accompagnement scolaire gratuit à <b>${escapeHtml(
+            student.first_name
+          )}</b>, assuré par un tuteur bénévole.</p>`
+    }
     <p>Avant de commencer, nous avons besoin de votre accord. Il vous suffit de lire, cocher et signer en ligne (environ 2 minutes, depuis votre téléphone ou votre ordinateur) :</p>
     <p>${emailButton(link, 'Donner mon accord')}</p>
     <p>Ce lien vous est personnel et reste valable jusqu'au ${frDate(expiresAt)}.</p>
@@ -340,3 +351,150 @@ export const storeConsentPdf = async (studentId, pdfBytes) => {
 };
 
 export { sendSignedEmails, parentName, frDate };
+
+// ---- Requests, overview of the students, automatic reminder ----
+
+// Students who need the consent: not the finished or abandoned requests
+export const CONSENT_STATUSES = [
+  'Nouvelle demande',
+  'En attente de tuteur',
+  'Binôme en cours',
+  'En pause',
+];
+const OPEN_PAIRS = ['proposé', 'actif', 'en pause'];
+export const REMINDER_DAYS = 7;
+
+// New link for responsible n of the student; the links still waiting are
+// replaced. requestedBy null means an automatic reminder.
+export const createConsentRequest = async ({
+  student,
+  n = 1,
+  channel = 'email',
+  requestedBy = null,
+}) => {
+  const parent = parentOf(student, n);
+  await ParentalConsents.update(
+    { cancelled_at: new Date() },
+    { where: { student_id: student.id, signed_at: null, cancelled_at: null } }
+  );
+  const token = newToken();
+  const expiresAt = new Date(Date.now() + LINK_DAYS * 86400000);
+  const row = await ParentalConsents.create({
+    student_id: student.id,
+    token_hash: hashToken(token),
+    channel,
+    sent_to: channel === 'email' ? parent.email : parent.phone,
+    parent_name: parentName(parent) || null,
+    requested_by: requestedBy,
+    expires_at: expiresAt,
+  });
+  const link = consentLink(token);
+  if (channel === 'email') {
+    const { subject, html } = consentRequestEmail({
+      parent,
+      student,
+      link,
+      expiresAt,
+      reminder: !requestedBy,
+    });
+    await send(parent.email, subject, html, 'Consent request');
+  }
+  return { row, link, parent, expiresAt };
+};
+
+// Responsible (1 or 2) who has an e-mail address, the first one by default
+export const parentWithEmail = (student) =>
+  [1, 2].find((n) => parentOf(student, n).email) || null;
+
+// State of the consent of each student, for the list and the analysis:
+// signed (online), paper, pending (link sent) or missing
+export const consentOverview = async (students) => {
+  const ids = students.map((s) => s.id);
+  if (!ids.length) return {};
+  const rows = await ParentalConsents.findAll({
+    where: { student_id: { [Op.in]: ids } },
+    attributes: { exclude: ['token_hash', 'choices', 'user_agent'] },
+    order: [['requested_at', 'DESC']],
+  });
+  const pairs = await Binomes.findAll({
+    where: { student_id: { [Op.in]: ids }, status: { [Op.in]: OPEN_PAIRS } },
+    attributes: ['student_id'],
+    raw: true,
+  });
+  const result = {};
+  for (const s of students) {
+    const mine = rows.filter((r) => r.student_id === s.id);
+    const signed = mine.find((r) => consentState(r) === 'signed');
+    const pending = mine.find((r) => consentState(r) === 'pending');
+    const last = mine[0];
+    let summary;
+    if (signed) {
+      summary = {
+        state: 'signed',
+        at: signed.signed_at,
+        signer_name: signed.signer_name,
+        signer_relation: signed.signer_relation,
+      };
+    } else if (s.parental_consent_at) {
+      summary = { state: 'paper', at: s.parental_consent_at };
+    } else if (pending) {
+      summary = {
+        state: 'pending',
+        at: pending.requested_at,
+        channel: pending.channel,
+        expires_at: pending.expires_at,
+        reminder: !pending.requested_by,
+      };
+    } else {
+      summary = {
+        state: 'missing',
+        last: last ? consentState(last) : null,
+        at: last ? last.requested_at : null,
+      };
+    }
+    summary.needed = CONSENT_STATUSES.includes(s.status);
+    summary.open_pair = pairs.some((p) => p.student_id === s.id);
+    result[s.id] = summary;
+  }
+  return result;
+};
+
+// One e-mail reminder, with a new link, for links sent by the team and not
+// signed after REMINDER_DAYS days (WhatsApp ones too, when the parent has an
+// e-mail address)
+export const remindConsents = async () => {
+  const due = await ParentalConsents.findAll({
+    where: {
+      signed_at: null,
+      cancelled_at: null,
+      requested_by: { [Op.ne]: null },
+      failed_attempts: { [Op.lt]: MAX_ATTEMPTS },
+      expires_at: { [Op.gt]: new Date() },
+      requested_at: { [Op.lte]: new Date(Date.now() - REMINDER_DAYS * 86400000) },
+    },
+  });
+  let sent = 0;
+  for (const row of due) {
+    const student = await Students.findByPk(row.student_id);
+    if (!student || student.parental_consent_at) continue;
+    if (!CONSENT_STATUSES.includes(student.status)) continue;
+    const n =
+      [1, 2].find((k) => {
+        const p = parentOf(student, k);
+        return row.channel === 'email' ? p.email === row.sent_to : p.phone === row.sent_to;
+      }) || parentWithEmail(student);
+    if (!n || !parentOf(student, n).email) continue;
+    await createConsentRequest({ student, n, channel: 'email', requestedBy: null });
+    sent += 1;
+  }
+  return sent;
+};
+
+export const scheduleConsentReminders = () => {
+  const run = () =>
+    remindConsents()
+      .then((n) => n && console.log(`Consent reminders sent: ${n}`))
+      .catch((err) => console.log('Consent reminders failed:', err.message));
+  setTimeout(run, 2 * 60 * 1000);
+  setInterval(run, 6 * 60 * 60 * 1000);
+};

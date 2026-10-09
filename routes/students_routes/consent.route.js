@@ -1,6 +1,7 @@
 import express from 'express';
 import { adminAuth, managerAuth } from '../../middlewares/authAdmin.js';
 import {
+  bulkRequestConsents,
   cancelConsent,
   getConsentPage,
   listConsents,
@@ -12,6 +13,7 @@ import {
 const router = express.Router();
 
 // Team
+router.post('/admin/consents/bulk', managerAuth, bulkRequestConsents);
 router.get('/admin/students/:id/consents', adminAuth, listConsents);
 router.post('/admin/students/:id/consents', managerAuth, requestConsent);
 router.post('/admin/students/:id/consents/:consentId/cancel', managerAuth, cancelConsent);

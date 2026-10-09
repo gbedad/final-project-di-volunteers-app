@@ -2,6 +2,7 @@
 import axios from 'axios';
 import Students from '../../models/students/students.model.js';
 import { formatName } from '../../services/names.js';
+import { consentOverview } from '../../services/parentalConsent.js';
 import {
   EDITABLE_FIELDS,
   LIST_FIELDS,
@@ -41,7 +42,8 @@ export const listStudents = async (req, res) => {
       attributes: LIST_FIELDS,
       order: [['created_at', 'DESC']],
     });
-    res.json(students.map((s) => s.toJSON()));
+    const consents = await consentOverview(students);
+    res.json(students.map((s) => ({ ...s.toJSON(), consent: consents[s.id] })));
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: 'Could not list the students' });
