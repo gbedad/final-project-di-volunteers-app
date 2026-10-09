@@ -7,7 +7,7 @@ import Seances from '../models/seances.model.js';
 import { computeAnalytics, LEVELS } from './analytics.js';
 import { STUDENT_STATUSES } from './students.js';
 import { consentOverview, CONSENT_STATUSES } from './parentalConsent.js';
-import { feeOf, termOf } from './fees.js';
+import { feeOf, termOf, TRANCHES } from './fees.js';
 
 const DAY = 86400000;
 const WAITING = ['Nouvelle demande', 'En attente de tuteur'];
@@ -216,6 +216,42 @@ export const computeStudentAnalytics = async ({ includeDemo = false } = {}) => {
   const fees = {
     term: term.label,
     byTranche: ORDER.filter((l) => tranches[l]).map((label) => ({ label, count: tranches[label] })),
+    // Every tranche, even empty: QF range, students, amounts of the term
+    table: [
+      ...TRANCHES.map((t, i) => ({
+        key: `T${t.tranche}`,
+        label: `Tranche ${t.tranche}`,
+        range: i === 0 ? `QF ≤ ${t.max} €` : `${TRANCHES[i - 1].max},01 à ${t.max} €`,
+        rate: `${t.term} € / trimestre · caution ${t.deposit} €`,
+        count: tranches[`Tranche ${t.tranche}`] || 0,
+        total: round(
+          withFee
+            .filter(({ fee }) => fee?.mode === 'term' && fee.tranche === t.tranche)
+            .reduce((n, { fee }) => n + fee.amount, 0)
+        ),
+      })),
+      {
+        key: 'T8',
+        label: 'Tranche 8 et plus',
+        range: 'QF > 2 500 €',
+        rate: "à l'heure, selon le niveau",
+        count: tranches['Tranche 8 et plus (à l’heure)'] || 0,
+      },
+      {
+        key: 'none',
+        label: 'QF non communiqué',
+        range: '—',
+        rate: "à l'heure, selon le niveau",
+        count: tranches['QF non communiqué (à l’heure)'] || 0,
+      },
+      {
+        key: 'unknown',
+        label: 'Non renseigné',
+        range: '—',
+        rate: '—',
+        count: tranches['Non renseigné'] || 0,
+      },
+    ],
     // Fixed amounts of the term (tranches 1-7) of the students with a pair
     termTotal: round(
       withFee
