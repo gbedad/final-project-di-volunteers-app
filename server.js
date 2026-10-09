@@ -22,6 +22,7 @@ import binomes_router from './routes/binomes.route.js';
 
 import students_router from './routes/students_routes/students.route.js';
 import student_files_router from './routes/students_routes/student-files.route.js';
+import consent_router from './routes/students_routes/consent.route.js';
 
 dotenv.config();
 
@@ -36,6 +37,8 @@ app.options('*', cors(corsOptions)); // Handle preflight requests
 app.use(cookieParser());
 
 app.use('/', express.static(__dirname + '/public'));
+// Parental consent signature: larger body (signature image), parsed first
+app.post('/consentement/:token', express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -62,6 +65,7 @@ app.use(binomes_router);
 
 app.use(students_router);
 app.use(student_files_router);
+app.use(consent_router);
 
 // Serve static files from the Next.js build directory
 app.use('/_next', express.static(path.join(__dirname, '.next')));

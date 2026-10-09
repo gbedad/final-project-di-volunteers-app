@@ -11,12 +11,14 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-async function send(receivers, subject, text) {
+// attachments (optional): [{ filename, content, contentType }]
+async function send(receivers, subject, text, attachments) {
   const result = await transporter.sendMail({
     from: 'MyCogniverse <gerald.berrebi@gmail.com>',
     to: receivers,
     subject: subject,
     html: text,
+    ...(attachments ? { attachments } : {}),
   });
 
   console.log(JSON.stringify(result, null, 4));
