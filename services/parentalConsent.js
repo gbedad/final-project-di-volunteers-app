@@ -67,10 +67,17 @@ export const consentItems = (child) => [
 
 // ---- Link keys ----
 
-export const newToken = () => crypto.randomBytes(24).toString('base64url');
+// Letters and digits only: messaging apps cut links ending with - or _
+export const newToken = () => crypto.randomBytes(24).toString('hex');
 export const hashToken = (token) =>
   crypto.createHash('sha256').update(String(token)).digest('hex');
-export const consentLink = (token) => `${clientUrl()}/consentement/${token}`;
+// Always the public site, even from a local server (same database): the
+// parent opens it on their phone, and WhatsApp only makes real domains
+// clickable (not localhost)
+const PUBLIC_URL = (
+  process.env.PUBLIC_CLIENT_URL || 'https://www.mycogniverse.org'
+).replace(/\/$/, '');
+export const consentLink = (token) => `${PUBLIC_URL}/consentement/${token}`;
 
 // pending, signed, revoked, cancelled, locked or expired
 export const consentState = (row) => {
@@ -106,7 +113,7 @@ export const whatsappMessage = ({ parent, student, me, link, expiresAt }) =>
     me?.first_name || ''
   } de l'association Séphora Berrebi. Pour commencer l'accompagnement scolaire de ${
     student.first_name
-  }, merci de donner votre accord en ligne (2 minutes) : ${link}\nCe lien est personnel et valable jusqu'au ${frDate(
+  }, merci de donner votre accord en ligne (2 minutes) :\n\n${link}\n\nCe lien est personnel et valable jusqu'au ${frDate(
     expiresAt
   )}.`;
 
