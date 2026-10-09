@@ -3,6 +3,11 @@ import axios from 'axios';
 import Students from '../../models/students/students.model.js';
 import { formatName } from '../../services/names.js';
 import { consentOverview } from '../../services/parentalConsent.js';
+import { feeOf, hoursByTerm, QF_PROOFS } from '../../services/fees.js';
+import Binomes from '../../models/binomes.model.js';
+import Seances from '../../models/seances.model.js';
+import StudentFiles from '../../models/students/studentsFiles.model.js';
+import { Op } from 'sequelize';
 import {
   EDITABLE_FIELDS,
   LIST_FIELDS,
@@ -23,6 +28,24 @@ const cleanChanges = (body) => {
     if (typeof value === 'string') value = value.trim() || null;
     changes[field] = value;
   }
+  // Amounts: a positive number or nothing ("1 234,50" accepted)
+  for (const field of ['qf', 'fee_override']) {
+    if (!(field in changes)) continue;
+    const v = changes[field];
+    const n =
+      v === null || v === undefined
+        ? null
+        : Number(String(v).replace(/\s/g, '').replace(',', '.'));
+    if (n === null || (Number.isFinite(n) && n >= 0 && n < 1000000)) {
+      changes[field] = n === null ? null : Math.round(n * 100) / 100;
+    } else {
+      delete changes[field];
+    }
+  }
+  if ('qf_proof' in changes && changes.qf_proof !== null && !QF_PROOFS[changes.qf_proof]) {
+    delete changes.qf_proof;
+  }
+  if ('fee_special' in changes) changes.fee_special = !!changes.fee_special;
   if ('status' in changes && !STUDENT_STATUSES.includes(changes.status)) {
     delete changes.status;
   }
@@ -43,10 +66,61 @@ export const listStudents = async (req, res) => {
       order: [['created_at', 'DESC']],
     });
     const consents = await consentOverview(students);
-    res.json(students.map((s) => ({ ...s.toJSON(), consent: consents[s.id] })));
+    res.json(
+      students.map((s) => {
+        const fee = feeOf(s);
+        return {
+          ...s.toJSON(),
+          consent: consents[s.id],
+          fee: fee && { mode: fee.mode, tranche: fee.tranche, amount: fee.amount, missing: fee.missing },
+        };
+      })
+    );
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: 'Could not list the students' });
+  }
+};
+
+// Participation of the student: amount, hours and amount due per term, proof
+const feeDetails = async (student) => {
+  const fee = feeOf(student);
+  const pairs = await Binomes.findAll({
+    where: { student_id: student.id },
+    attributes: ['id'],
+    raw: true,
+  });
+  const sessions = pairs.length
+    ? await Seances.findAll({
+        where: { binome_id: { [Op.in]: pairs.map((p) => p.id) } },
+        attributes: ['date', 'duration_minutes', 'attendance'],
+        raw: true,
+      })
+    : [];
+  const proof = student.qf_file_id
+    ? await StudentFiles.findByPk(student.qf_file_id, {
+        attributes: ['id', 'path', 'filename'],
+      })
+    : null;
+  return { fee, fee_terms: hoursByTerm(sessions, fee), qf_file: proof };
+};
+
+// Proof of the QF (CAF certificate or tax notice), kept with the student's
+// documents; a new one replaces the previous link
+export const qfProofUploaded = async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Aucun fichier' });
+  try {
+    const file = await StudentFiles.create({
+      filename: req.file.originalname,
+      mimetype: req.file.mimetype,
+      path: req.file.key,
+      studentId: req.params.studentId,
+    });
+    await Students.update({ qf_file_id: file.id }, { where: { id: req.params.studentId } });
+    res.json({ id: file.id, path: file.path, filename: file.filename });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Le justificatif n'a pas pu être enregistré" });
   }
 };
 
@@ -56,7 +130,7 @@ export const getStudent = async (req, res) => {
       attributes: { exclude: ['internal_thread', 'interviews', 'pre_interview'] },
     });
     if (!student) return res.status(404).json({ error: 'Élève introuvable' });
-    res.json(student.toJSON());
+    res.json({ ...student.toJSON(), ...(await feeDetails(student)) });
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: 'Could not load the student' });

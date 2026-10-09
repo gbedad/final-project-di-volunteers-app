@@ -26,6 +26,8 @@ const ParentalConsents = db.define(
     // { [item id]: { accepted, text } }: the texts as the parent saw them
     choices: { type: DataTypes.JSONB },
     texts_version: { type: DataTypes.STRING },
+    // Participation accepted by the parent, as computed when signing
+    fee: { type: DataTypes.JSONB },
     ip: { type: DataTypes.STRING },
     user_agent: { type: DataTypes.TEXT },
     // SHA-256 of the signed PDF

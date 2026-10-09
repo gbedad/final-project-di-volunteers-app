@@ -8,6 +8,7 @@ import StudentFiles from '../../models/students/studentsFiles.model.js';
 import ParentalConsents from '../../models/students/parentalConsents.model.js';
 import Users from '../../models/users.model.js';
 import { formatName } from '../../services/names.js';
+import { feeOf } from '../../services/fees.js';
 import {
   MAX_ATTEMPTS,
   RELATIONS,
@@ -201,9 +202,7 @@ export const getConsentPage = async (req, res) => {
         signed_at: state === 'signed' ? row.signed_at : undefined,
       });
     }
-    const student = await Students.findByPk(row.student_id, {
-      attributes: ['first_name', 'birth_date'],
-    });
+    const student = await Students.findByPk(row.student_id);
     if (!student) return res.status(404).json({ state: 'invalid' });
     res.json({
       state,
@@ -213,7 +212,7 @@ export const getConsentPage = async (req, res) => {
       needs_birth_date: !!student.birth_date,
       attempts_left: MAX_ATTEMPTS - row.failed_attempts,
       relations: RELATIONS,
-      items: consentItems(student.first_name),
+      items: consentItems(student.first_name, feeOf(student)),
     });
   } catch (err) {
     console.log(err);
@@ -247,7 +246,18 @@ export const signConsent = async (req, res) => {
       });
     }
 
-    const items = consentItems(student.first_name);
+    // The participation shown on the page must still be the current one
+    const fee = feeOf(student);
+    const items = consentItems(student.first_name, fee);
+    const shown = items.find((i) => i.id === 'participation')?.text || null;
+    if ((req.body.participation_text || null) !== shown) {
+      return res.status(409).json({
+        state: 'pending',
+        code: 'fee_changed',
+        error:
+          "Le montant de la participation aux frais vient d'être mis à jour par l'association. Merci de le relire avant de signer.",
+      });
+    }
     const accepted = req.body.choices || {};
     if (items.some((i) => i.required && accepted[i.id] !== true)) {
       return res.status(400).json({ error: 'Merci de cocher les accords obligatoires.' });
@@ -285,6 +295,7 @@ export const signConsent = async (req, res) => {
       signer_relation: req.body.signer_relation,
       choices,
       texts_version: TEXTS_VERSION,
+      fee: fee && !fee.missing ? fee : null,
       ip: clientIp(req),
       user_agent: String(req.headers['user-agent'] || '').slice(0, 500),
     };

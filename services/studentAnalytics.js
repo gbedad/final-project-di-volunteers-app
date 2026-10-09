@@ -6,7 +6,8 @@ import Binomes from '../models/binomes.model.js';
 import Seances from '../models/seances.model.js';
 import { computeAnalytics, LEVELS } from './analytics.js';
 import { STUDENT_STATUSES } from './students.js';
-import { consentOverview } from './parentalConsent.js';
+import { consentOverview, CONSENT_STATUSES } from './parentalConsent.js';
+import { feeOf, termOf } from './fees.js';
 
 const DAY = 86400000;
 const WAITING = ['Nouvelle demande', 'En attente de tuteur'];
@@ -40,6 +41,10 @@ export const computeStudentAnalytics = async ({ includeDemo = false } = {}) => {
         'created_at',
         'is_demo',
         'parental_consent_at',
+        'qf',
+        'qf_proof',
+        'fee_special',
+        'fee_override',
       ],
     })
   ).map((s) => s.toJSON());
@@ -182,5 +187,59 @@ export const computeStudentAnalytics = async ({ includeDemo = false } = {}) => {
     ).length,
   };
 
-  return { requests, gap, pairs: pairsSection, profile, consent };
+  // ---- Participation to the costs (current requests, current term) ----
+  const term = termOf(new Date());
+  const currentStudents = students.filter((s) => CONSENT_STATUSES.includes(s.status));
+  const feeLabel = (f) =>
+    !f
+      ? 'Non renseigné'
+      : f.mode === 'term'
+      ? `Tranche ${f.tranche}`
+      : f.tranche
+      ? 'Tranche 8 et plus (à l’heure)'
+      : 'QF non communiqué (à l’heure)';
+  const ORDER = [1, 2, 3, 4, 5, 6, 7].map((n) => `Tranche ${n}`).concat([
+    'Tranche 8 et plus (à l’heure)',
+    'QF non communiqué (à l’heure)',
+    'Non renseigné',
+  ]);
+  const withFee = currentStudents.map((s) => ({ s, fee: feeOf(s) }));
+  const tranches = countBy(withFee, ({ fee }) => feeLabel(fee));
+  const pairStudent = Object.fromEntries(pairs.map((p) => [p.id, p.student_id]));
+  const termHours = {};
+  for (const x of held) {
+    if (termOf(x.date).key !== term.key) continue;
+    const sid = pairStudent[x.binome_id];
+    termHours[sid] = (termHours[sid] || 0) + (x.duration_minutes || 0) / 60;
+  }
+  const round = (n) => Math.round(n * 100) / 100;
+  const fees = {
+    term: term.label,
+    byTranche: ORDER.filter((l) => tranches[l]).map((label) => ({ label, count: tranches[label] })),
+    // Fixed amounts of the term (tranches 1-7) of the students with a pair
+    termTotal: round(
+      withFee
+        .filter(({ s, fee }) => fee?.mode === 'term' && s.status === 'Binôme en cours')
+        .reduce((n, { fee }) => n + fee.amount, 0)
+    ),
+    deposits: round(
+      withFee
+        .filter(({ s, fee }) => fee?.mode === 'term' && s.status === 'Binôme en cours')
+        .reduce((n, { fee }) => n + fee.deposit, 0)
+    ),
+    // Hourly families: hours of the session reports of this term x rate
+    hourlyDue: round(
+      withFee
+        .filter(({ fee }) => fee?.mode === 'hourly' && fee.amount !== undefined)
+        .reduce((n, { s, fee }) => n + (termHours[s.id] || 0) * fee.amount, 0)
+    ),
+    hourlyHours: round(
+      withFee
+        .filter(({ fee }) => fee?.mode === 'hourly')
+        .reduce((n, { s }) => n + (termHours[s.id] || 0), 0)
+    ),
+    missing: withFee.filter(({ fee }) => !fee || fee.missing).length,
+  };
+
+  return { requests, gap, pairs: pairsSection, profile, consent, fees };
 };

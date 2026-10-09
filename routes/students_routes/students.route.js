@@ -1,4 +1,5 @@
 import express from 'express';
+import { uploadStudentDocuments } from '../../config/multer.js';
 import {
   getAllStudents,
   addStudent,
@@ -21,6 +22,7 @@ import {
   getStudent,
   createStudent,
   updateStudentFields,
+  qfProofUploaded,
   deleteStudentRecord,
   searchSchools,
 } from '../../controllers/students_module/admin-students.controllers.js';
@@ -65,6 +67,12 @@ router.get('/admin/students', adminAuth, listStudents);
 router.post('/admin/students', managerAuth, createStudent);
 router.get('/admin/students/:id', adminAuth, getStudent);
 router.patch('/admin/students/:id', managerAuth, updateStudentFields);
+router.post(
+  '/admin/students/:studentId/qf-proof',
+  managerAuth,
+  uploadStudentDocuments.single('file'),
+  qfProofUploaded
+);
 router.delete('/admin/students/:id', managerAuth, deleteStudentRecord);
 router.get('/admin/schools', adminAuth, searchSchools);
 

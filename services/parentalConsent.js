@@ -29,14 +29,25 @@ export const RELATIONS = ['Mère', 'Père', 'Tuteur légal', 'Autre responsable 
 // Texts shown to the parent and copied into the signed PDF. Change
 // TEXTS_VERSION whenever a text changes: each signature keeps the version
 // and the exact texts it was given on.
-export const TEXTS_VERSION = '2026-10-a';
-export const consentItems = (child) => [
+export const TEXTS_VERSION = '2026-10-b';
+// fee: participation of the family (services/fees.js), shown for acceptance
+export const consentItems = (child, fee) => [
   {
     id: 'tutorat',
     required: true,
     title: 'Accompagnement scolaire',
-    text: `J'autorise ${child} à bénéficier d'un accompagnement scolaire gratuit, assuré par un tuteur bénévole de l'association Séphora Berrebi, à distance (plateforme sKOLa) et/ou en présentiel dans un lieu proposé par l'association.`,
+    text: `J'autorise ${child} à bénéficier d'un accompagnement scolaire assuré par un tuteur bénévole de l'association Séphora Berrebi, à distance (plateforme sKOLa) et/ou en présentiel dans un lieu proposé par l'association.`,
   },
+  ...(fee?.text
+    ? [
+        {
+          id: 'participation',
+          required: true,
+          title: 'Participation aux frais',
+          text: `Je m'engage à verser à l'association une participation aux frais de ${fee.text}.`,
+        },
+      ]
+    : []),
   {
     id: 'donnees',
     required: true,
@@ -138,7 +149,7 @@ export const consentRequestEmail = ({ parent, student, link, expiresAt, reminder
         ? `<p>Il y a quelques jours, nous vous avons demandé votre accord pour l'accompagnement scolaire de <b>${escapeHtml(
             student.first_name
           )}</b>. Nous ne l'avons pas encore reçu : voici un nouveau lien.</p>`
-        : `<p>L'association Séphora Berrebi va proposer un accompagnement scolaire gratuit à <b>${escapeHtml(
+        : `<p>L'association Séphora Berrebi va proposer un accompagnement scolaire à <b>${escapeHtml(
             student.first_name
           )}</b>, assuré par un tuteur bénévole.</p>`
     }

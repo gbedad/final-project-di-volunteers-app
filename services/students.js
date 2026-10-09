@@ -41,6 +41,11 @@ export const EDITABLE_FIELDS = [
   'priority',
   'parental_consent_at',
   'comment',
+  'qf',
+  'qf_proof',
+  'fee_special',
+  'fee_override',
+  'fee_override_reason',
 ];
 
 // Columns of the students list
@@ -63,6 +68,10 @@ export const LIST_FIELDS = [
   'is_demo',
   'parental_consent_at',
   'created_at',
+  'qf',
+  'qf_proof',
+  'fee_special',
+  'fee_override',
   // Responsibles: to ask for the consent from the list
   'parent1_firstname',
   'parent1_lastname',

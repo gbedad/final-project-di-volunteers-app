@@ -172,6 +172,15 @@ const Students = db.define(
     parental_consent_at: {
       type: DataTypes.DATE,
     },
+    // Participation to the costs (services/fees.js): quotient familial, its
+    // proof (caf / avis / none) and the document, "Autres" hourly rate for
+    // special needs, amount changed by hand and why
+    qf: { type: DataTypes.DECIMAL(10, 2) },
+    qf_proof: { type: DataTypes.STRING },
+    qf_file_id: { type: DataTypes.INTEGER },
+    fee_special: { type: DataTypes.BOOLEAN, defaultValue: false },
+    fee_override: { type: DataTypes.DECIMAL(10, 2) },
+    fee_override_reason: { type: DataTypes.TEXT },
     // Fictitious student used to try the features (removable at once)
     is_demo: {
       type: DataTypes.BOOLEAN,
