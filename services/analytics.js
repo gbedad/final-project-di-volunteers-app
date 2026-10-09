@@ -314,9 +314,10 @@ const recruitmentSection = (volunteers, changes) => {
   };
 };
 
-export const computeAnalytics = async ({ scope = 'active' } = {}) => {
+// includeDemo: the demo volunteers count too (left out by default)
+export const computeAnalytics = async ({ scope = 'active', includeDemo = false } = {}) => {
   const records = await Users.findAll({
-    where: { role: 'volunteer' },
+    where: includeDemo ? { role: 'volunteer' } : { role: 'volunteer', is_demo: false },
     attributes: [
       'id',
       'first_name',

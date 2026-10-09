@@ -81,7 +81,8 @@ export const computeStudentAnalytics = async ({ includeDemo = false } = {}) => {
   };
 
   // ---- Demand (waiting students) versus offer (active tutors) ----
-  const { supply } = await computeAnalytics({ scope: 'active' });
+  // Demo students are matched against demo tutors too
+  const { supply } = await computeAnalytics({ scope: 'active', includeDemo });
   const demand = {};
   for (const s of waiting) {
     if (!LEVELS.includes(s.level)) continue;

@@ -66,6 +66,12 @@ const Users = db.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    // Fake volunteer used for trials: labelled "Démo", left out of the
+    // analysis by default
+    is_demo: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
     // Tutor not available for a new student until this date (included)
     unavailable_until: {
       type: DataTypes.DATEONLY,

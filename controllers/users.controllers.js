@@ -26,6 +26,7 @@ const MOTIVATION_MAX = 1000;
 import { deleteStoredFile } from '../config/aws.config.js';
 import { formatName } from '../services/names.js';
 import { availabilityOf, usedPlaces } from '../services/availability.js';
+import { conventionState } from '../services/application.js';
 
 dotenv.config();
 
@@ -74,6 +75,8 @@ export const getUsers = async (req, res) => {
         'genre',
         'cohorte_year',
         'unavailable_until',
+        'paper_documents',
+        'is_demo',
       ],
       include: ['mission', 'skill', 'file'],
       where: {
@@ -86,7 +89,15 @@ export const getUsers = async (req, res) => {
     res.json(
       users.map((u) => {
         const user = u.toJSON();
-        return { ...user, availability: availabilityOf(user, used[u.id] || 0) };
+        return {
+          ...user,
+          availability: availabilityOf(user, used[u.id] || 0),
+          // to_sign / to_countersign / complete, with the dates
+          convention: conventionState(
+            user.file || [],
+            (user.paper_documents || []).includes('convention')
+          ),
+        };
       })
     );
     // if (users.role === 'volunteer') {
