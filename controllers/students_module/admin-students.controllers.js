@@ -46,6 +46,7 @@ const cleanChanges = (body) => {
     delete changes.qf_proof;
   }
   if ('fee_special' in changes) changes.fee_special = !!changes.fee_special;
+  if ('is_demo' in changes) changes.is_demo = !!changes.is_demo;
   if ('status' in changes && !STUDENT_STATUSES.includes(changes.status)) {
     delete changes.status;
   }

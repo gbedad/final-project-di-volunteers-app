@@ -46,6 +46,7 @@ export const EDITABLE_FIELDS = [
   'fee_special',
   'fee_override',
   'fee_override_reason',
+  'is_demo',
 ];
 
 // Columns of the students list

@@ -484,7 +484,7 @@ export const STATUSES = [
 // Body: { ids: [1, 2], status?: 'Déclinée', is_active?: false }
 export const bulkUpdateUsers = async (req, res) => {
   const ids = [...new Set((req.body.ids || []).map(Number))].filter(Boolean);
-  const { status, is_active } = req.body;
+  const { status, is_active, is_demo } = req.body;
   const changes = {};
   if (status !== undefined) {
     if (!STATUSES.includes(status)) {
@@ -493,6 +493,8 @@ export const bulkUpdateUsers = async (req, res) => {
     changes.status = status;
   }
   if (is_active !== undefined) changes.is_active = !!is_active;
+  // Fake volunteer used for trials (label "Démo", left out of the analysis)
+  if (is_demo !== undefined) changes.is_demo = !!is_demo;
   if (!ids.length || !Object.keys(changes).length) {
     return res.status(400).json({ error: 'Rien à modifier' });
   }

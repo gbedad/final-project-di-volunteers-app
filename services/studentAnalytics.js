@@ -213,6 +213,7 @@ export const computeStudentAnalytics = async ({ includeDemo = false } = {}) => {
     termHours[sid] = (termHours[sid] || 0) + (x.duration_minutes || 0) / 60;
   }
   const round = (n) => Math.round(n * 100) / 100;
+  const fr = (n) => n.toLocaleString('fr-FR').replace(/\u202f/g, ' ');
   const fees = {
     term: term.label,
     byTranche: ORDER.filter((l) => tranches[l]).map((label) => ({ label, count: tranches[label] })),
@@ -221,7 +222,7 @@ export const computeStudentAnalytics = async ({ includeDemo = false } = {}) => {
       ...TRANCHES.map((t, i) => ({
         key: `T${t.tranche}`,
         label: `Tranche ${t.tranche}`,
-        range: i === 0 ? `QF ≤ ${t.max} €` : `${TRANCHES[i - 1].max},01 à ${t.max} €`,
+        range: i === 0 ? `QF ≤ ${fr(t.max)} €` : `${fr(TRANCHES[i - 1].max)},01 à ${fr(t.max)} €`,
         rate: `${t.term} € / trimestre · caution ${t.deposit} €`,
         count: tranches[`Tranche ${t.tranche}`] || 0,
         total: round(
