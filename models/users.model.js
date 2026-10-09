@@ -72,6 +72,9 @@ const Users = db.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    // Activity, for the "Connexions" page: last login, last request
+    last_login_at: { type: DataTypes.DATE },
+    last_seen_at: { type: DataTypes.DATE },
     // Tutor not available for a new student until this date (included)
     unavailable_until: {
       type: DataTypes.DATEONLY,

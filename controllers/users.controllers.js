@@ -299,6 +299,12 @@ export const login = async (req, res) => {
     const userid = user.id;
     const email = user.email;
     const role = user.role;
+    const now = new Date();
+    await Users.update(
+      { last_login_at: now, last_seen_at: now },
+      // silent: updated_at stays the date of the last change of the profile
+      { where: { id: userid }, silent: true }
+    );
     const token = jwt.sign(
       {
         userid,

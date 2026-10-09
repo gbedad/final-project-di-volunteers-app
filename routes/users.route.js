@@ -1,4 +1,5 @@
 import express from 'express';
+import { getConnections } from '../controllers/connections.controllers.js';
 import {
   gotoHomePage,
   register,
@@ -70,6 +71,8 @@ router.get('/check-token', checkToken);
 router.post('/refresh-token', refreshTokenFunc);
 router.get('/logout', logout);
 router.get('/all-users', adminAuth, getUsers);
+// Superadmin and admin only (not the interviewers)
+router.get('/admin/connections', managerAuth, getConnections);
 router.delete(
   '/delete-registration/:id',
   selfOrManager('id'),
