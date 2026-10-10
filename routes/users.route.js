@@ -1,6 +1,12 @@
 import express from 'express';
 import { getConnections } from '../controllers/connections.controllers.js';
 import {
+  createInterview,
+  deleteInterview,
+  listInterviews,
+  updateInterview,
+} from '../controllers/interviews.controllers.js';
+import {
   gotoHomePage,
   register,
   login,
@@ -95,6 +101,11 @@ router.post(
   updateUserAddress
 );
 router.post('/add-interviews/:userId', adminAuth, addUserInterviews);
+// One interview at a time (team: admins and interviewers)
+router.get('/admin/users/:id/interviews', adminAuth, listInterviews);
+router.post('/admin/users/:id/interviews', adminAuth, createInterview);
+router.patch('/admin/users/:id/interviews/:interviewId', adminAuth, updateInterview);
+router.delete('/admin/users/:id/interviews/:interviewId', adminAuth, deleteInterview);
 router.post('/add-pre-interview/:userId', adminAuth, addUserPreInterview);
 router.patch(
   '/update-user-profile/:userId',
