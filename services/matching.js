@@ -5,6 +5,34 @@ import Users from '../models/users.model.js';
 import Binomes from '../models/binomes.model.js';
 import { LEVELS } from './analytics.js';
 import { isPaused } from './availability.js';
+import { modernizeInterview } from './interviewWording.js';
+
+// Special needs of the student: described on the page, or the "Autres"
+// hourly rate (learning disorders, remediation)
+export const hasSpecialNeeds = (student) =>
+  !!String(student.special_needs || '').trim() || !!student.fee_special;
+// Points for a student with special needs, from the tutor's interview
+const FOLLOWUP_POINTS = { Oui: 5, 'Avec accompagnement': 3, 'Pas pour le moment': 0 };
+// Not assessed in an interview: neither favoured nor penalised
+const NEUTRAL_POINTS = 2.5;
+const parseInterview = (s) => {
+  let v = s;
+  for (let i = 0; i < 3 && typeof v === 'string'; i += 1) {
+    try {
+      v = JSON.parse(v);
+    } catch {
+      return null;
+    }
+  }
+  return v && typeof v === 'object' ? modernizeInterview(v) : null;
+};
+// "Suivi d'élèves en grande difficulté" of the latest interview that has it
+export const followupOf = (tutor) =>
+  (tutor.interviews || [])
+    .map(parseInterview)
+    .filter((iv) => iv?.followup)
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0]
+    ?.followup || null;
 
 // Pairs that use one of the tutor's places
 export const OPEN_PAIR_STATUSES = ['proposé', 'actif', 'en pause'];
@@ -89,6 +117,7 @@ export const findTutors = async (student, { scope = 'active' } = {}) => {
       'is_active',
       'city',
       'unavailable_until',
+      'interviews',
     ],
     include: ['skill'],
   });
@@ -100,6 +129,7 @@ export const findTutors = async (student, { scope = 'active' } = {}) => {
     attributes: ['tutor_id', 'student_id'],
   });
   const studentLevel = levelIndex(student.level);
+  const needs = hasSpecialNeeds(student);
   const wanted = (student.topics || []).filter((t) => t?.subject);
 
   // Tutors unavailable for a while are not proposed
@@ -144,12 +174,18 @@ export const findTutors = async (student, { scope = 'active' } = {}) => {
     const weight = (s) => (s.priority === 'haute' ? 2 : 1);
     const total = subjects.reduce((n, s) => n + weight(s), 0) || 1;
     const covered = subjects.filter((s) => s.fit).reduce((n, s) => n + weight(s), 0);
-    const score = Math.round(
+    const base =
       50 * (covered / total) +
-        (slots.length ? 30 : 0) +
-        (place.fit ? 15 : 0) +
-        (free > 0 ? 5 : 0)
-    );
+      (slots.length ? 30 : 0) +
+      (place.fit ? 15 : 0) +
+      (free > 0 ? 5 : 0);
+    // Student with special needs: the facts count for 95, the tutor's
+    // ability to follow a pupil in great difficulty (interview) for 5
+    const followup = needs ? followupOf(tutor) : null;
+    const difficulty = needs
+      ? { followup, points: followup ? FOLLOWUP_POINTS[followup] ?? 0 : NEUTRAL_POINTS }
+      : null;
+    const score = Math.round(needs ? base * 0.95 + difficulty.points : base);
     return {
       tutor: {
         id: tutor.id,
@@ -162,6 +198,7 @@ export const findTutors = async (student, { scope = 'active' } = {}) => {
       slots,
       place,
       capacity: { total: capacity, used: used.length, free },
+      difficulty,
       alreadyPaired,
       profileFilled: topics.length > 0,
     };
