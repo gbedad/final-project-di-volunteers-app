@@ -75,6 +75,9 @@ const Users = db.define(
     // Activity, for the "Connexions" page: last login, last request
     last_login_at: { type: DataTypes.DATE },
     last_seen_at: { type: DataTypes.DATE },
+    // Interview notes erased (2 years after a declined application or the
+    // archiving, services/retention.js)
+    data_purged_at: { type: DataTypes.DATE },
     // Tutor not available for a new student until this date (included)
     unavailable_until: {
       type: DataTypes.DATEONLY,
