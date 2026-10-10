@@ -1,3 +1,4 @@
+import { logContactAttempt } from '../services/firstContact.js';
 import { Op } from 'sequelize';
 import db from '../config/database.js';
 import Users from '../models/users.model.js';
@@ -126,6 +127,13 @@ export const addMessage = async (req, res) => {
     });
     await markRead(me, subjectId);
     if (mentions.length) notifyMentions({ author, subject, message, team });
+    // A WhatsApp or e-mail contact early on is a first-contact attempt
+    if (kind !== 'message') {
+      await logContactAttempt(subjectId, kind === 'whatsapp' ? 'WhatsApp' : 'E-mail', {
+        id: me,
+        name: fullName(author),
+      }).catch((err) => console.log('First-contact attempt not logged:', err.message));
+    }
     res.status(201).json(message);
   } catch (err) {
     console.log(err);

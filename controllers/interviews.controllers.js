@@ -77,7 +77,7 @@ export const createInterview = async (req, res) => {
     const iv = {
       id: crypto.randomUUID(),
       title: `Entretien ${data.list.length + 1}`,
-      date: new Date().toISOString().slice(0, 10),
+      date: new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' }),
       by: me ? `${me.first_name} ${me.last_name}`.trim() : '',
       by_id: req.user.userid,
       isActive: false,

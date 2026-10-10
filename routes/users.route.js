@@ -1,6 +1,13 @@
 import express from 'express';
 import { getConnections } from '../controllers/connections.controllers.js';
 import {
+  addAttempt,
+  deleteAttempt,
+  getFirstContact,
+  updateAttempt,
+  updateFirstContact,
+} from '../controllers/firstContact.controllers.js';
+import {
   createInterview,
   deleteInterview,
   listInterviews,
@@ -107,6 +114,12 @@ router.post('/admin/users/:id/interviews', adminAuth, createInterview);
 router.patch('/admin/users/:id/interviews/:interviewId', adminAuth, updateInterview);
 router.delete('/admin/users/:id/interviews/:interviewId', adminAuth, deleteInterview);
 router.post('/add-pre-interview/:userId', adminAuth, addUserPreInterview);
+// First contact: attempts, notes, next step (team: admins and interviewers)
+router.get('/admin/users/:id/first-contact', adminAuth, getFirstContact);
+router.patch('/admin/users/:id/first-contact', adminAuth, updateFirstContact);
+router.post('/admin/users/:id/first-contact/attempts', adminAuth, addAttempt);
+router.patch('/admin/users/:id/first-contact/attempts/:attemptId', adminAuth, updateAttempt);
+router.delete('/admin/users/:id/first-contact/attempts/:attemptId', adminAuth, deleteAttempt);
 router.patch(
   '/update-user-profile/:userId',
   selfOrAdmin('userId'),
