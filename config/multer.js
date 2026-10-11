@@ -39,7 +39,9 @@ const uploadConvention = privateUpload('conventions', 'userId');
 const uploadStudentDocuments = privateUpload('student-documents', 'studentId');
 
 // Model of the convention, replaced by each new upload (one fixed key)
-export const CONVENTION_TEMPLATE_KEY = 'templates/convention-modele';
+// TEMPLATES_PREFIX: another folder for trials (the storage is shared)
+export const TEMPLATES_PREFIX = process.env.TEMPLATES_PREFIX || 'templates';
+export const CONVENTION_TEMPLATE_KEY = `${TEMPLATES_PREFIX}/convention-modele`;
 const uploadConventionTemplate = multer({
   storage: multerS3({
     s3,

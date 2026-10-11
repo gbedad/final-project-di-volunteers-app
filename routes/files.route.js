@@ -3,7 +3,6 @@ let router = express.Router();
 import {
   upload,
   uploadConvention,
-  uploadConventionTemplate,
 } from '../config/multer.js';
 
 import {
@@ -18,7 +17,6 @@ import {
   getDocumentsStatus,
   updateDocumentsStatus,
   getConventionTemplate,
-  uploadConventionTemplateDone,
 } from '../controllers/files.controllers.js';
 import { syncStatusAfter } from '../services/application.js';
 
@@ -50,12 +48,7 @@ router.post(
 
 // Model of the convention: downloaded by volunteers, replaced by the team
 router.get('/convention/template', verifyToken, getConventionTemplate);
-router.post(
-  '/admin/convention/template',
-  managerAuth,
-  uploadConventionTemplate.single('file'),
-  uploadConventionTemplateDone
-);
+// Upload of the model: routes/conventionSigning.route.js (form fields checked)
 
 router.delete('/files/cancel/:fileId', verifyToken, syncFromFile, cancelFile);
 

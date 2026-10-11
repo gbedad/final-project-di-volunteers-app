@@ -78,6 +78,12 @@ const Users = db.define(
     // Interview notes erased (2 years after a declined application or the
     // archiving, services/retention.js)
     data_purged_at: { type: DataTypes.DATE },
+    // Convention signed online: Charte read (and which version), end date
+    // and "autre" mission filled in by the team
+    charte_read_at: { type: DataTypes.DATE },
+    charte_version: { type: DataTypes.STRING },
+    convention_end_date: { type: DataTypes.DATEONLY },
+    convention_other: { type: DataTypes.TEXT },
     // Tutor not available for a new student until this date (included)
     unavailable_until: {
       type: DataTypes.DATEONLY,

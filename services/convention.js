@@ -26,10 +26,11 @@ export const notifyConventionToSign = (user) =>
     `<p>Bonjour ${escapeHtml(user.first_name)},</p>
     <p>Bonne nouvelle : à la suite de votre entretien, l'association Séphora Berrebi est heureuse de poursuivre avec vous !</p>
     <p>Dernière étape : signer la <b>convention d'engagement réciproque</b>.</p>
+    <p>Tout se fait en ligne, dans l'onglet « Ma convention » de votre espace, en quelques minutes :</p>
     <ol>
-      <li>Téléchargez la convention dans l'onglet « Ma convention » de votre espace ;</li>
-      <li>complétez-la et signez-la ;</li>
-      <li>déposez-la au même endroit.</li>
+      <li>lisez la Charte de bénévolat de l'association ;</li>
+      <li>vérifiez votre convention, déjà remplie avec vos informations ;</li>
+      <li>signez-la avec le doigt ou la souris.</li>
     </ol>
     <p>La présidente de l'association la signera à son tour : vous la retrouverez alors dans votre espace.</p>
     <p>${emailButton(conventionLink(), 'Signer ma convention')}</p>
@@ -44,8 +45,8 @@ export const notifyConventionSigned = (user) =>
     `Convention signée par ${user.first_name} ${user.last_name} : à contresigner`,
     `<p>${escapeHtml(user.first_name)} ${escapeHtml(
       user.last_name
-    )} a déposé sa convention signée le ${formatDate(new Date())}.</p>
-    <p>Elle est à faire signer par la présidente, puis à redéposer depuis sa fiche (bloc « Convention »).</p>
+    )} a signé sa convention le ${formatDate(new Date())}.</p>
+    <p>Elle est à contresigner par la présidente, depuis sa fiche (bloc « Convention »).</p>
     <p>${emailButton(
       `${clientUrl()}/login?candidat=${user.id}`,
       'Voir la fiche'
