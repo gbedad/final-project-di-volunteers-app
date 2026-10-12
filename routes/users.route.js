@@ -1,6 +1,12 @@
 import express from 'express';
 import { getConnections } from '../controllers/connections.controllers.js';
 import {
+  getEmailPause,
+  handleWithheld,
+  listWithheld,
+  updateEmailPause,
+} from '../controllers/emailPause.controllers.js';
+import {
   addAttempt,
   deleteAttempt,
   getFirstContact,
@@ -43,6 +49,7 @@ import {
   selfOrAdmin,
   selfOrAdminBody,
   selfOrManager,
+  superadminAuth,
 } from '../middlewares/authAdmin.js';
 import {
   getTeam,
@@ -86,6 +93,12 @@ router.get('/logout', logout);
 router.get('/all-users', adminAuth, getUsers);
 // Superadmin and admin only (not the interviewers)
 router.get('/admin/connections', managerAuth, getConnections);
+// Pause of the e-mails to the volunteers: banner for the team, switch and
+// withheld e-mails for the superadmin
+router.get('/admin/email-pause', adminAuth, getEmailPause);
+router.put('/admin/email-pause', superadminAuth, updateEmailPause);
+router.get('/admin/withheld-emails', superadminAuth, listWithheld);
+router.post('/admin/withheld-emails', superadminAuth, handleWithheld);
 router.delete(
   '/delete-registration/:id',
   selfOrManager('id'),

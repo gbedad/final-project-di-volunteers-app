@@ -814,7 +814,10 @@ export const forgotPassword = async (req, res) => {
       `<h4>Cher(e) ${oldUser.first_name},</h4>
       <p>Vous avez demandé le changement de votre mot de passe. Pour le changer, il suffit de cliquer sur ce lien :${link}.</p>
       <p>Attention, ce lien ne sera valide que pendant 5 minutes.</p>
-      <p>A très vite.</p>`
+      <p>A très vite.</p>`,
+      undefined,
+      // Always sent, even during a pause of the volunteers' e-mails
+      { essential: true }
     );
     res.status(201).json({ message: 'Email sent successfully', status: 201 });
   } catch (error) {

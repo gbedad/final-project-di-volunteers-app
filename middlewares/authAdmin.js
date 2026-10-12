@@ -18,6 +18,7 @@ const requireRoles = (roles) => (req, res, next) => {
 
 export const adminAuth = requireRoles(STAFF_ROLES);
 export const managerAuth = requireRoles(MANAGER_ROLES);
+export const superadminAuth = requireRoles(['superadmin']);
 
 export const userAuth = (req, res, next) => {
   verifyToken(req, res, () => {
