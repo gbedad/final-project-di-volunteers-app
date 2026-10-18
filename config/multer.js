@@ -4,6 +4,7 @@ import s3, {
   PUBLIC_BUCKET,
   PRIVATE_BUCKET,
   safeFileName,
+  fixFileName,
 } from './aws.config.js';
 
 // Private document upload into <folder>/<owner id>/<timestamp>-<name>
@@ -14,6 +15,7 @@ const privateUpload = (folder, ownerParam) =>
       bucket: PRIVATE_BUCKET,
       contentType: multerS3.AUTO_CONTENT_TYPE,
       key: (req, file, cb) => {
+        fixFileName(file);
         // The document type in the name makes the bucket easy to browse:
         // documents/155/cv-1790...-dupont.pdf
         const type =
@@ -48,8 +50,11 @@ const uploadConventionTemplate = multer({
     bucket: PRIVATE_BUCKET,
     contentType: multerS3.AUTO_CONTENT_TYPE,
     metadata: (req, file, cb) =>
-      cb(null, { filename: encodeURIComponent(file.originalname) }),
-    key: (req, file, cb) => cb(null, CONVENTION_TEMPLATE_KEY),
+      cb(null, { filename: encodeURIComponent(fixFileName(file).originalname) }),
+    key: (req, file, cb) => {
+      fixFileName(file);
+      cb(null, CONVENTION_TEMPLATE_KEY);
+    },
   }),
 });
 
@@ -60,6 +65,7 @@ const uploadMissionImage = multer({
     bucket: PUBLIC_BUCKET,
     contentType: multerS3.AUTO_CONTENT_TYPE,
     key: (req, file, cb) => {
+        fixFileName(file);
       cb(null, `missions/${safeFileName(file.originalname)}`);
     },
   }),

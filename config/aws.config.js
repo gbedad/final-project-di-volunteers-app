@@ -86,6 +86,16 @@ export const privateDownloadUrl = (key, filename, expiresIn = 3600) =>
 export const deleteStoredFile = (path) =>
   s3.send(new DeleteObjectCommand(locate(path)));
 
+// Browsers send the file name in UTF-8; multer reads it as Latin-1
+// ("signée" becomes "signÃ©e"). Fixed once, when the file arrives.
+export const fixFileName = (file) => {
+  if (!file?.originalname || file._nameFixed) return file;
+  const name = Buffer.from(file.originalname, 'latin1').toString('utf8');
+  if (!name.includes('\uFFFD')) file.originalname = name;
+  file._nameFixed = true;
+  return file;
+};
+
 // Storage key from the uploaded file name: no spaces/accents, unique per upload
 export const safeFileName = (originalname) =>
   `${Date.now()}-${originalname
