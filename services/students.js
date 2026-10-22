@@ -17,6 +17,9 @@ export const EDITABLE_FIELDS = [
   'first_name',
   'last_name',
   'birth_date',
+  // The student's own contact (older students), never sent to the tutor
+  'phone',
+  'email',
   'level',
   'track',
   'school',
