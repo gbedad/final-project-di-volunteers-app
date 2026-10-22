@@ -11,6 +11,7 @@ import {
   listPairs,
   pairSessions,
   addSession,
+  signIn,
   deleteSession,
 } from '../controllers/binomes.controllers.js';
 
@@ -30,6 +31,8 @@ router.get('/my/binomes', verifyToken, myPairs);
 router.post('/my/binomes/:id/answer', verifyToken, answerPair);
 // Tutor: session reports (after each session, at least once a month)
 router.post('/my/binomes/:id/seances', verifyToken, addSession);
+// Attendance sheet: one tap, date and time set by the server
+router.post('/my/binomes/:id/emargement', verifyToken, signIn);
 router.delete('/seances/:id', verifyToken, deleteSession);
 
 export default router;

@@ -320,6 +320,55 @@ export const answerPair = async (req, res) => {
 };
 
 // Body: { date, duration_minutes, attendance, work, progress, remark }
+// ---- Attendance sheet ("émargement"): one tap by the tutor ----
+const DAYS_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+const parisNow = () => {
+  const now = new Date();
+  const date = now.toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+  const day = DAYS_FR[new Date(`${date}T12:00:00Z`).getUTCDay()];
+  return { now, date, day };
+};
+const minutesOf = (hhmm) => {
+  const m = /^(\d{1,2}):(\d{2})/.exec(hhmm || '');
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+};
+// Slot of the pair on that day (the first one if there are several)
+const slotOn = (pair, day) => (pair.schedule || []).find((s) => s.day === day) || null;
+// Remote sessions are proven by the Zoom report (Charte): no attendance sheet
+export const needsSignIn = (pair) => !/^\s*(à|a) distance\s*$/i.test(pair.how_location || '');
+
+// Body: { attendance: 'présent' | 'absent' }. Date and time are the
+// server's; the duration comes from the pair's slot of the day.
+export const signIn = async (req, res) => {
+  try {
+    const pair = await Binomes.findByPk(req.params.id);
+    if (!pair || pair.tutor_id !== me(req)) return res.status(404).json({ error: 'Binôme introuvable' });
+    if (pair.status !== 'actif') return res.status(409).json({ error: 'Ce binôme n’est pas en cours' });
+    if (!needsSignIn(pair)) {
+      return res.status(400).json({ error: 'Séance à distance : le rapport Zoom fait foi, pas d’émargement.' });
+    }
+    const attendance = req.body.attendance === 'absent' ? 'absent' : 'présent';
+    const { date, day } = parisNow();
+    const existing = await Seances.findOne({ where: { binome_id: pair.id, date } });
+    if (existing) {
+      return res.status(409).json({ error: 'Séance déjà émargée aujourd’hui', session: existing });
+    }
+    const slot = slotOn(pair, day) || (pair.schedule || [])[0];
+    const duration = slot ? minutesOf(slot.endTime) - minutesOf(slot.startTime) : null;
+    const session = await Seances.create({
+      binome_id: pair.id,
+      author_id: me(req),
+      date,
+      attendance,
+      duration_minutes: attendance === 'présent' && duration > 0 ? duration : null,
+    });
+    res.status(201).json(session);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "L'émargement n'a pas pu être enregistré" });
+  }
+};
+
 export const addSession = async (req, res) => {
   try {
     const pair = await Binomes.findByPk(req.params.id);
@@ -340,17 +389,24 @@ export const addSession = async (req, res) => {
     }
     const duration = Number(req.body.duration_minutes) || null;
     const progress = Number(req.body.progress) || null;
-    const session = await Seances.create({
-      binome_id: pair.id,
-      author_id: me(req),
-      date,
+    const fields = {
       attendance,
       duration_minutes:
         attendance === 'présent' && duration ? Math.min(Math.max(duration, 15), 600) : null,
       progress: progress && progress >= 1 && progress <= 5 ? progress : null,
       work: req.body.work?.trim() || null,
       remark: req.body.remark?.trim() || null,
+    };
+    // A report for a day already signed in completes that session (the
+    // time of the sign-in, created_at, stays as the proof)
+    const signed = await Seances.findOne({
+      where: { binome_id: pair.id, date, author_id: me(req), work: null, progress: null, remark: null },
     });
+    if (signed) {
+      await signed.update(fields);
+      return res.status(200).json(signed);
+    }
+    const session = await Seances.create({ binome_id: pair.id, author_id: me(req), date, ...fields });
     res.status(201).json(session);
   } catch (err) {
     console.log(err);
