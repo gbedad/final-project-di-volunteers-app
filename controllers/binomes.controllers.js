@@ -12,6 +12,7 @@ import { onMembershipChange } from '../services/cohorts.js';
 import {
   notifyPairProposed,
   notifyPairAnswered,
+  notifyLateArrival,
 } from '../services/binomesMail.js';
 
 const me = (req) => Number(req.user.userid ?? req.user.userId);
@@ -320,6 +321,19 @@ export const answerPair = async (req, res) => {
 };
 
 // Body: { date, duration_minutes, attendance, work, progress, remark }
+// E-mail to the team for a late arrival (after the answer, never blocking)
+const tellLate = async (pair, session) => {
+  try {
+    const [tutor, student] = await Promise.all([
+      Users.findByPk(pair.tutor_id, { attributes: ['first_name', 'last_name'] }),
+      Students.findByPk(pair.student_id, { attributes: ['id', 'first_name', 'last_name'] }),
+    ]);
+    if (tutor && student) notifyLateArrival(tutor, student, session);
+  } catch (err) {
+    console.log('Late arrival not notified:', err.message);
+  }
+};
+
 // ---- Attendance sheet ("émargement"): one tap by the tutor ----
 const DAYS_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 const parisNow = () => {
@@ -348,6 +362,7 @@ export const signIn = async (req, res) => {
       return res.status(400).json({ error: 'Séance à distance : le rapport Zoom fait foi, pas d’émargement.' });
     }
     const attendance = req.body.attendance === 'absent' ? 'absent' : 'présent';
+    const late = attendance === 'présent' && req.body.late === true;
     const { date, day } = parisNow();
     const existing = await Seances.findOne({ where: { binome_id: pair.id, date } });
     if (existing) {
@@ -361,8 +376,10 @@ export const signIn = async (req, res) => {
       date,
       attendance,
       duration_minutes: attendance === 'présent' && duration > 0 ? duration : null,
+      late,
     });
     res.status(201).json(session);
+    if (late) tellLate(pair, session);
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "L'émargement n'a pas pu être enregistré" });
@@ -396,6 +413,7 @@ export const addSession = async (req, res) => {
       progress: progress && progress >= 1 && progress <= 5 ? progress : null,
       work: req.body.work?.trim() || null,
       remark: req.body.remark?.trim() || null,
+      late: attendance === 'présent' && req.body.late === true,
     };
     // A report for a day already signed in completes that session (the
     // time of the sign-in, created_at, stays as the proof)
@@ -403,11 +421,15 @@ export const addSession = async (req, res) => {
       where: { binome_id: pair.id, date, author_id: me(req), work: null, progress: null, remark: null },
     });
     if (signed) {
+      const wasLate = signed.late;
       await signed.update(fields);
-      return res.status(200).json(signed);
+      res.status(200).json(signed);
+      if (fields.late && !wasLate) tellLate(pair, signed);
+      return;
     }
     const session = await Seances.create({ binome_id: pair.id, author_id: me(req), date, ...fields });
     res.status(201).json(session);
+    if (fields.late) tellLate(pair, session);
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "Le compte-rendu n'a pas pu être enregistré" });

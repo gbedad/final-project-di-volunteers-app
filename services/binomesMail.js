@@ -81,3 +81,19 @@ export const notifySessionReminder = (tutor, student, lastReport) =>
     <p>Merci pour votre engagement,<br>L'équipe MyCogniverse</p>`,
     'Session reminder'
   );
+
+// The student arrived 15 minutes late or more: the team is told each time
+export const notifyLateArrival = (tutor, student, session) =>
+  send(
+    adminEmails(),
+    `Retard de ${student.first_name} ${student.last_name} (séance du ${new Date(
+      session.date
+    ).toLocaleDateString('fr-FR')})`,
+    `<p>${escapeHtml(tutor.first_name)} ${escapeHtml(tutor.last_name)} signale que <b>${escapeHtml(
+      student.first_name
+    )} ${escapeHtml(student.last_name)}</b> est arrivé(e) avec 15 minutes de retard ou plus à la séance du ${new Date(
+      session.date
+    ).toLocaleDateString('fr-FR')}.</p>
+    <p>${emailButton(`${clientUrl()}/eleves/${student.id}`, "Voir la fiche de l'élève")}</p>`,
+    'Late arrival'
+  );

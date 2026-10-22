@@ -11,6 +11,8 @@ export const REPORT_DAYS = 31;
 // A proposal should be answered within a week
 export const ANSWER_DAYS = 7;
 export const ATTENDANCES = ['présent', 'absent', 'annulé'];
+// Alert from this number of late arrivals in 30 days
+export const LATE_ALERT = 2;
 
 const DAY = 86400000;
 const daysSince = (date) => (date ? Math.floor((Date.now() - new Date(date)) / DAY) : null);
@@ -29,6 +31,11 @@ export const pairStats = (pair, sessions) => {
   const lastTwo = sorted.slice(-2);
   if (lastTwo.length === 2 && lastTwo.every((s) => s.attendance === 'absent')) {
     alerts.push({ type: 'absences', label: 'Deux absences de suite' });
+  }
+  // Late arrivals (15 min or more) in the last 30 days
+  const lateRecently = sorted.filter((s) => s.late && daysSince(s.date) <= 30).length;
+  if (lateRecently >= LATE_ALERT) {
+    alerts.push({ type: 'lateness', label: `${lateRecently} retards en 30 jours` });
   }
   const marks = sorted.filter((s) => s.progress).map((s) => s.progress);
   if (marks.length >= 2) {

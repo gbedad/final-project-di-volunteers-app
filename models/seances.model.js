@@ -14,6 +14,8 @@ const Seances = db.define(
     duration_minutes: { type: DataTypes.INTEGER },
     // présent, absent (the student did not come), annulé
     attendance: { type: DataTypes.STRING, allowNull: false, defaultValue: 'présent' },
+    // The student arrived 15 minutes late or more (incident, see the Charte)
+    late: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     work: { type: DataTypes.TEXT },
     // How the student is doing, 1 to 5
     progress: { type: DataTypes.INTEGER },
