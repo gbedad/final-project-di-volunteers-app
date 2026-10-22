@@ -287,6 +287,13 @@ export const login = async (req, res) => {
       },
       include: ['mission', 'skill', 'file'],
     });
+    // Account created by the team: no password chosen yet
+    if (user && user.password === null) {
+      return res.status(403).json({
+        code: 'no_password',
+        msg: "Votre compte n'est pas encore activé : utilisez le lien « Choisir mon mot de passe » reçu par e-mail, ou « Mot de passe oublié ».",
+      });
+    }
     const match = await bcrypt.compare(req.body.password, user.password);
     if (!match) return res.status(400).json({ msg: 'Wrong password' });
     // Former volunteer: account kept, but no access any more
@@ -409,6 +416,10 @@ export async function getUserById(req, res) {
 
     // Can this tutor take a new student now (computed)
     const data = user.toJSON();
+    // Staff: account created by the team, access not used yet
+    if (req.user?.role !== 'volunteer') {
+      data.no_password = !!(await Users.count({ where: { id: user.id, password: null } }));
+    }
     const used = await usedPlaces([user.id]);
     return res.json({ ...data, availability: availabilityOf(data, used[user.id] || 0) });
   } catch (err) {

@@ -13,6 +13,7 @@ import {
   updateAttempt,
   updateFirstContact,
 } from '../controllers/firstContact.controllers.js';
+import { createTutor, sendTutorAccess } from '../controllers/tutorAccounts.controllers.js';
 import {
   createInterview,
   deleteInterview,
@@ -167,5 +168,9 @@ router.get('/admin/users/lookup', managerAuth, findUserByEmail);
 router.patch('/admin/users/:id/role', managerAuth, updateUserRole);
 router.post('/admin/team/invite', managerAuth, inviteMember);
 router.post('/admin/team/:id/resend-invite', managerAuth, resendInvitation);
+
+// Tutors entered by the team, access sent when the team chooses
+router.post('/admin/tutors', managerAuth, createTutor);
+router.post('/admin/tutors/:id/send-access', managerAuth, sendTutorAccess);
 
 export default router;
