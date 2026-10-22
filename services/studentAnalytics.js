@@ -45,6 +45,7 @@ export const computeStudentAnalytics = async ({ includeDemo = false } = {}) => {
         'qf_proof',
         'fee_special',
         'fee_override',
+        'fee_term',
       ],
     })
   ).map((s) => s.toJSON());
@@ -193,7 +194,7 @@ export const computeStudentAnalytics = async ({ includeDemo = false } = {}) => {
   const feeLabel = (f) =>
     !f
       ? 'Non renseigné'
-      : f.mode === 'term'
+      : f.mode === 'term' && !f.agreed
       ? `Tranche ${f.tranche}`
       : f.tranche
       ? 'Tranche 8 et plus (à l’heure)'
@@ -235,7 +236,7 @@ export const computeStudentAnalytics = async ({ includeDemo = false } = {}) => {
         key: 'T8',
         label: 'Tranche 8 et plus',
         range: 'QF > 2 500 €',
-        rate: "à l'heure, selon le niveau",
+        rate: "à l'heure, selon le niveau (ou montant convenu)",
         count: tranches['Tranche 8 et plus (à l’heure)'] || 0,
       },
       {

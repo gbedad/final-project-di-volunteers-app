@@ -181,6 +181,9 @@ const Students = db.define(
     fee_special: { type: DataTypes.BOOLEAN, defaultValue: false },
     fee_override: { type: DataTypes.DECIMAL(10, 2) },
     fee_override_reason: { type: DataTypes.TEXT },
+    // Fixed amount per term agreed with the family as an exception (QF above
+    // tranche 7, or no QF): replaces the hourly rate
+    fee_term: { type: DataTypes.DECIMAL(10, 2) },
     // Fictitious student used to try the features (removable at once)
     is_demo: {
       type: DataTypes.BOOLEAN,

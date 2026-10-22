@@ -29,7 +29,7 @@ const cleanChanges = (body) => {
     changes[field] = value;
   }
   // Amounts: a positive number or nothing ("1 234,50" accepted)
-  for (const field of ['qf', 'fee_override']) {
+  for (const field of ['qf', 'fee_override', 'fee_term']) {
     if (!(field in changes)) continue;
     const v = changes[field];
     const n =

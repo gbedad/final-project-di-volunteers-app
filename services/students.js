@@ -49,6 +49,7 @@ export const EDITABLE_FIELDS = [
   'fee_special',
   'fee_override',
   'fee_override_reason',
+  'fee_term',
   'is_demo',
 ];
 
@@ -76,6 +77,7 @@ export const LIST_FIELDS = [
   'qf_proof',
   'fee_special',
   'fee_override',
+  'fee_term',
   // Responsibles: to ask for the consent from the list
   'parent1_firstname',
   'parent1_lastname',

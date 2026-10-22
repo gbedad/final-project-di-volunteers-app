@@ -63,7 +63,15 @@ export const feeOf = (student) => {
   const tranche = noProof ? null : trancheOf(qf);
 
   let fee;
-  if (tranche && tranche <= 7) {
+  const agreed =
+    student.fee_term === null || student.fee_term === undefined || student.fee_term === ''
+      ? null
+      : Number(student.fee_term);
+  if (agreed !== null && !(tranche && tranche <= 7)) {
+    // Exception agreed with the family: a fixed amount per term instead of
+    // the hourly rate, with the deposit of tranche 7
+    fee = { mode: 'term', tranche, agreed: true, amount: agreed, deposit: TRANCHES[6].deposit };
+  } else if (tranche && tranche <= 7) {
     const t = TRANCHES[tranche - 1];
     fee = { mode: 'term', tranche, amount: t.term, deposit: t.deposit };
   } else {
@@ -80,9 +88,11 @@ export const feeOf = (student) => {
     fee.amount = Number(student.fee_override);
     fee.override_reason = student.fee_override_reason || null;
   }
-  const basis = noProof
-    ? 'QF non communiqué'
-    : `tranche ${tranche}, QF de ${euros(qf)}`;
+  const basis = fee.agreed
+    ? `montant convenu${noProof ? ', QF non communiqué' : `, QF de ${euros(qf)}`}`
+    : noProof
+      ? 'QF non communiqué'
+      : `tranche ${tranche}, QF de ${euros(qf)}`;
   fee.text =
     fee.mode === 'term'
       ? `${euros(fee.amount)} par trimestre et une caution de ${euros(fee.deposit)} (${basis})`
