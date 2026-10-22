@@ -136,8 +136,10 @@ export const listStudentPairs = async (req, res) => {
 
 // Body: { student_id, tutor_id, subjects, schedule, how_location, site,
 // start_date, note }
+// Body: { student_id, tutor_id, subjects, schedule, …, already_accepted }
 export const proposePair = async (req, res) => {
   const { student_id, tutor_id } = req.body;
+  const alreadyAccepted = req.body.already_accepted === true;
   try {
     const student = await Students.findByPk(student_id);
     const tutor = await Users.findOne({
@@ -169,8 +171,21 @@ export const proposePair = async (req, res) => {
       start_date: req.body.start_date || null,
       note: req.body.note || null,
       proposed_by: me(req),
-      status: 'proposé',
+      // The tutor already said yes outside the application (pairs set up
+      // before MyCogniverse): active at once, nothing to accept, no e-mail
+      status: alreadyAccepted ? 'actif' : 'proposé',
+      responded_at: alreadyAccepted ? new Date() : null,
     });
+    if (alreadyAccepted) {
+      await syncStudentStatus(student.id);
+      // Same as an accepted proposal: the tutor becomes active
+      const [updated] = await Users.update(
+        { is_active: true },
+        { where: { id: tutor.id, is_active: { [Op.not]: true } } }
+      );
+      if (updated) await onMembershipChange(tutor.id);
+      return res.status(201).json(binome);
+    }
     if (student.status === 'Nouvelle demande') {
       await student.update({ status: 'En attente de tuteur' });
     }
