@@ -44,6 +44,7 @@ app.use('/', express.static(__dirname + '/public'));
 app.post('/consentement/:token', express.json({ limit: '1mb' }));
 // Signatures drawn in the browser (convention)
 app.post('/users/:id/convention/sign', express.json({ limit: '1mb' }));
+app.post('/my/seances/:id/signature', express.json({ limit: '1mb' }));
 app.put('/admin/president-signature', express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());

@@ -12,6 +12,9 @@ import {
   pairSessions,
   addSession,
   signIn,
+  signSession,
+  skipSignature,
+  signatureUrl,
   deleteSession,
 } from '../controllers/binomes.controllers.js';
 
@@ -34,5 +37,9 @@ router.post('/my/binomes/:id/seances', verifyToken, addSession);
 // Attendance sheet: one tap, date and time set by the server
 router.post('/my/binomes/:id/emargement', verifyToken, signIn);
 router.delete('/seances/:id', verifyToken, deleteSession);
+// Signature of the student at the end of the session (the tutor's phone)
+router.post('/my/seances/:id/signature', verifyToken, signSession);
+router.post('/my/seances/:id/no-signature', verifyToken, skipSignature);
+router.get('/admin/seances/:id/signature', adminAuth, signatureUrl);
 
 export default router;

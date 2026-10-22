@@ -6,6 +6,8 @@ import Users from '../models/users.model.js';
 import Students from '../models/students/students.model.js';
 import { findTutors, OPEN_PAIR_STATUSES } from '../services/matching.js';
 import Seances from '../models/seances.model.js';
+import { fileUrl } from '../config/aws.config.js';
+import { writeObject } from '../services/conventionSigning.js';
 import { pairStats, ATTENDANCES } from '../services/followUp.js';
 import { MANAGER_ROLES } from '../middlewares/authAdmin.js';
 import { onMembershipChange } from '../services/cohorts.js';
@@ -383,6 +385,69 @@ export const signIn = async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "L'émargement n'a pas pu être enregistré" });
+  }
+};
+
+// ---- Signature of the student (end of the session, same day) ----
+const signableSession = async (req, res) => {
+  const session = await Seances.findByPk(req.params.id);
+  const pair = session && (await Binomes.findByPk(session.binome_id));
+  if (!session || !pair || pair.tutor_id !== me(req)) {
+    res.status(404).json({ error: 'Séance introuvable' });
+    return null;
+  }
+  if (String(session.date).slice(0, 10) !== parisNow().date || session.attendance !== 'présent') {
+    res.status(409).json({ error: 'La signature se fait le jour de la séance, si elle a eu lieu' });
+    return null;
+  }
+  if (session.student_signed_at) {
+    res.status(409).json({ error: 'Séance déjà signée par l’élève' });
+    return null;
+  }
+  return { session, pair };
+};
+
+// Body: { signature: 'data:image/png;base64,…' }
+export const signSession = async (req, res) => {
+  try {
+    const found = await signableSession(req, res);
+    if (!found) return;
+    const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body.signature || ''));
+    const png = m ? Buffer.from(m[1], 'base64') : null;
+    if (!png || png.length < 200 || png.length > 400000) {
+      return res.status(400).json({ error: 'Signature vide ou illisible' });
+    }
+    const key = `student-signatures/${found.pair.student_id}/seance-${found.session.id}-${Date.now()}.png`;
+    await writeObject(key, png, 'image/png');
+    await found.session.update({ student_signature: key, student_signed_at: new Date(), no_signature: false });
+    res.json(found.session);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "La signature n'a pas pu être enregistrée" });
+  }
+};
+
+export const skipSignature = async (req, res) => {
+  try {
+    const found = await signableSession(req, res);
+    if (!found) return;
+    await found.session.update({ no_signature: true });
+    res.json(found.session);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "L'information n'a pas pu être enregistrée" });
+  }
+};
+
+// Team: link to see the signature (1 hour)
+export const signatureUrl = async (req, res) => {
+  try {
+    const session = await Seances.findByPk(req.params.id, { attributes: ['student_signature'] });
+    if (!session?.student_signature) return res.status(404).json({ error: 'Pas de signature' });
+    res.json({ url: await fileUrl(session.student_signature) });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: 'Could not create the link' });
   }
 };
 
