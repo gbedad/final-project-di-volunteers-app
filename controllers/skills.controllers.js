@@ -41,8 +41,24 @@ export const createSkills = async (req, res) => {
 // Saves the fields sent (the client saves each block on its own, as soon as
 // it changes). No email here: the admins are notified once, when the
 // volunteer sends the complete application.
+// Items are stored as objects: an item sent as JSON text is parsed, so it
+// is never stored encoded twice (the tutor page could not read it)
+const asItem = (item) => {
+  if (typeof item !== 'string') return item;
+  try {
+    const parsed = JSON.parse(item);
+    return parsed && typeof parsed === 'object' ? parsed : item;
+  } catch {
+    return item;
+  }
+};
 const asArray = (value) =>
-  Array.isArray(value) ? value : typeof value === 'string' ? JSON.parse(value) : [];
+  (Array.isArray(value)
+    ? value
+    : typeof value === 'string'
+    ? JSON.parse(value)
+    : []
+  ).map(asItem);
 
 export const updateSkills = async (req, res) => {
   const { userId } = req.params;
