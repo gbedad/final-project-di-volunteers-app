@@ -8,6 +8,9 @@ import { notifySessionReminder } from './binomesMail.js';
 
 // A report is expected at least once a month
 export const REPORT_DAYS = 31;
+// Pairs signing in on Jotform get no report reminder for now (their tutors
+// do not use the application yet): set to true to remind them too
+const REMIND_JOTFORM_PAIRS = false;
 // A proposal should be answered within a week
 export const ANSWER_DAYS = 7;
 export const ATTENDANCES = ['présent', 'absent', 'annulé'];
@@ -22,8 +25,11 @@ export const pairStats = (pair, sessions) => {
   const sorted = [...sessions].sort((a, b) => String(a.date).localeCompare(String(b.date)));
   const held = sorted.filter((s) => s.attendance === 'présent');
   const last = sorted[sorted.length - 1];
+  // A report is what the tutor wrote; a sign-in (here or on Jotform) is not
+  const reports = sorted.filter((s) => s.work || s.remark || s.progress);
+  const lastReport = reports[reports.length - 1];
   // The month starts when the pair began (answer or start date)
-  const since = last?.date || pair.start_date || pair.responded_at;
+  const since = lastReport?.date || pair.start_date || pair.responded_at;
   const alerts = [];
   if (pair.status === 'actif' && since && daysSince(since) > REPORT_DAYS) {
     alerts.push({ type: 'no_report', label: `Pas de compte-rendu depuis ${daysSince(since)} jours` });
@@ -53,7 +59,8 @@ export const pairStats = (pair, sessions) => {
     sessions: sorted.length,
     held: held.length,
     hours: Math.round(held.reduce((n, s) => n + (s.duration_minutes || 0), 0) / 6) / 10,
-    last_report: last?.date || null,
+    last_report: lastReport?.date || null,
+    last_session: last?.date || null,
     last_progress: marks[marks.length - 1] || null,
     alerts,
   };
@@ -66,11 +73,12 @@ export const remindTutors = async () => {
   if (!pairs.length) return 0;
   const sessions = await Seances.findAll({
     where: { binome_id: { [Op.in]: pairs.map((p) => p.id) } },
-    attributes: ['binome_id', 'date', 'attendance', 'progress', 'duration_minutes'],
+    attributes: ['binome_id', 'date', 'attendance', 'progress', 'duration_minutes', 'work', 'remark', 'jotform_id'],
     raw: true,
   });
   let sent = 0;
   for (const pair of pairs) {
+    if (!REMIND_JOTFORM_PAIRS && sessions.some((s) => s.binome_id === pair.id && s.jotform_id)) continue;
     const stats = pairStats(pair, sessions.filter((s) => s.binome_id === pair.id));
     const late = stats.alerts.some((a) => a.type === 'no_report');
     if (!late || (pair.reminded_at && daysSince(pair.reminded_at) < 7)) continue;
