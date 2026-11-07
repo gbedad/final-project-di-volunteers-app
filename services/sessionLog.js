@@ -4,6 +4,7 @@
 // excluded).
 import axios from 'axios';
 import { Op } from 'sequelize';
+import db from '../config/database.js';
 import Binomes from '../models/binomes.model.js';
 import Seances from '../models/seances.model.js';
 import Students from '../models/students/students.model.js';
@@ -125,7 +126,10 @@ const hasReport = (s) => !!(s.work || s.remark || s.progress);
 // The student's signature exists since then: nothing is missing before
 const SIGNATURE_SINCE = '2026-10-22';
 const signatureOf = (s, remote) => {
-  if (remote || s.attendance !== 'présent') return null;
+  if (s.attendance !== 'présent') return null;
+  // Signed on Jotform (on-site sessions, before or besides the application)
+  if (s.jotform_signature_url) return 'signée';
+  if (remote) return null;
   if (String(s.date).slice(0, 10) < SIGNATURE_SINCE) return null;
   if (s.student_signed_at) return 'signée';
   if (s.no_signature) return 'impossible';
@@ -198,6 +202,9 @@ export const sessionLog = async (from, to) => {
         late: !!s.late,
         duration_minutes: s.duration_minutes,
         signature: signatureOf(s, remote),
+        // Application, Jotform, or both (signed in here, signed there)
+        source: s.source === 'jotform' ? 'jotform' : s.jotform_id ? 'app+jotform' : 'app',
+        jotform_signature_url: s.jotform_signature_url || null,
         // A report is expected when the session took place
         report: hasReport(s) ? 'fait' : s.attendance === 'présent' ? 'manquant' : null,
         work: s.work,
@@ -245,5 +252,9 @@ export const sessionLog = async (from, to) => {
   }
   rows.sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? 1 : -1));
   for (const r of rows) r.holiday = off(r.date);
-  return { from, to, calendar_ok: calendarOk, rows };
+  const [[{ n }]] = await db.query(
+    'select count(*)::int as n from jotform_pending where resolved_at is null',
+    { logging: false }
+  );
+  return { from, to, calendar_ok: calendarOk, jotform_pending: n, rows };
 };

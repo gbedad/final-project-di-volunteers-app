@@ -15,6 +15,7 @@ import { scheduleCohortRenewal } from './services/cohorts.js';
 import { scheduleSessionReminders } from './services/followUp.js';
 import { scheduleConsentReminders } from './services/parentalConsent.js';
 import { scheduleRetention } from './services/retention.js';
+import { scheduleJotformSync } from './services/jotform.js';
 
 import users_router from './routes/users.route.js';
 import files_router from './routes/files.route.js';
@@ -26,6 +27,7 @@ import students_router from './routes/students_routes/students.route.js';
 import student_files_router from './routes/students_routes/student-files.route.js';
 import consent_router from './routes/students_routes/consent.route.js';
 import convention_signing_router from './routes/conventionSigning.route.js';
+import jotform_router from './routes/jotform.route.js';
 
 dotenv.config();
 
@@ -74,6 +76,7 @@ app.use(students_router);
 app.use(student_files_router);
 app.use(consent_router);
 app.use(convention_signing_router);
+app.use(jotform_router);
 
 // Serve static files from the Next.js build directory
 app.use('/_next', express.static(path.join(__dirname, '.next')));
@@ -95,6 +98,8 @@ scheduleCohortRenewal();
 scheduleSessionReminders();
 scheduleConsentReminders();
 scheduleRetention();
+// Sessions signed on Jotform (hourly, besides the webhook)
+scheduleJotformSync();
 
 app.listen(process.env.PORT || 3030, () => {
   console.log(`server running on port ${process.env.PORT}`);
