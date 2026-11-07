@@ -33,9 +33,11 @@ const sameStudent = (row, s) => {
   const b = words(s.last_name);
   return b.length > 0 && (b.every((w) => a.includes(w)) || a.every((w) => b.includes(w)));
 };
-// "Regis Aolo" is Régis Aolo: last name, and first name when given
-const sameTutor = (name, t) => {
+// "Regis Aolo" is Régis Aolo: last name, and first name when given; the
+// e-mail, when Jotform has it, is enough
+const sameTutor = (name, t, email) => {
   if (!t) return false;
+  if (email && [t.email, t.email2].some((e) => e && e.toLowerCase() === email)) return true;
   const w = words(name);
   return words(t.last_name).every((x) => w.includes(x)) && (w.length < 2 || w.includes(words(t.first_name)[0]));
 };
@@ -70,7 +72,7 @@ const loadContext = async () => {
   });
   const tutors = await Users.findAll({
     where: { id: [...new Set(pairs.map((p) => p.tutor_id).filter(Boolean))] },
-    attributes: ['id', 'first_name', 'last_name'],
+    attributes: ['id', 'first_name', 'last_name', 'email', 'email2'],
     raw: true,
   });
   const [aliases] = await db.query('select student_key, tutor_key, binome_id from jotform_aliases', {
@@ -94,7 +96,7 @@ const matchRow = (row, { pairs, aliases }) => {
   }
   const ofStudent = pairs.filter((p) => p.student && sameStudent(row, p.student));
   if (!ofStudent.length) return { reason: 'Élève non reconnu' };
-  const withTutor = ofStudent.filter((p) => sameTutor(row.tutor, p.tutor));
+  const withTutor = ofStudent.filter((p) => sameTutor(row.tutor, p.tutor, row.tutor_email));
   if (!withTutor.length) return { reason: 'Tuteur différent de celui des binômes de l’élève' };
   if (withTutor.length > 1) return { reason: 'Plusieurs binômes possibles' };
   return { pair: withTutor[0] };
@@ -275,7 +277,7 @@ const SYNC_SINCE = '2026-09-01';
 const pad = (n) => String(n).padStart(2, '0');
 // Answer of the question whose label matches
 const answerOf = (answers, test) =>
-  Object.values(answers || {}).find((a) => test(norm(a.text)) && a.answer !== undefined && a.answer !== '');
+  Object.values(answers || {}).find((a) => test(norm(a.text), a.type) && a.answer !== undefined && a.answer !== '');
 
 // One Jotform submission -> row, or null when it is not usable
 export const rowFromSubmission = (sub) => {
@@ -285,7 +287,9 @@ export const rowFromSubmission = (sub) => {
   const time = answerOf(a, (t) => t.startsWith('heure'));
   const first = answerOf(a, (t) => t.startsWith('prenom'));
   const last = answerOf(a, (t) => t.startsWith('nom'));
-  const tutor = answerOf(a, (t) => t === 'tuteur');
+  // Two "tuteur" questions: the name (widget) and, sometimes, the e-mail
+  const tutor = answerOf(a, (t, type) => t === 'tuteur' && type !== 'control_email');
+  const tutorEmail = answerOf(a, (t, type) => type === 'control_email' && t.startsWith('tuteur'));
   const signature = answerOf(a, (t) => t.startsWith('signature'));
   const d = date?.answer;
   const day =
@@ -303,6 +307,7 @@ export const rowFromSubmission = (sub) => {
     date: day,
     arrival,
     tutor: String(tutor?.answer || '').trim(),
+    tutor_email: String(tutorEmail?.answer || '').trim().toLowerCase() || null,
     first: String(first.answer).trim(),
     last: String(last.answer).trim(),
     signature_url: typeof signature?.answer === 'string' ? signature.answer : null,
