@@ -11,8 +11,6 @@ import Students from '../models/students/students.model.js';
 import Users from '../models/users.model.js';
 
 const DAYS_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-// The student arrived this late or more: "très en retard" (Charte)
-const LATE_MINUTES = 15;
 
 // ---- Names ----
 const norm = (v) =>
@@ -105,12 +103,11 @@ const matchRow = (row, { pairs, aliases }) => {
 // ---- Writing ----
 // Session of the pair for this Jotform row (created or completed)
 const applyRow = async (row, pair, transaction) => {
-  // Lateness only against the slot of that day (a session moved to another
-  // day has no start time to compare with); duration from any slot
-  const daySlot = (pair.schedule || []).find((s) => s.day === dayOf(row.date)) || null;
-  const slot = daySlot || (pair.schedule || [])[0] || null;
-  const start = daySlot ? minutesOf(daySlot.startTime) : null;
-  const arrival = minutesOf(row.arrival);
+  // Duration from the slot of that day (or any slot of the pair)
+  const slot =
+    (pair.schedule || []).find((s) => s.day === dayOf(row.date)) || (pair.schedule || [])[0] || null;
+  // The time on Jotform is when the form was filled in, often at the end of
+  // the session: it says nothing about lateness
   const signedInAt = parisInstant(row.date, row.arrival);
   const existing = await Seances.findOne({ where: { binome_id: pair.id, date: row.date }, transaction });
   if (existing) {
@@ -133,8 +130,7 @@ const applyRow = async (row, pair, transaction) => {
       date: row.date,
       attendance: 'présent',
       duration_minutes: duration > 0 ? duration : null,
-      // No e-mail to the team: already happened, seen in the log
-      late: start !== null && arrival !== null && arrival - start >= LATE_MINUTES,
+      late: false,
       signed_in_at: signedInAt,
       source: 'jotform',
       jotform_id: row.jot_id,
