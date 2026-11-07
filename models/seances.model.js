@@ -21,6 +21,8 @@ const Seances = db.define(
     student_signature: { type: DataTypes.STRING },
     student_signed_at: { type: DataTypes.DATE },
     no_signature: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    // Time the tutor signed in ("La séance a eu lieu"), on-site pairs
+    signed_in_at: { type: DataTypes.DATE },
     work: { type: DataTypes.TEXT },
     // How the student is doing, 1 to 5
     progress: { type: DataTypes.INTEGER },

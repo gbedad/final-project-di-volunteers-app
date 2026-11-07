@@ -10,6 +10,7 @@ import {
   answerPair,
   listPairs,
   pairSessions,
+  listSessionLog,
   addSession,
   signIn,
   signSession,
@@ -28,6 +29,8 @@ router.patch('/admin/binomes/:id', managerAuth, updatePair);
 // Follow-up: every pair with figures and alerts, reports of a pair
 router.get('/admin/binomes', adminAuth, listPairs);
 router.get('/admin/binomes/:id/seances', adminAuth, pairSessions);
+// Sessions log of the team (recorded and expected sessions of a period)
+router.get('/admin/seances', adminAuth, listSessionLog);
 
 // Tutor: their students, answer to a proposal
 router.get('/my/binomes', verifyToken, myPairs);

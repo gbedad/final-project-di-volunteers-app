@@ -11,6 +11,7 @@ import { writeObject } from '../services/conventionSigning.js';
 import { pairStats, ATTENDANCES } from '../services/followUp.js';
 import { MANAGER_ROLES } from '../middlewares/authAdmin.js';
 import { onMembershipChange } from '../services/cohorts.js';
+import { sessionLog, parisToday } from '../services/sessionLog.js';
 import {
   notifyPairProposed,
   notifyPairAnswered,
@@ -67,7 +68,7 @@ export const listPairs = async (req, res) => {
     });
     const tutors = await Users.findAll({
       where: { id: [...new Set(pairs.map((p) => p.tutor_id).filter(Boolean))] },
-      attributes: ['id', 'first_name', 'last_name'],
+      attributes: ['id', 'first_name', 'last_name', 'is_demo'],
       raw: true,
     });
     const sessions = await sessionsByPair(pairs.map((p) => p.id));
@@ -82,6 +83,21 @@ export const listPairs = async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: 'Could not list the pairs' });
+  }
+};
+
+// Sessions log: ?from=YYYY-MM-DD&to=YYYY-MM-DD (default: current month)
+export const listSessionLog = async (req, res) => {
+  const valid = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
+  const today = parisToday();
+  const from = valid(req.query.from) ? req.query.from : `${today.slice(0, 7)}-01`;
+  const to = valid(req.query.to) ? req.query.to : today;
+  if (from > to) return res.status(400).json({ error: 'Période invalide' });
+  try {
+    res.json(await sessionLog(from, to));
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Le journal des séances n'a pas pu être chargé" });
   }
 };
 
@@ -394,6 +410,7 @@ export const signIn = async (req, res) => {
       attendance,
       duration_minutes: attendance === 'présent' && duration > 0 ? duration : null,
       late,
+      signed_in_at: new Date(),
     });
     res.status(201).json(session);
     if (late) tellLate(pair, session);
