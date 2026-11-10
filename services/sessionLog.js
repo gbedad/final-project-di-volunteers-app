@@ -129,7 +129,8 @@ const signatureOf = (s, remote) => {
   if (s.attendance !== 'présent') return null;
   // Signed on Jotform (on-site sessions, before or besides the application)
   if (s.jotform_signature_url) return 'signée';
-  if (remote) return null;
+  // Held on Zoom: no signature (the Zoom report is the proof)
+  if (remote || s.zoom_key) return null;
   if (String(s.date).slice(0, 10) < SIGNATURE_SINCE) return null;
   if (s.student_signed_at) return 'signée';
   if (s.no_signature) return 'impossible';
@@ -203,7 +204,17 @@ export const sessionLog = async (from, to) => {
         duration_minutes: s.duration_minutes,
         signature: signatureOf(s, remote),
         // Application, Jotform, or both (signed in here, signed there)
-        source: s.source === 'jotform' ? 'jotform' : s.jotform_id ? 'app+jotform' : 'app',
+        // Application, Jotform, Zoom, or the application completed by one
+        source:
+          s.source === 'jotform' || s.source === 'zoom'
+            ? s.source
+            : s.jotform_id
+            ? 'app+jotform'
+            : s.zoom_key
+            ? 'app+zoom'
+            : 'app',
+        // Held on Zoom (even for a pair set as on-site)
+        zoom: !!s.zoom_key,
         jotform_signature_url: s.jotform_signature_url || null,
         // A report is expected when the session took place
         report: hasReport(s) ? 'fait' : s.attendance === 'présent' ? 'manquant' : null,
@@ -252,9 +263,10 @@ export const sessionLog = async (from, to) => {
   }
   rows.sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? 1 : -1));
   for (const r of rows) r.holiday = off(r.date);
-  const [[{ n }]] = await db.query(
-    'select count(*)::int as n from jotform_pending where resolved_at is null',
+  const [[{ n, z }]] = await db.query(
+    `select (select count(*)::int from jotform_pending where resolved_at is null) as n,
+            (select count(*)::int from zoom_pending where resolved_at is null) as z`,
     { logging: false }
   );
-  return { from, to, calendar_ok: calendarOk, jotform_pending: n, rows };
+  return { from, to, calendar_ok: calendarOk, jotform_pending: n, zoom_pending: z, rows };
 };

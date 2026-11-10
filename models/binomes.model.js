@@ -26,6 +26,8 @@ const Binomes = db.define(
     end_reason: { type: DataTypes.TEXT },
     // Last monthly reminder sent to the tutor (no session report)
     reminded_at: { type: DataTypes.DATE },
+    // Zoom meeting of the pair (created by Moodle), learnt at the first match
+    zoom_meeting_id: { type: DataTypes.STRING },
   },
   { timestamps: false }
 );

@@ -16,6 +16,7 @@ import { scheduleSessionReminders } from './services/followUp.js';
 import { scheduleConsentReminders } from './services/parentalConsent.js';
 import { scheduleRetention } from './services/retention.js';
 import { scheduleJotformSync } from './services/jotform.js';
+import { scheduleZoomSync } from './services/zoom.js';
 
 import users_router from './routes/users.route.js';
 import files_router from './routes/files.route.js';
@@ -28,6 +29,7 @@ import student_files_router from './routes/students_routes/student-files.route.j
 import consent_router from './routes/students_routes/consent.route.js';
 import convention_signing_router from './routes/conventionSigning.route.js';
 import jotform_router from './routes/jotform.route.js';
+import zoom_router from './routes/zoom.route.js';
 
 dotenv.config();
 
@@ -48,6 +50,15 @@ app.post('/consentement/:token', express.json({ limit: '1mb' }));
 app.post('/users/:id/convention/sign', express.json({ limit: '1mb' }));
 app.post('/my/seances/:id/signature', express.json({ limit: '1mb' }));
 app.put('/admin/president-signature', express.json({ limit: '1mb' }));
+// Zoom webhook: signed, the signature is checked on the raw body
+app.post(
+  '/webhooks/zoom',
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf.toString('utf8');
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -77,6 +88,7 @@ app.use(student_files_router);
 app.use(consent_router);
 app.use(convention_signing_router);
 app.use(jotform_router);
+app.use(zoom_router);
 
 // Serve static files from the Next.js build directory
 app.use('/_next', express.static(path.join(__dirname, '.next')));
@@ -100,6 +112,8 @@ scheduleConsentReminders();
 scheduleRetention();
 // Sessions signed on Jotform (hourly, besides the webhook)
 scheduleJotformSync();
+// Remote sessions held on Zoom (hourly, besides the webhook)
+scheduleZoomSync();
 
 app.listen(process.env.PORT || 3030, () => {
   console.log(`server running on port ${process.env.PORT}`);
