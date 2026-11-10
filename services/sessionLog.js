@@ -9,7 +9,7 @@ import Binomes from '../models/binomes.model.js';
 import Seances from '../models/seances.model.js';
 import Students from '../models/students/students.model.js';
 import Users from '../models/users.model.js';
-import { scheduleOn, slotOn } from './pairSchedule.js';
+import { changedSince, scheduleOn, slotOn } from './pairSchedule.js';
 
 const DAYS_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 const HOLIDAYS_URL =
@@ -181,6 +181,9 @@ export const sessionLog = async (from, to) => {
     day: dayOf(date),
     // Slot in force on that date (a change of slot does not rewrite the past)
     slot: slotOn(pair, date),
+    // An earlier slot: the current one applies from that day
+    slot_changed_since: changedSince(pair, date),
+    current_schedule: pair.schedule || [],
     remote: isRemote(pair),
     subjects: pair.subjects || [],
     student: pair.student,

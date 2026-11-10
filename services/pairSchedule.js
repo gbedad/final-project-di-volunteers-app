@@ -17,6 +17,22 @@ export const scheduleOn = (pair, date) => {
   return (current || history[0]).schedule || [];
 };
 
+// The slots in force on that date are no longer the current ones: when the
+// current slots apply from (null when that date uses the current slots)
+export const changedSince = (pair, date) => {
+  const history = sorted(pair.schedule_history);
+  if (history.length < 2) return null;
+  const day = String(date).slice(0, 10);
+  const latest = history[history.length - 1];
+  if (!latest.since || day >= latest.since) return null;
+  // Only when the slot of that weekday changed (another day's change, e.g.
+  // Sunday, says nothing about a Wednesday session)
+  const then = slotOn(pair, day);
+  const now = (latest.schedule || []).find((s) => s.day === dayOf(day)) || null;
+  const same = then && now && then.startTime === now.startTime && then.endTime === now.endTime;
+  return same || (!then && !now) ? null : latest.since;
+};
+
 // Slot of that date (first one of that day), or null
 export const slotOn = (pair, date) => scheduleOn(pair, date).find((s) => s.day === dayOf(date)) || null;
 
