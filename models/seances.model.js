@@ -32,6 +32,9 @@ const Seances = db.define(
     jotform_signature_url: { type: DataTypes.TEXT },
     // Zoom meeting and day of the session (its 40-minute parts are one)
     zoom_key: { type: DataTypes.STRING },
+    // When the tutor joined on Zoom (lateness counts from the later of the
+    // slot and the tutor)
+    zoom_host_at: { type: DataTypes.DATE },
     work: { type: DataTypes.TEXT },
     // How the student is doing, 1 to 5
     progress: { type: DataTypes.INTEGER },

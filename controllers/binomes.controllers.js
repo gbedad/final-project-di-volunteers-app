@@ -12,6 +12,7 @@ import { pairStats, ATTENDANCES } from '../services/followUp.js';
 import { MANAGER_ROLES } from '../middlewares/authAdmin.js';
 import { onMembershipChange } from '../services/cohorts.js';
 import { sessionLog, parisToday } from '../services/sessionLog.js';
+import { withNewSchedule } from '../services/pairSchedule.js';
 import {
   notifyPairProposed,
   notifyPairAnswered,
@@ -276,7 +277,11 @@ export const updatePairDetails = async (req, res) => {
           DAYS_LIST.includes(s?.day) && HHMM.test(s.startTime || '') && HHMM.test(s.endTime || '') && s.startTime < s.endTime
       );
       if (!valid) return res.status(400).json({ error: 'Créneau incomplet ou heure de fin avant le début' });
-      changes.schedule = schedule.map(({ day, startTime, endTime }) => ({ day, startTime, endTime }));
+      const clean = schedule.map(({ day, startTime, endTime }) => ({ day, startTime, endTime }));
+      // From that day on (earlier dates keep the earlier slot); none: the
+      // slot is corrected for the whole life of the pair
+      const since = /^\d{4}-\d{2}-\d{2}$/.test(req.body.since || '') ? req.body.since : null;
+      Object.assign(changes, withNewSchedule(binome, clean, since));
     }
     if ('how_location' in req.body) changes.how_location = String(req.body.how_location || '').trim() || null;
     if ('site' in req.body || 'how_location' in req.body) {

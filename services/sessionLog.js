@@ -9,6 +9,7 @@ import Binomes from '../models/binomes.model.js';
 import Seances from '../models/seances.model.js';
 import Students from '../models/students/students.model.js';
 import Users from '../models/users.model.js';
+import { scheduleOn, slotOn } from './pairSchedule.js';
 
 const DAYS_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 const HOLIDAYS_URL =
@@ -178,7 +179,8 @@ export const sessionLog = async (from, to) => {
     binome_id: pair.id,
     date,
     day: dayOf(date),
-    slot: (pair.schedule || []).find((sl) => sl.day === dayOf(date)) || null,
+    // Slot in force on that date (a change of slot does not rewrite the past)
+    slot: slotOn(pair, date),
     remote: isRemote(pair),
     subjects: pair.subjects || [],
     student: pair.student,
@@ -235,7 +237,7 @@ export const sessionLog = async (from, to) => {
     (byPairWeek[key] = byPairWeek[key] || new Set()).add(String(s.date).slice(0, 10));
   }
   for (const pair of Object.values(pairOf)) {
-    if (pair.status !== 'actif' || !(pair.schedule || []).length) continue;
+    if (pair.status !== 'actif') continue;
     const started = pair.start_date || pair.responded_at || pair.proposed_at;
     // start_date is a day; responded_at / proposed_at are times
     const begin = !started
@@ -246,7 +248,7 @@ export const sessionLog = async (from, to) => {
     const first = begin > from ? begin : from;
     const planned = {};
     for (let d = first; d <= last; d = addDays(d, 1)) {
-      if (!pair.schedule.some((sl) => sl.day === dayOf(d)) || off(d)) continue;
+      if (!scheduleOn(pair, d).some((sl) => sl.day === dayOf(d)) || off(d)) continue;
       (planned[weekOf(d)] = planned[weekOf(d)] || []).push(d);
     }
     for (const [week, days] of Object.entries(planned)) {

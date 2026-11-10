@@ -11,8 +11,8 @@ import Binomes from '../models/binomes.model.js';
 import Seances from '../models/seances.model.js';
 import Students from '../models/students/students.model.js';
 import Users from '../models/users.model.js';
+import { slotOn } from './pairSchedule.js';
 
-const DAYS_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 // The student arrived this late or more: "très en retard" (Charte)
 const LATE_MINUTES = 15;
 // Less than this together: not a session (wrong link, test…)
@@ -44,7 +44,6 @@ const minutesOf = (hhmm) => {
   const m = /^(\d{1,2}):(\d{2})/.exec(hhmm || '');
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 };
-const dayOf = (date) => DAYS_FR[new Date(`${date}T12:00:00Z`).getUTCDay()];
 export const meetingNumber = (id) => String(id || '').replace(/\D/g, '');
 
 // ---- API (server-to-server app, read only) ----
@@ -119,7 +118,13 @@ export const sessionFromInstances = (meetingId, instances) => {
   // Without the host's times (rare), the student's own time
   const minutes = Math.round((host.length ? overlapMs(student, host) : overlapMs(student, student)) / 60000);
   if (!others.length || minutes < MIN_MINUTES) return null;
-  const arrival = new Date(Math.min(...others.map((p) => new Date(p.join_time).getTime())));
+  // Arrival: the first connection, waiting room included (the student was
+  // there); the tutor's: the first time in the meeting
+  const arrival = new Date(
+    Math.min(...all.filter((p) => !isHost(p)).map((p) => new Date(p.join_time).getTime()))
+  );
+  const hostTimes = inMeeting.filter(isHost).map((p) => new Date(p.join_time).getTime());
+  const hostAt = hostTimes.length ? new Date(Math.min(...hostTimes)) : null;
   return {
     meeting_id: meetingNumber(meetingId),
     date: parisDate(arrival),
@@ -128,6 +133,7 @@ export const sessionFromInstances = (meetingId, instances) => {
     host_name: instances.find((i) => i.host_name)?.host_name || null,
     student_names: [...new Set(others.map((p) => (p.name || '').trim()).filter(Boolean))],
     arrival,
+    host_at: hostAt,
     minutes,
   };
 };
@@ -173,13 +179,17 @@ export const matchSession = (s, { pairs }) => {
 // ---- Writing ----
 const zoomKey = (s) => `${s.meeting_id}:${s.date}`;
 const applySession = async (s, pair, transaction) => {
-  const daySlot = (pair.schedule || []).find((x) => x.day === dayOf(s.date)) || null;
+  // Slot in force on that date (a change of slot does not rewrite the past)
+  const daySlot = slotOn(pair, s.date);
   const start = daySlot ? minutesOf(daySlot.startTime) : null;
   const end = daySlot ? minutesOf(daySlot.endTime) : null;
   const arrival = parisMinutes(s.arrival);
-  // Late only within the slot of that day (a session moved to another time
-  // says nothing about lateness)
-  const late = start !== null && arrival - start >= LATE_MINUTES && arrival < end;
+  // The session starts at the later of the slot and the tutor's arrival: a
+  // student is not late because the tutor opened the meeting later. Only
+  // within the slot of that day (a session moved to another time says
+  // nothing about lateness).
+  const begins = s.host_at ? Math.max(start ?? 0, parisMinutes(s.host_at)) : start;
+  const late = start !== null && arrival - begins >= LATE_MINUTES && arrival < end;
   const existing = await Seances.findOne({ where: { binome_id: pair.id, date: s.date }, transaction });
   let result;
   if (existing) {
@@ -190,6 +200,7 @@ const applySession = async (s, pair, transaction) => {
         zoom_key: zoomKey(s),
         signed_in_at: existing.signed_in_at && !existing.zoom_key ? existing.signed_in_at : s.arrival,
         duration_minutes: existing.zoom_key || !existing.duration_minutes ? s.minutes : existing.duration_minutes,
+        zoom_host_at: s.host_at || existing.zoom_host_at || null,
         ...(existing.source === 'zoom' ? { late } : {}),
       },
       { transaction }
@@ -206,6 +217,7 @@ const applySession = async (s, pair, transaction) => {
         // No e-mail to the team: seen in the log
         late,
         signed_in_at: s.arrival,
+        zoom_host_at: s.host_at || null,
         source: 'zoom',
         zoom_key: zoomKey(s),
       },

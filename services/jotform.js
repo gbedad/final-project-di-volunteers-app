@@ -9,8 +9,8 @@ import Binomes from '../models/binomes.model.js';
 import Seances from '../models/seances.model.js';
 import Students from '../models/students/students.model.js';
 import Users from '../models/users.model.js';
+import { scheduleOn, slotOn } from './pairSchedule.js';
 
-const DAYS_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 
 // ---- Names ----
 const norm = (v) =>
@@ -45,7 +45,6 @@ const minutesOf = (hhmm) => {
   const m = /^(\d{1,2}):(\d{2})/.exec(hhmm || '');
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 };
-const dayOf = (date) => DAYS_FR[new Date(`${date}T12:00:00Z`).getUTCDay()];
 // Time of the day in Paris -> instant
 const parisInstant = (date, hhmm) => {
   const minutes = minutesOf(hhmm);
@@ -104,8 +103,7 @@ const matchRow = (row, { pairs, aliases }) => {
 // Session of the pair for this Jotform row (created or completed)
 const applyRow = async (row, pair, transaction) => {
   // Duration from the slot of that day (or any slot of the pair)
-  const slot =
-    (pair.schedule || []).find((s) => s.day === dayOf(row.date)) || (pair.schedule || [])[0] || null;
+  const slot = slotOn(pair, row.date) || scheduleOn(pair, row.date)[0] || null;
   // The time on Jotform is when the form was filled in, often at the end of
   // the session: it says nothing about lateness
   const signedInAt = parisInstant(row.date, row.arrival);

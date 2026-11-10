@@ -28,6 +28,9 @@ const Binomes = db.define(
     reminded_at: { type: DataTypes.DATE },
     // Zoom meeting of the pair (created by Moodle), learnt at the first match
     zoom_meeting_id: { type: DataTypes.STRING },
+    // Slots over time: [{ since: 'YYYY-MM-DD' | null, schedule }], schedule
+    // being the current one (see services/pairSchedule.js)
+    schedule_history: { type: DataTypes.JSONB },
   },
   { timestamps: false }
 );
