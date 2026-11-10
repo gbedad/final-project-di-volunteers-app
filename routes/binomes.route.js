@@ -6,6 +6,7 @@ import {
   listStudentPairs,
   proposePair,
   updatePair,
+  updatePairDetails,
   myPairs,
   answerPair,
   listPairs,
@@ -26,6 +27,8 @@ router.get('/admin/students/:id/matches', adminAuth, getMatches);
 router.get('/admin/students/:id/binomes', adminAuth, listStudentPairs);
 router.post('/admin/binomes', managerAuth, proposePair);
 router.patch('/admin/binomes/:id', managerAuth, updatePair);
+// Slot, modality and place agreed for the pair
+router.patch('/admin/binomes/:id/details', managerAuth, updatePairDetails);
 // Follow-up: every pair with figures and alerts, reports of a pair
 router.get('/admin/binomes', adminAuth, listPairs);
 router.get('/admin/binomes/:id/seances', adminAuth, pairSessions);

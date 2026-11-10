@@ -259,6 +259,39 @@ export const updatePair = async (req, res) => {
   }
 };
 
+// Body: { schedule: [{ day, startTime, endTime }], how_location, site }
+// (the slot agreed for the pair; the availabilities of the tutor and the
+// student are not changed)
+const DAYS_LIST = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+export const updatePairDetails = async (req, res) => {
+  try {
+    const binome = await Binomes.findByPk(req.params.id);
+    if (!binome) return res.status(404).json({ error: 'Binôme introuvable' });
+    const changes = {};
+    if ('schedule' in req.body) {
+      const schedule = Array.isArray(req.body.schedule) ? req.body.schedule : [];
+      const valid = schedule.every(
+        (s) =>
+          DAYS_LIST.includes(s?.day) && HHMM.test(s.startTime || '') && HHMM.test(s.endTime || '') && s.startTime < s.endTime
+      );
+      if (!valid) return res.status(400).json({ error: 'Créneau incomplet ou heure de fin avant le début' });
+      changes.schedule = schedule.map(({ day, startTime, endTime }) => ({ day, startTime, endTime }));
+    }
+    if ('how_location' in req.body) changes.how_location = String(req.body.how_location || '').trim() || null;
+    if ('site' in req.body || 'how_location' in req.body) {
+      changes.site = /^\s*(à|a) distance\s*$/i.test(changes.how_location ?? binome.how_location ?? '')
+        ? null
+        : String(req.body.site ?? binome.site ?? '').trim() || null;
+    }
+    await binome.update(changes);
+    res.json(binome);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Le binôme n'a pas pu être modifié" });
+  }
+};
+
 // ---- Tutor ----
 
 // The tutor's pairs: only what is needed to teach (no family contact, no
