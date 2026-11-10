@@ -120,6 +120,8 @@ const offDayFinder = async () => {
 };
 
 // ---- The log ----
+// Minutes after the end of today's slot before it shows as not signed in
+const SIGN_IN_GRACE = 60;
 const REMOTE = /^\s*(à|a) distance\s*$/i;
 const isRemote = (pair) => REMOTE.test(pair.how_location || '');
 const hasReport = (s) => !!(s.work || s.remark || s.progress);
@@ -244,7 +246,20 @@ export const sessionLog = async (from, to) => {
   // a session of that week; only past days, from the start of the pair
   const { off, calendarOk } = await offDayFinder();
   const today = parisToday();
-  const last = to < today ? to : addDays(today, -1);
+  // Today counts once a slot of the day ended an hour ago (time left to the
+  // tutor to sign in): "pas encore émargée" until tomorrow
+  const last = to < today ? to : today;
+  const nowMinutes = (() => {
+    const [h, m] = new Date()
+      .toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' })
+      .split(':')
+      .map(Number);
+    return h * 60 + m;
+  })();
+  const toMinutes = (hhmm) => {
+    const [h, m] = String(hhmm || '').split(':').map(Number);
+    return h * 60 + (m || 0);
+  };
   const byPairWeek = {};
   for (const s of sessions) {
     const key = `${s.binome_id}|${weekOf(String(s.date).slice(0, 10))}`;
@@ -262,7 +277,9 @@ export const sessionLog = async (from, to) => {
     const first = begin > from ? begin : from;
     const planned = {};
     for (let d = first; d <= last; d = addDays(d, 1)) {
-      if (!scheduleOn(pair, d).some((sl) => sl.day === dayOf(d)) || off(d)) continue;
+      const daySlots = scheduleOn(pair, d).filter((sl) => sl.day === dayOf(d));
+      if (!daySlots.length || off(d)) continue;
+      if (d === today && !daySlots.some((sl) => nowMinutes >= toMinutes(sl.endTime) + SIGN_IN_GRACE)) continue;
       (planned[weekOf(d)] = planned[weekOf(d)] || []).push(d);
     }
     for (const [week, days] of Object.entries(planned)) {
@@ -272,7 +289,13 @@ export const sessionLog = async (from, to) => {
       for (const d of days) {
         if (missing <= 0) break;
         if (held.has(d)) continue;
-        rows.push({ ...common(pair, d), kind: 'attendue', id: `attendue-${pair.id}-${d}` });
+        rows.push({
+          ...common(pair, d),
+          kind: 'attendue',
+          id: `attendue-${pair.id}-${d}`,
+          // Today: not signed in yet (the tutor can still do it tonight)
+          today: d === today,
+        });
         missing -= 1;
       }
     }
