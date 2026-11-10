@@ -7,6 +7,7 @@ import {
   proposePair,
   updatePair,
   updatePairDetails,
+  confirmSession,
   myPairs,
   answerPair,
   listPairs,
@@ -29,6 +30,8 @@ router.post('/admin/binomes', managerAuth, proposePair);
 router.patch('/admin/binomes/:id', managerAuth, updatePair);
 // Slot, modality and place agreed for the pair
 router.patch('/admin/binomes/:id/details', managerAuth, updatePairDetails);
+// Session confirmed by the team (no sign-in: call, message…)
+router.post('/admin/binomes/:id/seances', managerAuth, confirmSession);
 // Follow-up: every pair with figures and alerts, reports of a pair
 router.get('/admin/binomes', adminAuth, listPairs);
 router.get('/admin/binomes/:id/seances', adminAuth, pairSessions);

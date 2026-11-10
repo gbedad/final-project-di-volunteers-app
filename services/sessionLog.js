@@ -165,6 +165,14 @@ export const sessionLog = async (from, to) => {
     attributes: ['id', 'first_name', 'last_name', 'is_demo'],
     raw: true,
   });
+  // Team members who confirmed sessions
+  const teamIds = [...new Set(sessions.filter((s) => s.source === 'equipe').map((s) => s.author_id).filter(Boolean))];
+  const teamNames = Object.fromEntries(
+    (teamIds.length
+      ? await Users.findAll({ where: { id: teamIds }, attributes: ['id', 'first_name', 'last_name'], raw: true })
+      : []
+    ).map((u) => [u.id, `${u.first_name} ${u.last_name}`])
+  );
   const pairOf = Object.fromEntries(
     pairs.map((p) => [
       p.id,
@@ -211,7 +219,7 @@ export const sessionLog = async (from, to) => {
         // Application, Jotform, or both (signed in here, signed there)
         // Application, Jotform, Zoom, or the application completed by one
         source:
-          s.source === 'jotform' || s.source === 'zoom'
+          ['jotform', 'zoom', 'equipe'].includes(s.source)
             ? s.source
             : s.jotform_id
             ? 'app+jotform'
@@ -221,6 +229,9 @@ export const sessionLog = async (from, to) => {
         // Held on Zoom (even for a pair set as on-site)
         zoom: !!s.zoom_key,
         jotform_signature_url: s.jotform_signature_url || null,
+        // Confirmed by the team: how, and who
+        confirmation: s.confirmation || null,
+        confirmed_by: s.source === 'equipe' ? teamNames[s.author_id] || null : null,
         // A report is expected when the session took place
         report: hasReport(s) ? 'fait' : s.attendance === 'présent' ? 'manquant' : null,
         work: s.work,

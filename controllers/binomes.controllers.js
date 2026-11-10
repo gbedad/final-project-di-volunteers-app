@@ -12,7 +12,7 @@ import { pairStats, ATTENDANCES } from '../services/followUp.js';
 import { MANAGER_ROLES } from '../middlewares/authAdmin.js';
 import { onMembershipChange } from '../services/cohorts.js';
 import { sessionLog, parisToday } from '../services/sessionLog.js';
-import { withNewSchedule } from '../services/pairSchedule.js';
+import { slotOn as slotOnDate, withNewSchedule } from '../services/pairSchedule.js';
 import {
   notifyPairProposed,
   notifyPairAnswered,
@@ -294,6 +294,50 @@ export const updatePairDetails = async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "Le binôme n'a pas pu être modifié" });
+  }
+};
+
+// A session the team knows took place, with no sign-in (call or message
+// to the tutor, the family…). Body: { date, attendance, duration_minutes,
+// channel, note }
+const CONFIRMATION_CHANNELS = {
+  appel_tuteur: 'Appel au tuteur',
+  message_tuteur: 'Message au tuteur',
+  famille: 'Contact avec la famille',
+  autre: 'Autre',
+};
+export const confirmSession = async (req, res) => {
+  try {
+    const pair = await Binomes.findByPk(req.params.id, { raw: true });
+    if (!pair) return res.status(404).json({ error: 'Binôme introuvable' });
+    const date = String(req.body.date || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > parisNow().date) {
+      return res.status(400).json({ error: 'Date invalide (pas de séance dans le futur)' });
+    }
+    const attendance = ATTENDANCES.includes(req.body.attendance) ? req.body.attendance : 'présent';
+    const channel = CONFIRMATION_CHANNELS[req.body.channel];
+    if (!channel) return res.status(400).json({ error: 'Indiquez comment la séance a été confirmée' });
+    if (await Seances.count({ where: { binome_id: pair.id, date } })) {
+      return res.status(409).json({ error: 'Une séance est déjà enregistrée ce jour-là pour ce binôme' });
+    }
+    // Duration given, else the slot in force that day
+    const slot = slotOnDate(pair, date);
+    const fromSlot = slot ? minutesOf(slot.endTime) - minutesOf(slot.startTime) : null;
+    const given = Number(req.body.duration_minutes);
+    const note = String(req.body.note || '').trim().slice(0, 500);
+    const session = await Seances.create({
+      binome_id: pair.id,
+      author_id: me(req),
+      date,
+      attendance,
+      duration_minutes: attendance === 'présent' ? (given > 0 && given <= 600 ? given : fromSlot > 0 ? fromSlot : null) : null,
+      source: 'equipe',
+      confirmation: note ? `${channel} — ${note}` : channel,
+    });
+    res.status(201).json(session);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "La séance n'a pas pu être enregistrée" });
   }
 };
 

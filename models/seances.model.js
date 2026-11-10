@@ -23,8 +23,9 @@ const Seances = db.define(
     no_signature: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     // Time the tutor signed in ("La séance a eu lieu"), on-site pairs
     signed_in_at: { type: DataTypes.DATE },
-    // 'app', 'jotform' (attendance form used alongside the application) or
-    // 'zoom' (remote session read from Zoom)
+    // 'app', 'jotform' (attendance form used alongside the application),
+    // 'zoom' (remote session read from Zoom) or 'equipe' (confirmed by the
+    // team without sign-in)
     source: { type: DataTypes.STRING, allowNull: false, defaultValue: 'app' },
     // Jotform answer of the session (one answer = one session at most), and
     // the student's signature there (opened by the team, kept at Jotform)
@@ -35,6 +36,9 @@ const Seances = db.define(
     // When the tutor joined on Zoom (lateness counts from the later of the
     // slot and the tutor)
     zoom_host_at: { type: DataTypes.DATE },
+    // Recorded by the team without any sign-in (source 'equipe'): how it was
+    // confirmed ("Appel au tuteur — …"); author_id is the team member
+    confirmation: { type: DataTypes.TEXT },
     work: { type: DataTypes.TEXT },
     // How the student is doing, 1 to 5
     progress: { type: DataTypes.INTEGER },
