@@ -125,13 +125,11 @@ export const freeSlots = (tutorSlots = [], busy = []) => {
 
 const fullName = (u) => [u.first_name, u.last_name].filter(Boolean).join(' ');
 
-// scope: 'validated' (every validated tutor) or 'active' (tutors marked
-// active); demo: include demonstration tutors (tests only; default: when the
-// student is a demonstration one)
-export const findTutors = async (student, { scope = 'validated', demo } = {}) => {
+// Every validated tutor (not paused); demo: include demonstration tutors
+// (tests only; default: when the student is a demonstration one)
+export const findTutors = async (student, { demo } = {}) => {
   const includeDemo = demo === undefined ? !!student.is_demo : !!demo;
   const where = { role: 'volunteer', status: 'Validé' };
-  if (scope === 'active') where.is_active = true;
   if (!includeDemo) where.is_demo = { [Op.not]: true };
   const tutors = await Users.findAll({
     where,
@@ -153,7 +151,12 @@ export const findTutors = async (student, { scope = 'validated', demo } = {}) =>
       tutor_id: { [Op.in]: tutors.map((t) => t.id) },
       status: { [Op.in]: OPEN_PAIR_STATUSES },
     },
-    attributes: ['tutor_id', 'student_id', 'schedule'],
+    attributes: ['tutor_id', 'student_id', 'schedule', 'status'],
+  });
+  // Experience: students followed now and before (shown, not scored)
+  const pastPairs = await Binomes.findAll({
+    where: { tutor_id: { [Op.in]: tutors.map((t) => t.id) }, status: 'terminé' },
+    attributes: ['tutor_id'],
   });
   const studentLevel = levelIndex(student.level);
   const needs = hasSpecialNeeds(student);
@@ -226,6 +229,10 @@ export const findTutors = async (student, { scope = 'validated', demo } = {}) =>
         is_demo: !!tutor.is_demo,
       },
       busy,
+      experience: {
+        current: openPairs.filter((p) => p.tutor_id === tutor.id && p.status !== 'proposé').length,
+        past: pastPairs.filter((p) => p.tutor_id === tutor.id).length,
+      },
       score,
       subjects,
       slots,

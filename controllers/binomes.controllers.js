@@ -120,7 +120,6 @@ export const getMatches = async (req, res) => {
     if (!student) return res.status(404).json({ error: 'Élève introuvable' });
     res.json(
       await findTutors(student.toJSON(), {
-        scope: req.query.scope === 'active' ? 'active' : 'validated',
         // '1' / '0'; not given: demo tutors only for a demo student
         demo: req.query.demo === undefined ? undefined : req.query.demo === '1',
       })
