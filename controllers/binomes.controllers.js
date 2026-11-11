@@ -442,7 +442,7 @@ export const answerPair = async (req, res) => {
 
 // Body: { date, duration_minutes, attendance, work, progress, remark }
 // E-mail to the team for a late arrival (after the answer, never blocking)
-const tellLate = async (pair, session) => {
+export const tellLate = async (pair, session) => {
   try {
     const [tutor, student] = await Promise.all([
       Users.findByPk(pair.tutor_id, { attributes: ['first_name', 'last_name'] }),

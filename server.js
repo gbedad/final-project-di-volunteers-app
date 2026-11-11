@@ -30,6 +30,8 @@ import consent_router from './routes/students_routes/consent.route.js';
 import convention_signing_router from './routes/conventionSigning.route.js';
 import jotform_router from './routes/jotform.route.js';
 import zoom_router from './routes/zoom.route.js';
+import todo_router from './routes/todo.route.js';
+import kiosk_router from './routes/kiosk.route.js';
 
 dotenv.config();
 
@@ -49,6 +51,7 @@ app.post('/consentement/:token', express.json({ limit: '1mb' }));
 // Signatures drawn in the browser (convention)
 app.post('/users/:id/convention/sign', express.json({ limit: '1mb' }));
 app.post('/my/seances/:id/signature', express.json({ limit: '1mb' }));
+app.post('/kiosk/seances/:id/signature', express.json({ limit: '1mb' }));
 app.put('/admin/president-signature', express.json({ limit: '1mb' }));
 // Zoom webhook: signed, the signature is checked on the raw body
 app.post(
@@ -89,6 +92,8 @@ app.use(consent_router);
 app.use(convention_signing_router);
 app.use(jotform_router);
 app.use(zoom_router);
+app.use(todo_router);
+app.use(kiosk_router);
 
 // Serve static files from the Next.js build directory
 app.use('/_next', express.static(path.join(__dirname, '.next')));

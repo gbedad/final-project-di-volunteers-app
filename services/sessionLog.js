@@ -221,7 +221,7 @@ export const sessionLog = async (from, to) => {
         // Application, Jotform, or both (signed in here, signed there)
         // Application, Jotform, Zoom, or the application completed by one
         source:
-          ['jotform', 'zoom', 'equipe'].includes(s.source)
+          ['jotform', 'zoom', 'equipe', 'borne'].includes(s.source)
             ? s.source
             : s.jotform_id
             ? 'app+jotform'
