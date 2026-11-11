@@ -102,11 +102,37 @@ export const commonSlots = (studentSlots = [], tutorSlots = []) => {
   return result;
 };
 
+// The tutor's free slots: availability minus the slots of the pairs they
+// already have (a 14:00-18:00 availability with a pair at 14:00-15:00 is
+// 15:00-18:00 free)
+export const freeSlots = (tutorSlots = [], busy = []) => {
+  const result = [];
+  for (const t of tutorSlots.map(parse).filter(Boolean)) {
+    let parts = [[minutes(t.startTime), minutes(t.endTime)]];
+    for (const b of busy.filter((x) => x.day === t.day)) {
+      const [bs, be] = [minutes(b.startTime), minutes(b.endTime)];
+      if (bs === null || be === null) continue;
+      parts = parts.flatMap(([s, e]) =>
+        be <= s || bs >= e ? [[s, e]] : [[s, bs], [be, e]].filter(([x, y]) => y - x > 0)
+      );
+    }
+    for (const [s, e] of parts) {
+      if (s !== null && e !== null) result.push({ day: t.day, startTime: hhmm(s), endTime: hhmm(e) });
+    }
+  }
+  return result;
+};
+
 const fullName = (u) => [u.first_name, u.last_name].filter(Boolean).join(' ');
 
-export const findTutors = async (student, { scope = 'active' } = {}) => {
+// scope: 'validated' (every validated tutor) or 'active' (tutors marked
+// active); demo: include demonstration tutors (tests only; default: when the
+// student is a demonstration one)
+export const findTutors = async (student, { scope = 'validated', demo } = {}) => {
+  const includeDemo = demo === undefined ? !!student.is_demo : !!demo;
   const where = { role: 'volunteer', status: 'Validé' };
   if (scope === 'active') where.is_active = true;
+  if (!includeDemo) where.is_demo = { [Op.not]: true };
   const tutors = await Users.findAll({
     where,
     attributes: [
@@ -118,6 +144,7 @@ export const findTutors = async (student, { scope = 'active' } = {}) => {
       'city',
       'unavailable_until',
       'interviews',
+      'is_demo',
     ],
     include: ['skill'],
   });
@@ -126,7 +153,7 @@ export const findTutors = async (student, { scope = 'active' } = {}) => {
       tutor_id: { [Op.in]: tutors.map((t) => t.id) },
       status: { [Op.in]: OPEN_PAIR_STATUSES },
     },
-    attributes: ['tutor_id', 'student_id'],
+    attributes: ['tutor_id', 'student_id', 'schedule'],
   });
   const studentLevel = levelIndex(student.level);
   const needs = hasSpecialNeeds(student);
@@ -149,7 +176,11 @@ export const findTutors = async (student, { scope = 'active' } = {}) => {
       });
       return { subject: w.subject, priority: w.priority, fit };
     });
-    const slots = commonSlots(student.when_day_slot || [], skill.when_day_slot || []);
+    // The hours already taken by the tutor's other pairs are not free
+    const busy = openPairs
+      .filter((p) => p.tutor_id === tutor.id && p.student_id !== student.id)
+      .flatMap((p) => p.schedule || []);
+    const slots = commonSlots(student.when_day_slot || [], freeSlots(skill.when_day_slot || [], busy));
     const tutorPlaces = skill.where_location || [];
     const tutorRemote = remoteOk(skill.how_location, tutorPlaces);
     const tutorSites = sitesOf(tutorPlaces);
@@ -192,7 +223,9 @@ export const findTutors = async (student, { scope = 'active' } = {}) => {
         name: fullName(tutor),
         email: tutor.email,
         is_active: !!tutor.is_active,
+        is_demo: !!tutor.is_demo,
       },
+      busy,
       score,
       subjects,
       slots,
@@ -206,6 +239,8 @@ export const findTutors = async (student, { scope = 'active' } = {}) => {
 
   return results
     .filter((r) => r.subjects.some((s) => s.fit) && !r.alreadyPaired)
-    .sort((a, b) => b.score - a.score)
+    // Tutors with a free place first, then the full ones (still shown: one
+    // may accept one more student)
+    .sort((a, b) => (b.capacity.free > 0) - (a.capacity.free > 0) || b.score - a.score)
     .slice(0, 25);
 };
