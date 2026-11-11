@@ -10,9 +10,9 @@ import { fileUrl } from '../config/aws.config.js';
 import { writeObject } from '../services/conventionSigning.js';
 import { pairStats, ATTENDANCES } from '../services/followUp.js';
 import { MANAGER_ROLES } from '../middlewares/authAdmin.js';
-import { onMembershipChange } from '../services/cohorts.js';
 import { sessionLog, parisToday } from '../services/sessionLog.js';
 import { slotOn as slotOnDate, withNewSchedule } from '../services/pairSchedule.js';
+import { syncTutorActive } from '../services/tutorActivity.js';
 import {
   notifyPairProposed,
   notifyPairAnswered,
@@ -20,7 +20,6 @@ import {
 } from '../services/binomesMail.js';
 
 const me = (req) => Number(req.user.userid ?? req.user.userId);
-const fullName = (u) => [u?.first_name, u?.last_name].filter(Boolean).join(' ');
 const TUTOR_FIELDS = ['id', 'first_name', 'last_name', 'email', 'email2', 'phone'];
 
 // Student status follows the pairs: an active pair means "Binôme en cours";
@@ -201,11 +200,7 @@ export const proposePair = async (req, res) => {
     if (alreadyAccepted) {
       await syncStudentStatus(student.id);
       // Same as an accepted proposal: the tutor becomes active
-      const [updated] = await Users.update(
-        { is_active: true },
-        { where: { id: tutor.id, is_active: { [Op.not]: true } } }
-      );
-      if (updated) await onMembershipChange(tutor.id);
+      await syncTutorActive(tutor.id);
       return res.status(201).json(binome);
     }
     if (student.status === 'Nouvelle demande') {
@@ -242,23 +237,9 @@ export const updatePair = async (req, res) => {
     }
     await binome.update(changes);
     await syncStudentStatus(binome.student_id);
-    // No student left: the admin is asked whether the tutor stays active
-    let tutorFree = null;
-    if (['end', 'cancel'].includes(req.body.action) && binome.tutor_id) {
-      const open = await Binomes.count({
-        where: {
-          tutor_id: binome.tutor_id,
-          status: { [Op.in]: OPEN_PAIR_STATUSES },
-        },
-      });
-      const tutor = await Users.findByPk(binome.tutor_id, {
-        attributes: ['id', 'first_name', 'last_name', 'is_active'],
-      });
-      if (!open && tutor?.is_active) {
-        tutorFree = { id: tutor.id, name: fullName(tutor) };
-      }
-    }
-    res.json({ ...binome.toJSON(), tutorFree });
+    // Active while a pair is in progress (no more question to the admin)
+    await syncTutorActive(binome.tutor_id);
+    res.json(binome.toJSON());
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "Le binôme n'a pas pu être modifié" });
@@ -421,13 +402,7 @@ export const answerPair = async (req, res) => {
     });
     await syncStudentStatus(binome.student_id);
     // A tutor who takes a student is an active tutor (cohort of the year too)
-    if (req.body.accept) {
-      const [updated] = await Users.update(
-        { is_active: true },
-        { where: { id: binome.tutor_id, is_active: { [Op.not]: true } } }
-      );
-      if (updated) await onMembershipChange(binome.tutor_id);
-    }
+    if (req.body.accept) await syncTutorActive(binome.tutor_id);
     res.json(binome);
     const tutor = await Users.findByPk(binome.tutor_id, { attributes: TUTOR_FIELDS });
     const student = await Students.findByPk(binome.student_id, {

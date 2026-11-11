@@ -158,6 +158,16 @@ export const findTutors = async (student, { demo } = {}) => {
     where: { tutor_id: { [Op.in]: tutors.map((t) => t.id) }, status: 'terminé' },
     attributes: ['tutor_id'],
   });
+  // The student's own pairs: their hours are not free any more (they come
+  // back when a pair ends: nothing is removed from the availabilities)
+  const studentBusy = (
+    await Binomes.findAll({
+      where: { student_id: student.id, status: { [Op.in]: OPEN_PAIR_STATUSES } },
+      attributes: ['schedule'],
+      raw: true,
+    })
+  ).flatMap((p) => p.schedule || []);
+  const studentFree = freeSlots(student.when_day_slot || [], studentBusy);
   const studentLevel = levelIndex(student.level);
   const needs = hasSpecialNeeds(student);
   const wanted = (student.topics || []).filter((t) => t?.subject);
@@ -183,7 +193,7 @@ export const findTutors = async (student, { demo } = {}) => {
     const busy = openPairs
       .filter((p) => p.tutor_id === tutor.id && p.student_id !== student.id)
       .flatMap((p) => p.schedule || []);
-    const slots = commonSlots(student.when_day_slot || [], freeSlots(skill.when_day_slot || [], busy));
+    const slots = commonSlots(studentFree, freeSlots(skill.when_day_slot || [], busy));
     const tutorPlaces = skill.where_location || [];
     const tutorRemote = remoteOk(skill.how_location, tutorPlaces);
     const tutorSites = sitesOf(tutorPlaces);
@@ -229,6 +239,7 @@ export const findTutors = async (student, { demo } = {}) => {
         is_demo: !!tutor.is_demo,
       },
       busy,
+      student_busy: studentBusy,
       experience: {
         current: openPairs.filter((p) => p.tutor_id === tutor.id && p.status !== 'proposé').length,
         past: pastPairs.filter((p) => p.tutor_id === tutor.id).length,

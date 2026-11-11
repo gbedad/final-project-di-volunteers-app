@@ -17,6 +17,11 @@ import { slotOn } from './pairSchedule.js';
 const LATE_MINUTES = 15;
 // Less than this together: not a session (wrong link, test…)
 const MIN_MINUTES = 5;
+// The tutor alone this long, the student never there: "L'élève n'est pas
+// venu" (only for a meeting opened during the slot of that day)
+const ABSENT_MINUTES = 25;
+// The tutor may open the meeting a little before the slot
+const EARLY_MINUTES = 30;
 // Sessions of the current school year only (pairs exist since then)
 export const ZOOM_SINCE = '2026-09-01';
 
@@ -117,14 +122,31 @@ export const sessionFromInstances = (meetingId, instances) => {
   const student = union(intervals(others));
   // Without the host's times (rare), the student's own time
   const minutes = Math.round((host.length ? overlapMs(student, host) : overlapMs(student, student)) / 60000);
-  if (!others.length || minutes < MIN_MINUTES) return null;
+  const hostTimes = inMeeting.filter(isHost).map((p) => new Date(p.join_time).getTime());
+  const hostAt = hostTimes.length ? new Date(Math.min(...hostTimes)) : null;
+  if (!others.length || minutes < MIN_MINUTES) {
+    // Nobody came: an absence if the tutor waited long enough alone
+    const alone = Math.round(overlapMs(host, host) / 60000);
+    if (!hostAt || alone < ABSENT_MINUTES) return null;
+    return {
+      meeting_id: meetingNumber(meetingId),
+      date: parisDate(hostAt),
+      topic: instances.find((i) => i.topic)?.topic || '',
+      host_email: hostEmail || null,
+      host_name: instances.find((i) => i.host_name)?.host_name || null,
+      student_names: [],
+      arrival: null,
+      host_at: hostAt,
+      minutes: 0,
+      absent: true,
+      alone,
+    };
+  }
   // Arrival: the first connection, waiting room included (the student was
   // there); the tutor's: the first time in the meeting
   const arrival = new Date(
     Math.min(...all.filter((p) => !isHost(p)).map((p) => new Date(p.join_time).getTime()))
   );
-  const hostTimes = inMeeting.filter(isHost).map((p) => new Date(p.join_time).getTime());
-  const hostAt = hostTimes.length ? new Date(Math.min(...hostTimes)) : null;
   return {
     meeting_id: meetingNumber(meetingId),
     date: parisDate(arrival),
@@ -183,6 +205,7 @@ const applySession = async (s, pair, transaction) => {
   const daySlot = slotOn(pair, s.date);
   const start = daySlot ? minutesOf(daySlot.startTime) : null;
   const end = daySlot ? minutesOf(daySlot.endTime) : null;
+  if (s.absent) return applyAbsence(s, pair, { start, end }, transaction);
   const arrival = parisMinutes(s.arrival);
   // The session starts at the later of the slot and the tutor's arrival: a
   // student is not late because the tutor opened the meeting later. Only
@@ -192,6 +215,22 @@ const applySession = async (s, pair, transaction) => {
   const late = start !== null && arrival - begins >= LATE_MINUTES && arrival < end;
   const existing = await Seances.findOne({ where: { binome_id: pair.id, date: s.date }, transaction });
   let result;
+  // An absence read from Zoom, and the student came after all (later, or on
+  // another link): the session took place
+  if (existing && existing.source === 'zoom' && existing.attendance === 'absent') {
+    await existing.update(
+      {
+        zoom_key: zoomKey(s),
+        attendance: 'présent',
+        duration_minutes: s.minutes,
+        signed_in_at: s.arrival,
+        zoom_host_at: s.host_at || existing.zoom_host_at || null,
+        late,
+      },
+      { transaction }
+    );
+    return 'mise à jour';
+  }
   if (existing) {
     if (existing.zoom_key && existing.zoom_key !== zoomKey(s)) return 'doublon';
     // Same day again (a later part, a new reading): the latest figures
@@ -232,6 +271,32 @@ const applySession = async (s, pair, transaction) => {
   return result;
 };
 
+// The tutor waited alone: "L'élève n'est pas venu", if the meeting was
+// opened during the slot of that day (or just before)
+// (transaction null: simulation, nothing written)
+const applyAbsence = async (s, pair, { start, end }, transaction) => {
+  const opened = parisMinutes(s.host_at);
+  if (start === null || opened < start - EARLY_MINUTES || opened >= end) return 'ignorée';
+  if (await Seances.count({ where: { binome_id: pair.id, date: s.date }, transaction })) return 'doublon';
+  if (!transaction) return 'absence';
+  await Seances.create(
+    {
+      binome_id: pair.id,
+      author_id: null,
+      date: s.date,
+      attendance: 'absent',
+      duration_minutes: null,
+      late: false,
+      signed_in_at: null,
+      zoom_host_at: s.host_at,
+      source: 'zoom',
+      zoom_key: zoomKey(s),
+    },
+    { transaction }
+  );
+  return 'absence';
+};
+
 const keep = (s, reason, transaction) =>
   db.query(
     `insert into zoom_pending (zoom_key, meeting_id, date, topic, host_email, host_name, student_names, arrival, minutes, reason)
@@ -248,7 +313,9 @@ const keep = (s, reason, transaction) =>
 // sessions: from sessionFromInstances. apply false: nothing is written.
 export const importZoomSessions = async (sessions, { apply = false } = {}) => {
   const context = await loadContext();
-  const report = { créée: [], complétée: [], 'mise à jour': [], doublon: [], en_attente: [] };
+  const report = { créée: [], complétée: [], 'mise à jour': [], absence: [], ignorée: [], doublon: [], en_attente: [] };
+  // Sessions that took place first: an absence never hides one
+  sessions = [...sessions].sort((a, b) => !!a.absent - !!b.absent);
   const [resolved] = await db.query('select zoom_key from zoom_pending where resolved_at is not null', {
     logging: false,
   });
@@ -256,14 +323,28 @@ export const importZoomSessions = async (sessions, { apply = false } = {}) => {
   const run = async (transaction) => {
     for (const s of sessions) {
       if (done.has(zoomKey(s))) continue;
-      const label = `${s.date} ${s.topic || s.meeting_id} (${s.student_names.join(', ')}) ${s.minutes} min`;
+      const label = s.absent
+        ? `${s.date} ${s.topic || s.meeting_id} (tuteur seul ${s.alone} min)`
+        : `${s.date} ${s.topic || s.meeting_id} (${s.student_names.join(', ')}) ${s.minutes} min`;
       const { pair, reason } = matchSession(s, context);
+      // An absence nobody can place is left aside (nothing to match by hand)
+      if (!pair && s.absent) {
+        report.ignorée.push(`${label} : ${reason}`);
+        continue;
+      }
       if (!pair) {
         report.en_attente.push(`${label} : ${reason}`);
         if (transaction) await keep(s, reason, transaction);
         continue;
       }
       const target = `${label} -> binôme #${pair.id}`;
+      if (!transaction && s.absent) {
+        const slot = slotOn(pair, s.date);
+        report[
+          await applyAbsence(s, pair, { start: slot ? minutesOf(slot.startTime) : null, end: slot ? minutesOf(slot.endTime) : null }, null)
+        ].push(target);
+        continue;
+      }
       if (!transaction) {
         const existing = await Seances.findOne({ where: { binome_id: pair.id, date: s.date }, raw: true });
         report[
@@ -300,7 +381,8 @@ export const readZoomSessions = async ({ from, to, hostEmail }) => {
       const end = endOfMonth.toISOString().slice(0, 10) < to ? endOfMonth.toISOString().slice(0, 10) : to;
       const meetings = await allPages(`/report/users/${host.id}/meetings`, 'meetings', { from: start, to: end });
       for (const m of meetings) {
-        if ((m.participants_count || 0) < 2) continue;
+        // A meeting with the tutor alone may be an absence
+        if ((m.participants_count || 0) < 1) continue;
         const key = `${meetingNumber(m.id)}:${parisDate(m.start_time)}`;
         (groups[key] = groups[key] || []).push({ ...m, host_email: host.email, host_name: `${host.first_name} ${host.last_name}` });
       }
