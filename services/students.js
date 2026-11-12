@@ -33,6 +33,10 @@ export const EDITABLE_FIELDS = [
   'parent2_lastname',
   'parent2_email',
   'parent2_phone',
+  // Home address (the family convention)
+  'address',
+  'zipcode',
+  'city',
   'referral_source',
   'referral_contact',
   'topics',

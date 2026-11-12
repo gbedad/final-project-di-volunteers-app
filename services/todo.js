@@ -13,6 +13,9 @@ import { sessionLog, parisToday } from './sessionLog.js';
 import { resumeProblems, RESUME_SLOTS } from './pairBreaks.js';
 
 const SHOWN = 6;
+// Family conventions exist since then: students registered before are not
+// asked for one for now
+const CONVENTIONS_SINCE = '2026-11-13';
 const name = (p) => (p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : '—');
 const daysSince = (d) => Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
 const frDate = (d) => new Date(`${String(d).slice(0, 10)}T12:00:00Z`).toLocaleDateString('fr-FR');
@@ -174,6 +177,29 @@ export const todoList = async () => {
       link: { path: '/binomes', pairId: p.id },
     }));
 
+  // ---- Family conventions: to send at registration (students registered
+  // since the conventions exist; those followed before: not now), or sent a
+  // week ago and not signed ----
+  const [conventionRows] = await db.query(
+    `select s.id, s.first_name, s.last_name, s.status, s.created_at,
+            (select c.status from family_conventions c where c.student_id = s.id and c.status in ('envoyée', 'signée', 'papier')
+              and (c.status <> 'envoyée' or c.expires_at > now()) order by c.created_at desc limit 1) as state,
+            (select max(c.requested_at) from family_conventions c where c.student_id = s.id and c.status = 'envoyée') as sent_at
+       from students s
+      where not coalesce(s.is_demo, false)
+        and s.status in ('Nouvelle demande', 'En attente de tuteur', 'Binôme en cours', 'En pause')
+        and s.created_at >= :since`,
+    { replacements: { since: CONVENTIONS_SINCE }, logging: false }
+  );
+  const conventions = conventionRows
+    .filter((s) => !s.state || (s.state === 'envoyée' && daysSince(s.sent_at) >= 7))
+    .map((s) => ({
+      id: s.id,
+      label: name(s),
+      detail: s.state ? `envoyée il y a ${daysSince(s.sent_at)} jours, pas encore signée` : 'à envoyer',
+      link: { path: `/eleves/${s.id}` },
+    }));
+
   // ---- Cultural outings: expenses advanced by someone, to refund ----
   const [toRefund] = await db.query(
     `select e.id, e.label, e.amount, e.paid_by, a.title from activity_expenses e join activities a on a.id = e.activity_id
@@ -201,6 +227,8 @@ export const todoList = async () => {
     block('proposals', 'Propositions sans réponse', 'warning', { path: '/binomes' }, proposals,
       `Tuteurs qui n'ont pas répondu depuis plus de ${ANSWER_DAYS} jours.`),
     block('waiting', 'Élèves sans tuteur', 'info', { path: '/eleves' }, waiting),
+    block('conventions', 'Conventions famille à envoyer', 'warning', { path: '/eleves' }, conventions,
+      'Élèves inscrits depuis la mise en place des conventions : à envoyer depuis la fiche élève, ou à relancer.'),
     block('confirm', 'Séances non renseignées', 'warning', { path: '/binomes/seances' }, toConfirm,
       'Créneaux des 14 derniers jours sans rien d’enregistré : « Renseigner » dans le journal (eu lieu, élève absent ou pas de séance).'),
     block('resume', 'Reprise non constatée après les vacances', 'error', { path: '/binomes/seances' }, resume,

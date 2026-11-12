@@ -34,6 +34,7 @@ import zoom_router from './routes/zoom.route.js';
 import todo_router from './routes/todo.route.js';
 import kiosk_router from './routes/kiosk.route.js';
 import activities_router from './routes/activities.route.js';
+import family_convention_router from './routes/familyConvention.route.js';
 
 dotenv.config();
 
@@ -60,6 +61,8 @@ app.post('/admin/activites', express.json({ limit: '1mb' }));
 app.patch('/admin/activites/:id', express.json({ limit: '1mb' }));
 app.post('/admin/depenses/:id/justificatif', express.json({ limit: '9mb' }));
 app.post('/autorisation-sortie/:token', express.json({ limit: '1mb' }));
+app.post('/convention-famille/:token', express.json({ limit: '1mb' }));
+app.post('/admin/students/:id/conventions-famille/papier', express.json({ limit: '13mb' }));
 // Zoom webhook: signed, the signature is checked on the raw body
 app.post(
   '/webhooks/zoom',
@@ -102,6 +105,7 @@ app.use(zoom_router);
 app.use(todo_router);
 app.use(kiosk_router);
 app.use(activities_router);
+app.use(family_convention_router);
 
 // Serve static files from the Next.js build directory
 app.use('/_next', express.static(path.join(__dirname, '.next')));
