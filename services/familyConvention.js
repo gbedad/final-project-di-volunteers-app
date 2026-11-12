@@ -259,19 +259,21 @@ export const listConventions = async (studentId) =>
 export const previewPdf = async (studentId, team) => {
   const student = await studentRow(studentId);
   if (!student) return null;
-  return buildConventionPdf(fieldValues(student, { ...teamDefaults(student), ...team }), null);
+  return buildConventionPdf(fieldValues(student, cleanTeam(student, team)), null);
 };
 
+// The team only chooses per term or for the year (and "autre", the
+// obligations): the amounts always come from the fees (QF, agreed amount,
+// corrected amount of the "Participation aux frais" block)
 const cleanTeam = (student, body = {}) => {
   const d = teamDefaults(student);
-  const num = (v, fallback) => (v === '' || v === null || v === undefined ? fallback : Number(v));
-  const mode = ['trimestre', 'annee', 'horaire'].includes(body.participation_mode) ? body.participation_mode : d.participation_mode;
+  const mode = d.participation_mode === 'horaire' ? 'horaire' : body.participation_mode === 'annee' ? 'annee' : 'trimestre';
   return {
     participation_mode: mode,
-    montant_trimestre: num(body.montant_trimestre, d.montant_trimestre),
-    montant_annee: num(body.montant_annee, d.montant_annee),
-    tarif_horaire: String(body.tarif_horaire ?? d.tarif_horaire).slice(0, 120),
-    caution_montant: num(body.caution_montant, d.caution_montant),
+    montant_trimestre: d.montant_trimestre,
+    montant_annee: d.montant_annee,
+    tarif_horaire: d.tarif_horaire,
+    caution_montant: d.caution_montant,
     autre_texte: String(body.autre_texte || '').trim().slice(0, 120),
     obligations: String(body.obligations || '').trim().slice(0, 600),
   };
@@ -285,11 +287,10 @@ export const requestConvention = async (studentId, body, me) => {
   const parent = parentOf(student, Number(body.parent) === 2 ? 2 : 1);
   if (channel === 'email' && !parent.email) return { error: "Pas d'e-mail pour ce parent : utilisez WhatsApp" };
   if (channel === 'whatsapp' && !parent.phone) return { error: 'Pas de téléphone pour ce parent' };
+  if (!feeOf(student)?.amount) {
+    return { error: 'Participation non calculée : renseignez le quotient familial dans « Participation aux frais »' };
+  }
   const team = cleanTeam(student, body.team);
-  if (team.participation_mode === 'trimestre' && !team.montant_trimestre) return { error: 'Indiquez le montant par trimestre' };
-  if (team.participation_mode === 'annee' && !team.montant_annee) return { error: "Indiquez le montant pour l'année" };
-  if (team.participation_mode === 'horaire' && !team.tarif_horaire) return { error: 'Indiquez le tarif horaire' };
-  if (!team.caution_montant) return { error: 'Indiquez le montant de la caution' };
   const year = schoolYearOf();
   // A new link replaces the one still waiting
   await q(
