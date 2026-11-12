@@ -412,6 +412,18 @@ export const signConvention = async (token, body, { ip, userAgent }) => {
     venir_seul: ['oui', 'non'].includes(body.venir_seul) ? body.venir_seul : null,
     partir: ['seul', 'accompagne', 'cherche'].includes(body.partir) ? body.partir : null,
     accompagnants: String(body.accompagnants || '').trim().slice(0, 160),
+    // Chosen among the suggestions of the address base (else typed freely)
+    geo:
+      body.geo && body.geo.citycode
+        ? {
+            street: String(body.geo.street || '').slice(0, 160),
+            postcode: String(body.geo.postcode || '').slice(0, 10),
+            city: String(body.geo.city || '').slice(0, 80),
+            citycode: String(body.geo.citycode).slice(0, 10),
+            lat: Number.isFinite(Number(body.geo.lat)) ? Number(body.geo.lat) : null,
+            lon: Number.isFinite(Number(body.geo.lon)) ? Number(body.geo.lon) : null,
+          }
+        : null,
   };
   const relation = RELATIONS.includes(body.relation) ? body.relation : null;
   if (!parent.nom_responsable || !relation) return { error: 'Indiquez votre nom et votre lien avec l’enfant' };
@@ -464,8 +476,24 @@ export const signConvention = async (token, body, { ip, userAgent }) => {
       id: row.id,
     }
   );
-  // The address, if the student's page had none
-  if (!student.address) await q('update students set address = :a where id = :id', { a: parent.adresse, id: student.id });
+  // The address, if the student's page had none (structured when chosen
+  // among the suggestions)
+  if (!student.address) {
+    const g = parent.geo;
+    await q(
+      `update students set address = :address, zipcode = coalesce(:postcode, zipcode), city = coalesce(:city, city),
+         address_citycode = :citycode, address_lat = :lat, address_lon = :lon where id = :id`,
+      {
+        address: g ? g.street : parent.adresse,
+        postcode: g?.postcode || null,
+        city: g?.city || null,
+        citycode: g?.citycode || null,
+        lat: g?.lat ?? null,
+        lon: g?.lon ?? null,
+        id: student.id,
+      }
+    );
+  }
   const name = `${student.first_name} ${student.last_name || ''}`.trim();
   send(
     adminEmails(),

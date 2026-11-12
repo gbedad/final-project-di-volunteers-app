@@ -47,6 +47,11 @@ const Students = db.define(
     zipcode: {
       type: DataTypes.STRING,
     },
+    // From the national address base: INSEE code (Paris 75101…75120), and
+    // coordinates (reports: districts, priority neighbourhoods)
+    address_citycode: { type: DataTypes.STRING },
+    address_lat: { type: DataTypes.DOUBLE },
+    address_lon: { type: DataTypes.DOUBLE },
     country: {
       type: DataTypes.STRING,
     },

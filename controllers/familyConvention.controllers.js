@@ -14,7 +14,9 @@ import {
   conventionPage,
   conventionPreviewForParent,
   signConvention,
+  conventionPage as pageOf,
 } from '../services/familyConvention.js';
+import { searchAddress } from '../services/address.js';
 
 const me = (req) => Number(req.user?.userid ?? req.user?.userId);
 const fail = (res, err, message) => {
@@ -115,5 +117,26 @@ export const sign = async (req, res) => {
     answer(res, await signConvention(String(req.params.token), req.body, { ip, userAgent: req.headers['user-agent'] }), 'result');
   } catch (err) {
     fail(res, err, "La signature n'a pas pu être enregistrée");
+  }
+};
+
+// ---- Address suggestions ----
+export const addressSearch = async (req, res) => {
+  try {
+    res.json(await searchAddress(req.query.q));
+  } catch (err) {
+    console.log('Address search failed:', err.message);
+    res.json([]);
+  }
+};
+// Only through a valid convention link
+export const parentAddressSearch = async (req, res) => {
+  try {
+    const out = await pageOf(String(req.params.token));
+    if (out.error || out.page.state !== 'envoyée') return res.status(404).json({ error: 'Lien inconnu' });
+    res.json(await searchAddress(req.query.q));
+  } catch (err) {
+    console.log('Address search failed:', err.message);
+    res.json([]);
   }
 };

@@ -45,6 +45,13 @@ const cleanChanges = (body) => {
   if ('qf_proof' in changes && changes.qf_proof !== null && !QF_PROOFS[changes.qf_proof]) {
     delete changes.qf_proof;
   }
+  for (const field of ['address_lat', 'address_lon']) {
+    if (field in changes) {
+      const n = changes[field] === null || changes[field] === '' ? null : Number(changes[field]);
+      changes[field] = Number.isFinite(n) ? n : null;
+    }
+  }
+  if ('address_citycode' in changes) changes.address_citycode = String(changes.address_citycode || '').slice(0, 10) || null;
   if ('fee_special' in changes) changes.fee_special = !!changes.fee_special;
   if ('is_demo' in changes) changes.is_demo = !!changes.is_demo;
   if ('status' in changes && !STUDENT_STATUSES.includes(changes.status)) {
