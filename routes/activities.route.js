@@ -7,6 +7,8 @@ import {
   update,
   remove,
   addRegistration,
+  checkConflicts,
+  tellRegistrationTutors,
   changeRegistration,
   removeRegistration,
   addAdult,
@@ -28,6 +30,9 @@ router.get('/admin/activites/:id', cultureAuth, show);
 router.patch('/admin/activites/:id', cultureAuth, update);
 router.delete('/admin/activites/:id', cultureAuth, remove);
 router.post('/admin/activites/:id/inscriptions', cultureAuth, addRegistration);
+// Tutoring sessions at the time of the outing (before registering), tutors told
+router.get('/admin/activites/:id/conflits', cultureAuth, checkConflicts);
+router.post('/admin/inscriptions-activites/:id/prevenir', cultureAuth, tellRegistrationTutors);
 router.patch('/admin/inscriptions-activites/:id', cultureAuth, changeRegistration);
 router.delete('/admin/inscriptions-activites/:id', cultureAuth, removeRegistration);
 router.post('/admin/activites/:id/accompagnateurs', cultureAuth, addAdult);

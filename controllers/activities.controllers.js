@@ -19,6 +19,25 @@ import {
   studentsToRegister,
   createOutingStudent,
 } from '../services/activities.js';
+import { conflictsOf, releaseTutors, tellTutors } from '../services/activityConflicts.js';
+import { MANAGER_ROLES } from '../middlewares/authAdmin.js';
+
+// Tutoring sessions at the time of the outing, on each registered student;
+// the tutor's name only for the managers (the people in charge of the
+// outings see the session, not who gives it)
+const withConflicts = async (a, req) => {
+  const ids = a.registrations.filter((r) => r.status === 'inscrit').map((r) => r.student_id);
+  const found = await conflictsOf(a, ids);
+  const manager = MANAGER_ROLES.includes(req.user?.role);
+  return {
+    ...a,
+    registrations: a.registrations.map((r) => ({
+      ...r,
+      tutoring: (found[r.student_id] || []).map((c) => ({ ...c, tutor: manager ? c.tutor : null, tutor_id: undefined })),
+    })),
+  };
+};
+const registeredIds = (a) => a.registrations.filter((r) => r.status === 'inscrit').map((r) => r.student_id);
 
 const me = (req) => Number(req.user?.userid ?? req.user?.userId);
 const fail = (res, err, message) => {
@@ -40,7 +59,7 @@ export const show = async (req, res) => {
   try {
     const a = await getActivity(Number(req.params.id));
     if (!a) return res.status(404).json({ error: 'Activité introuvable' });
-    res.json(a);
+    res.json(await withConflicts(a, req));
   } catch (err) {
     fail(res, err, 'Activité indisponible');
   }
@@ -58,9 +77,13 @@ export const update = async (req, res) => {
   try {
     const { fields, error } = activityFields(req.body, { partial: true });
     if (error) return res.status(400).json({ error });
-    const a = await updateActivity(Number(req.params.id), fields);
-    if (!a) return res.status(404).json({ error: 'Activité introuvable' });
-    res.json(await getActivity(a.id));
+    const before = await getActivity(Number(req.params.id));
+    if (!before) return res.status(404).json({ error: 'Activité introuvable' });
+    const a = await updateActivity(before.id, fields);
+    // Another day: the sessions said cancelled for the old one take place
+    const moved = 'date' in fields && (fields.date || null) !== (before.date || null);
+    if (moved || fields.status === 'annulée') await releaseTutors(before, registeredIds(before), before.date);
+    res.json(await withConflicts(await getActivity(a.id), req));
   } catch (err) {
     fail(res, err, "L'activité n'a pas pu être enregistrée");
   }
@@ -74,28 +97,70 @@ export const remove = async (req, res) => {
   }
 };
 
-// Body: { student_id }
+// Before registering: the student's sessions at the time of the outing
+export const checkConflicts = async (req, res) => {
+  try {
+    const a = await getActivity(Number(req.params.id));
+    if (!a) return res.status(404).json({ error: 'Activité introuvable' });
+    const studentId = Number(req.query.student_id);
+    const manager = MANAGER_ROLES.includes(req.user?.role);
+    const found = ((await conflictsOf(a, [studentId]))[studentId] || []).filter((c) =>
+      ['conflit', 'à vérifier'].includes(c.state)
+    );
+    res.json(found.map((c) => ({ ...c, tutor: manager ? c.tutor : null, tutor_id: undefined })));
+  } catch (err) {
+    fail(res, err, 'Vérification impossible');
+  }
+};
+
+// Body: { student_id, tell_tutor }: tell_tutor = the sessions at that time
+// are cancelled and the tutors told
 export const addRegistration = async (req, res) => {
   try {
-    answer(res, await register(Number(req.params.id), Number(req.body.student_id), me(req)), 'registration', 201);
+    const out = await register(Number(req.params.id), Number(req.body.student_id), me(req));
+    if (!out.error && out.registration.status === 'inscrit' && req.body.tell_tutor) {
+      const a = await getActivity(Number(req.params.id));
+      out.registration.tutors_told = await tellTutors(a, out.registration.student_id, me(req));
+    }
+    answer(res, out, 'registration', 201);
   } catch (err) {
     fail(res, err, "L'inscription n'a pas pu être enregistrée");
   }
 };
 export const changeRegistration = async (req, res) => {
   try {
-    if (!(await findRegistration(Number(req.params.id)))) return res.status(404).json({ error: 'Inscription introuvable' });
-    answer(res, await updateRegistration(Number(req.params.id), req.body), 'registration');
+    const before = await findRegistration(Number(req.params.id));
+    if (!before) return res.status(404).json({ error: 'Inscription introuvable' });
+    const out = await updateRegistration(before.id, req.body);
+    // No longer going: the sessions take place again
+    if (!out.error && before.status === 'inscrit' && out.registration.status !== 'inscrit') {
+      await releaseTutors(await getActivity(before.activity_id), [before.student_id]);
+    }
+    answer(res, out, 'registration');
   } catch (err) {
     fail(res, err, "L'inscription n'a pas pu être modifiée");
   }
 };
 export const removeRegistration = async (req, res) => {
   try {
+    const before = await findRegistration(Number(req.params.id));
+    if (before?.status === 'inscrit') await releaseTutors(await getActivity(before.activity_id), [before.student_id]);
     await deleteRegistration(Number(req.params.id));
     res.json({ ok: true });
   } catch (err) {
     fail(res, err, "L'inscription n'a pas pu être supprimée");
+  }
+};
+
+// The tutors of a registered student told (sessions cancelled that day)
+export const tellRegistrationTutors = async (req, res) => {
+  try {
+    const r = await findRegistration(Number(req.params.id));
+    if (!r || r.status !== 'inscrit') return res.status(404).json({ error: 'Inscription introuvable' });
+    const told = await tellTutors(await getActivity(r.activity_id), r.student_id, me(req));
+    res.json({ told });
+  } catch (err) {
+    fail(res, err, "Le tuteur n'a pas pu être prévenu");
   }
 };
 

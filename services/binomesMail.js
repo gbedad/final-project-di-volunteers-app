@@ -141,3 +141,30 @@ export const notifySlotRequest = (tutor, student, pair, request) =>
     <p>${emailButton(`${clientUrl()}/a-traiter`, 'À traiter')}</p>`,
     'Slot request'
   );
+
+// A student of the pair goes on a cultural outing at the time of the session
+export const notifyOutingConflict = (tutor, student, activity, slot) =>
+  send(
+    tutor.email2 || tutor.email,
+    `Pas de séance le ${frDay(activity.date)} : ${student.first_name} est en sortie culturelle`,
+    `<p>Bonjour ${escapeHtml(tutor.first_name)},</p>
+    <p><b>${escapeHtml(student.first_name)}</b> participe à une sortie culturelle de l'association le
+    <b>${frDay(activity.date)}</b>${activity.start_time ? `, de ${escapeHtml(activity.start_time)}${activity.end_time ? ` à ${escapeHtml(activity.end_time)}` : ''}` : ''}
+    (${escapeHtml(activity.title)}) : votre séance de ${escapeHtml(slot.startTime)}–${escapeHtml(slot.endTime)} n'aura pas lieu ce jour-là.</p>
+    <p>Si vous souhaitez la rattraper, convenez d'un autre moment avec l'association.</p>
+    <p>${emailButton(`${clientUrl()}/login?onglet=eleves`, 'Mes élèves')}</p>
+    <p>Merci,<br>L'équipe MyCogniverse</p>`,
+    'Outing conflict'
+  );
+
+// The student no longer goes: the session takes place
+export const notifyOutingCancelled = (tutor, student, activity, date) =>
+  send(
+    tutor.email2 || tutor.email,
+    `Séance maintenue le ${frDay(date)} avec ${student.first_name}`,
+    `<p>Bonjour ${escapeHtml(tutor.first_name)},</p>
+    <p>Finalement, ${escapeHtml(student.first_name)} ne participe plus à la sortie « ${escapeHtml(activity.title)} » :
+    votre séance du <b>${frDay(date)}</b> est maintenue.</p>
+    <p>Merci,<br>L'équipe MyCogniverse</p>`,
+    'Outing cancelled'
+  );
