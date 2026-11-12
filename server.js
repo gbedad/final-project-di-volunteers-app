@@ -35,6 +35,7 @@ import todo_router from './routes/todo.route.js';
 import kiosk_router from './routes/kiosk.route.js';
 import activities_router from './routes/activities.route.js';
 import family_convention_router from './routes/familyConvention.route.js';
+import accounting_router from './routes/accounting.route.js';
 
 dotenv.config();
 
@@ -106,6 +107,7 @@ app.use(todo_router);
 app.use(kiosk_router);
 app.use(activities_router);
 app.use(family_convention_router);
+app.use(accounting_router);
 
 // Serve static files from the Next.js build directory
 app.use('/_next', express.static(path.join(__dirname, '.next')));

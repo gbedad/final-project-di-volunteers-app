@@ -6,7 +6,8 @@ import db from '../config/database.js';
 
 export const ACTIVITY_STATUSES = ['brouillon', 'ouverte', 'complète', 'passée', 'annulée'];
 export const REGISTRATION_STATUSES = ['inscrit', 'attente', 'désisté'];
-export const PAYMENT_METHODS = ['espèces', 'chèque', 'virement', 'carte', 'autre'];
+// AssoConnect link: the usual means; the others are exceptional
+export const PAYMENT_METHODS = ['assoconnect', 'espèces', 'chèque', 'virement', 'carte', 'autre'];
 const STAFF_ROLES = ['responsable', 'accompagnateur', 'parent'];
 export const ATTENDANCES = ['présent', 'absent', 'excusé'];
 const WAYS = ['accompagné', 'seul'];

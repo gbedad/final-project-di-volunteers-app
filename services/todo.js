@@ -11,6 +11,7 @@ import { conventionState } from './application.js';
 import { ANSWER_DAYS, pairStats } from './followUp.js';
 import { sessionLog, parisToday } from './sessionLog.js';
 import { resumeProblems, RESUME_SLOTS } from './pairBreaks.js';
+import { toCollect } from './accounting.js';
 
 const SHOWN = 6;
 // Family conventions exist since then: students registered before are not
@@ -200,6 +201,17 @@ export const todoList = async () => {
       link: { path: `/eleves/${s.id}` },
     }));
 
+  // ---- Participations late (a term unpaid a month after it began, a
+  // package used up) ----
+  const late = (await toCollect())
+    .filter((s) => s.late)
+    .map((s) => ({
+      id: s.id,
+      label: s.name,
+      detail: `${s.owed.toLocaleString('fr-FR')} € : ${s.items.filter((i) => i.status === 'en retard').map((i) => i.label.toLowerCase()).join(', ')}`,
+      link: { path: '/encaissements', open: 'a-encaisser' },
+    }));
+
   // ---- Cultural outings: expenses advanced by someone, to refund ----
   const [toRefund] = await db.query(
     `select e.id, e.label, e.amount, e.paid_by, a.title from activity_expenses e join activities a on a.id = e.activity_id
@@ -238,6 +250,8 @@ export const todoList = async () => {
     block('match', 'Jotform et Zoom à rattacher', 'warning', { path: '/binomes/seances', open: 'jotform-zoom' },
       toMatch.length ? [{ id: 'all', label: [pending.jotform && `${pending.jotform} signature(s) Jotform`, pending.zoom && `${pending.zoom} séance(s) Zoom`].filter(Boolean).join(' et ') }] : [],
       'Non reconnues automatiquement : à rattacher au bon binôme.'),
+    block('late', 'Participations en retard', 'warning', { path: '/encaissements', open: 'a-encaisser' }, late,
+      'Trimestre impayé un mois après son début, ou forfait d’heures épuisé : envoyer le lien AssoConnect, puis enregistrer le paiement.'),
     block('refunds', 'Remboursements à faire', 'warning', { path: '/activites', open: 'remboursements' }, refunds,
       'Dépenses des sorties avancées par un bénévole : à rembourser, puis « Remboursé » dans Activités culturelles.'),
     block('reports', 'Comptes-rendus en retard', 'info', { path: '/binomes' }, reports,
