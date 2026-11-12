@@ -100,7 +100,7 @@ export const teamAddBreak = async (req, res) => {
   try {
     const pair = await Binomes.findByPk(req.params.id, { attributes: ['id'] });
     if (!pair) return res.status(404).json({ error: 'Binôme introuvable' });
-    const out = await addBreak(pair.id, req.body, me(req));
+    const out = await addBreak(pair.id, req.body, me(req), { allowPast: true });
     if (out.error) return res.status(400).json({ error: out.error });
     res.status(201).json(out.break);
   } catch (err) {

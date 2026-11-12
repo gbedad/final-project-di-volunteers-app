@@ -46,12 +46,18 @@ export const breaksOf = async (pairIds, since = '1970-01-01') => {
 };
 export const breakOn = (list, date) => (list || []).find((b) => date >= b.from && date <= b.to) || null;
 
-// Body: { from, to, reason, note }; error: a message for the user
-export const addBreak = async (pairId, body, userId) => {
+// Body: { from, to, reason, note }; error: a message for the user.
+// allowPast: the team says afterwards that a session was not due
+export const addBreak = async (pairId, body, userId, { allowPast = false } = {}) => {
   const from = String(body.from || '');
   const to = String(body.to || body.from || '');
   if (!DAY_RE.test(from) || !DAY_RE.test(to) || to < from) return { error: 'Dates invalides' };
-  if (to < parisToday()) return { error: 'Ces dates sont passées : enregistrez plutôt la séance (annulée) dans un compte-rendu' };
+  if (!allowPast && to < parisToday()) {
+    return { error: 'Ces dates sont passées : prévenez l’association, qui le renseignera' };
+  }
+  if (await Seances.count({ where: { binome_id: pairId, date: { [Op.between]: [from, to] } } })) {
+    return { error: 'Une séance est déjà enregistrée sur ces dates' };
+  }
   if ((new Date(to) - new Date(from)) / 86400000 > MAX_BREAK_DAYS) {
     return { error: 'Plus de 4 mois : demandez plutôt à l’association de mettre le binôme en pause' };
   }
