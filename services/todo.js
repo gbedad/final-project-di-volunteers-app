@@ -10,6 +10,7 @@ import Seances from '../models/seances.model.js';
 import { conventionState } from './application.js';
 import { ANSWER_DAYS, pairStats } from './followUp.js';
 import { sessionLog, parisToday } from './sessionLog.js';
+import { resumeProblems, RESUME_SLOTS } from './pairBreaks.js';
 
 const SHOWN = 6;
 const name = (p) => (p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : '—');
@@ -79,7 +80,7 @@ export const todoList = async () => {
   const tutorIds = [...new Set(pairs.map((p) => p.tutor_id).filter(Boolean))];
   const tutors = await Users.findAll({
     where: { id: tutorIds },
-    attributes: ['id', 'first_name', 'last_name', 'is_demo'],
+    attributes: ['id', 'first_name', 'last_name', 'is_demo', 'phone'],
     raw: true,
   });
   const tutorOf = Object.fromEntries(tutors.map((t) => [t.id, t]));
@@ -151,6 +152,28 @@ export const todoList = async () => {
     ...Array.from({ length: pending.zoom }, (_, i) => ({ id: `z${i}`, label: 'Séance Zoom' })),
   ];
 
+  // ---- After the holidays: active pairs with nothing since the return ----
+  const resume = (await resumeProblems(open.filter((p) => p.status === 'actif'))).map(({ pair, back, slots }) => ({
+    id: pair.id,
+    label: pairLabel(pair),
+    detail: `rien depuis la rentrée du ${frDate(back.back)} (créneaux du ${slots
+      .map((x) => frDate(x.date).slice(0, 5))
+      .join(' et du ')})${tutorOf[pair.tutor_id]?.phone ? ` · tuteur : ${tutorOf[pair.tutor_id].phone}` : ''}`,
+    link: { path: '/binomes', pairId: pair.id },
+  }));
+  // ---- New slots told by the tutors ----
+  const slotText = (schedule) => (schedule || []).map((x) => `${x.day.toLowerCase()} ${x.startTime}–${x.endTime}`).join(', ');
+  const slotRequests = open
+    .filter((p) => p.schedule_request?.schedule?.length)
+    .map((p) => ({
+      id: p.id,
+      label: pairLabel(p),
+      detail: `${slotText(p.schedule) || 'aucun créneau'} → ${slotText(p.schedule_request.schedule)}${
+        p.schedule_request.since ? ` à partir du ${frDate(p.schedule_request.since)}` : ''
+      }`,
+      link: { path: '/binomes', pairId: p.id },
+    }));
+
   // ---- Validated tutors never proposed to a student ----
   const everPaired = new Set(pairs.map((p) => p.tutor_id));
   const neverProposed = validated
@@ -167,6 +190,10 @@ export const todoList = async () => {
     block('waiting', 'Élèves sans tuteur', 'info', { path: '/eleves' }, waiting),
     block('confirm', 'Séances à confirmer', 'warning', { path: '/binomes/seances' }, toConfirm,
       'Créneaux des 14 derniers jours sans émargement : confirmez-les (appel, message) depuis le journal.'),
+    block('resume', 'Reprise non constatée après les vacances', 'error', { path: '/binomes/seances' }, resume,
+      `Rien d’enregistré (émargement, Zoom, Jotform) sur les ${RESUME_SLOTS} premiers créneaux après la rentrée : appelez le tuteur.`),
+    block('slots', 'Créneaux signalés par les tuteurs', 'warning', { path: '/binomes' }, slotRequests,
+      'À appliquer (ou écarter) dans la fiche du binôme.'),
     block('match', 'Jotform et Zoom à rattacher', 'warning', { path: '/binomes/seances', open: 'jotform-zoom' },
       toMatch.length ? [{ id: 'all', label: [pending.jotform && `${pending.jotform} signature(s) Jotform`, pending.zoom && `${pending.zoom} séance(s) Zoom`].filter(Boolean).join(' et ') }] : [],
       'Non reconnues automatiquement : à rattacher au bon binôme.'),

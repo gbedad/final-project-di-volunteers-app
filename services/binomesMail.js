@@ -97,3 +97,47 @@ export const notifyLateArrival = (tutor, student, session) =>
     <p>${emailButton(`${clientUrl()}/eleves/${student.id}`, "Voir la fiche de l'élève")}</p>`,
     'Late arrival'
   );
+
+const frDay = (d) =>
+  new Date(`${d}T12:00:00Z`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+const pairLink = (pair, action) => `${clientUrl()}/login?onglet=eleves&binome=${pair.id}&action=${action}`;
+
+// The day before a school return: the next session, and two links (the
+// slot changed / no session for now). next: { date, slot } or null
+export const notifyResumeNotice = (tutor, student, pair, next) =>
+  send(
+    tutor.email2 || tutor.email,
+    `Reprise du tutorat avec ${student.first_name}`,
+    `<p>Bonjour ${escapeHtml(tutor.first_name)},</p>
+    <p>C'est la rentrée demain. ${
+      next
+        ? `Votre prochaine séance avec <b>${escapeHtml(student.first_name)}</b> : <b>${frDay(next.date)}, ${escapeHtml(
+            next.slot.startTime
+          )}–${escapeHtml(next.slot.endTime)}</b>${placeText(pair) ? ` (${escapeHtml(placeText(pair))})` : ''}.`
+        : `Nous n'avons pas de créneau prévu pour vos séances avec <b>${escapeHtml(student.first_name)}</b> ces prochains jours.`
+    }</p>
+    <p>Si quelque chose a changé, dites-le-nous en un clic :</p>
+    <p>${emailButton(pairLink(pair, 'creneau'), 'Le créneau a changé')}</p>
+    <p>${emailButton(pairLink(pair, 'pas-de-seance'), 'Pas de séance pour l’instant')}</p>
+    <p>Sinon, rien à faire : bonne reprise !<br>L'équipe MyCogniverse</p>`,
+    'Back to school'
+  );
+
+// The tutor tells a new slot: the team updates the pair
+export const notifySlotRequest = (tutor, student, pair, request) =>
+  send(
+    adminEmails(),
+    `Nouveau créneau signalé : ${student.first_name} ${student.last_name} · ${tutor.first_name} ${tutor.last_name}`,
+    `<p>${escapeHtml(tutor.first_name)} ${escapeHtml(tutor.last_name)} signale un nouveau créneau pour ses séances avec
+    <b>${escapeHtml(student.first_name)} ${escapeHtml(student.last_name)}</b> :</p>
+    <ul>
+      <li>Créneau actuel : ${escapeHtml(slotsText(pair.schedule) || 'aucun')}</li>
+      <li>Nouveau créneau : <b>${escapeHtml(slotsText(request.schedule))}</b>${
+        request.since ? ` à partir du ${new Date(`${request.since}T12:00:00Z`).toLocaleDateString('fr-FR')}` : ''
+      }</li>
+    </ul>
+    ${request.note ? `<p>Message : ${escapeHtml(request.note)}</p>` : ''}
+    <p>À appliquer dans la fiche du binôme (page « À traiter »).</p>
+    <p>${emailButton(`${clientUrl()}/a-traiter`, 'À traiter')}</p>`,
+    'Slot request'
+  );

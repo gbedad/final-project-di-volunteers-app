@@ -13,6 +13,7 @@ import { MANAGER_ROLES } from '../middlewares/authAdmin.js';
 import { sessionLog, parisToday } from '../services/sessionLog.js';
 import { slotOn as slotOnDate, withNewSchedule } from '../services/pairSchedule.js';
 import { syncTutorActive } from '../services/tutorActivity.js';
+import { breaksOf } from '../services/pairBreaks.js';
 import {
   notifyPairProposed,
   notifyPairAnswered,
@@ -268,7 +269,12 @@ export const updatePairDetails = async (req, res) => {
       // slot is corrected for the whole life of the pair
       const since = /^\d{4}-\d{2}-\d{2}$/.test(req.body.since || '') ? req.body.since : null;
       Object.assign(changes, withNewSchedule(binome, clean, since));
+      // The slot told by the tutor is dealt with
+      changes.schedule_request = null;
     }
+    // Team: the slot told by the tutor set aside without applying it
+    if (req.body.schedule_request === null) changes.schedule_request = null;
+    if ('during_holidays' in req.body) changes.during_holidays = req.body.during_holidays === true;
     if ('how_location' in req.body) changes.how_location = String(req.body.how_location || '').trim() || null;
     if ('site' in req.body || 'how_location' in req.body) {
       changes.site = /^\s*(à|a) distance\s*$/i.test(changes.how_location ?? binome.how_location ?? '')
@@ -357,11 +363,14 @@ export const myPairs = async (req, res) => {
       raw: true,
     });
     const sessions = await sessionsByPair(pairs.map((p) => p.id));
+    // "Pas de séance" still to come or in progress
+    const breaks = await breaksOf(pairs.map((p) => p.id), parisToday());
     res.json(
       pairs.map((p) => {
         const s = students.find((x) => x.id === p.student_id) || {};
         return {
           ...p,
+          breaks: breaks[p.id] || [],
           sessions: sessions[p.id] || [],
           stats: pairStats(p, sessions[p.id] || []),
           student: {

@@ -31,6 +31,13 @@ const Binomes = db.define(
     // Slots over time: [{ since: 'YYYY-MM-DD' | null, schedule }], schedule
     // being the current one (see services/pairSchedule.js)
     schedule_history: { type: DataTypes.JSONB },
+    // Sessions go on during the school holidays (expected then too)
+    during_holidays: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    // New slot told by the tutor, until the team applies it:
+    // { schedule, since, note, at }
+    schedule_request: { type: DataTypes.JSONB },
+    // School return of the last "back to school" e-mail to the tutor
+    resume_notice: { type: DataTypes.DATEONLY },
   },
   { timestamps: false }
 );

@@ -13,6 +13,7 @@ import db from './config/database.js';
 import corsOptions from './config/cors.js';
 import { scheduleCohortRenewal } from './services/cohorts.js';
 import { scheduleSessionReminders } from './services/followUp.js';
+import { scheduleResumeNotices } from './services/pairBreaks.js';
 import { scheduleConsentReminders } from './services/parentalConsent.js';
 import { scheduleRetention } from './services/retention.js';
 import { scheduleJotformSync } from './services/jotform.js';
@@ -113,6 +114,7 @@ try {
 scheduleCohortRenewal();
 // Monthly session report reminders to the tutors (checked every 6 hours)
 scheduleSessionReminders();
+scheduleResumeNotices();
 scheduleConsentReminders();
 scheduleRetention();
 // Sessions signed on Jotform (hourly, besides the webhook)

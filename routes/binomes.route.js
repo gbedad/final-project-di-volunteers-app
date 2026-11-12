@@ -20,6 +20,14 @@ import {
   signatureUrl,
   deleteSession,
 } from '../controllers/binomes.controllers.js';
+import {
+  myAddBreak,
+  myDeleteBreak,
+  mySlotRequest,
+  listBreaks,
+  teamAddBreak,
+  teamDeleteBreak,
+} from '../controllers/pairBreaks.controllers.js';
 
 const router = express.Router();
 
@@ -50,5 +58,12 @@ router.delete('/seances/:id', verifyToken, deleteSession);
 router.post('/my/seances/:id/signature', verifyToken, signSession);
 router.post('/my/seances/:id/no-signature', verifyToken, skipSignature);
 router.get('/admin/seances/:id/signature', adminAuth, signatureUrl);
+// "Pas de séance" said in advance (tutor or team), new slot told by the tutor
+router.post('/my/binomes/:id/pas-de-seance', verifyToken, myAddBreak);
+router.delete('/my/pas-de-seance/:id', verifyToken, myDeleteBreak);
+router.post('/my/binomes/:id/creneau', verifyToken, mySlotRequest);
+router.get('/admin/binomes/:id/pas-de-seance', adminAuth, listBreaks);
+router.post('/admin/binomes/:id/pas-de-seance', managerAuth, teamAddBreak);
+router.delete('/admin/pas-de-seance/:id', managerAuth, teamDeleteBreak);
 
 export default router;

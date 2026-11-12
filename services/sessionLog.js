@@ -2,7 +2,6 @@
 // recorded in a period, and the sessions expected from the pairs' slots
 // with nothing recorded (school holidays of Paris and public holidays
 // excluded).
-import axios from 'axios';
 import { Op } from 'sequelize';
 import db from '../config/database.js';
 import Binomes from '../models/binomes.model.js';
@@ -10,114 +9,10 @@ import Seances from '../models/seances.model.js';
 import Students from '../models/students/students.model.js';
 import Users from '../models/users.model.js';
 import { changedSince, scheduleOn, slotOn } from './pairSchedule.js';
+import { addDays, dayOf, offDayFinder, parisDate, parisToday, weekOf } from './schoolCalendar.js';
+import { breakOn, breaksOf } from './pairBreaks.js';
 
-const DAYS_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-const HOLIDAYS_URL =
-  'https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/records';
-
-// ---- Dates (YYYY-MM-DD strings, no time zone trouble) ----
-const toDate = (s) => new Date(`${s}T12:00:00Z`);
-const iso = (d) => d.toISOString().slice(0, 10);
-const addDays = (s, n) => {
-  const d = toDate(s);
-  d.setUTCDate(d.getUTCDate() + n);
-  return iso(d);
-};
-const dayOf = (s) => DAYS_FR[toDate(s).getUTCDay()];
-const parisDate = (value) =>
-  new Date(value).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
-export const parisToday = () => parisDate(new Date());
-// Monday of the week of that day
-const weekOf = (s) => addDays(s, -((toDate(s).getUTCDay() + 6) % 7));
-
-// ---- Public holidays (computed) ----
-const easter = (year) => {
-  const a = year % 19;
-  const b = Math.floor(year / 100);
-  const c = year % 100;
-  const d = Math.floor(b / 4);
-  const e = b % 4;
-  const f = Math.floor((b + 8) / 25);
-  const g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4);
-  const k = c % 4;
-  const l = (32 + 2 * e + 2 * i - h - k) % 7;
-  const m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const month = Math.floor((h + l - 7 * m + 114) / 31);
-  const day = ((h + l - 7 * m + 114) % 31) + 1;
-  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-};
-const publicHolidays = (year) => {
-  const e = easter(year);
-  return [
-    `${year}-01-01`,
-    addDays(e, 1), // Lundi de Pâques
-    `${year}-05-01`,
-    `${year}-05-08`,
-    addDays(e, 39), // Ascension
-    addDays(e, 50), // Lundi de Pentecôte
-    `${year}-07-14`,
-    `${year}-08-15`,
-    `${year}-11-01`,
-    `${year}-11-11`,
-    `${year}-12-25`,
-  ];
-};
-
-// ---- School holidays of Paris (zone C), from the ministry, kept a day ----
-let schoolCache = { at: 0, periods: null };
-const schoolHolidays = async () => {
-  if (schoolCache.periods && Date.now() - schoolCache.at < 24 * 3600 * 1000) {
-    return schoolCache.periods;
-  }
-  const { data } = await axios.get(HOLIDAYS_URL, {
-    params: {
-      select: 'description,start_date,end_date,population',
-      where: 'location="Paris"',
-      limit: 100,
-    },
-    timeout: 8000,
-  });
-  // start: first day without school; end: the day school starts again
-  // (a one-day bridge has end = start)
-  const periods = (data.results || [])
-    .filter((r) => r.population !== 'Enseignants')
-    .map((r) => {
-      const start = parisDate(r.start_date);
-      const end = parisDate(r.end_date);
-      return { label: r.description, start, end: end > start ? end : addDays(start, 1) };
-    });
-  schoolCache = { at: Date.now(), periods };
-  return periods;
-};
-
-// Day without tutoring expected: label of the holiday, or null
-const offDayFinder = async () => {
-  let periods = [];
-  let calendarOk = true;
-  try {
-    periods = await schoolHolidays();
-  } catch (err) {
-    console.log('School holidays not loaded:', err.message);
-    calendarOk = false;
-  }
-  const holidays = new Set();
-  const years = new Set();
-  return {
-    calendarOk,
-    off: (s) => {
-      const year = Number(s.slice(0, 4));
-      if (!years.has(year)) {
-        publicHolidays(year).forEach((d) => holidays.add(d));
-        years.add(year);
-      }
-      if (holidays.has(s)) return 'Jour férié';
-      const p = periods.find((x) => s >= x.start && s < x.end);
-      return p ? p.label : null;
-    },
-  };
-};
+export { parisToday };
 
 // ---- The log ----
 // Minutes after the end of today's slot before it shows as not signed in
@@ -260,6 +155,11 @@ export const sessionLog = async (from, to) => {
     const [h, m] = String(hhmm || '').split(':').map(Number);
     return h * 60 + (m || 0);
   };
+  // "Pas de séance" said in advance by the tutor or the team
+  const breaks = await breaksOf(
+    Object.values(pairOf).filter((p) => p.status === 'actif').map((p) => p.id),
+    from
+  );
   const byPairWeek = {};
   for (const s of sessions) {
     const key = `${s.binome_id}|${weekOf(String(s.date).slice(0, 10))}`;
@@ -278,7 +178,18 @@ export const sessionLog = async (from, to) => {
     const planned = {};
     for (let d = first; d <= last; d = addDays(d, 1)) {
       const daySlots = scheduleOn(pair, d).filter((sl) => sl.day === dayOf(d));
-      if (!daySlots.length || off(d)) continue;
+      if (!daySlots.length) continue;
+      // Holidays: nothing expected, unless the pair goes on (public
+      // holidays always off)
+      const holiday = off(d);
+      if (holiday && (holiday === 'Jour férié' || !pair.during_holidays)) continue;
+      // Said in advance: shown as such, not expected
+      const told = breakOn(breaks[pair.id], d);
+      if (told) {
+        const held = byPairWeek[`${pair.id}|${weekOf(d)}`];
+        if (!held?.has(d)) rows.push({ ...common(pair, d), kind: 'prevenue', id: `prevenue-${pair.id}-${d}`, break: told });
+        continue;
+      }
       if (d === today && !daySlots.some((sl) => nowMinutes >= toMinutes(sl.endTime) + SIGN_IN_GRACE)) continue;
       (planned[weekOf(d)] = planned[weekOf(d)] || []).push(d);
     }
