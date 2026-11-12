@@ -18,7 +18,26 @@ import {
   activitiesOfStudent,
   studentsToRegister,
   createOutingStudent,
+  addExpense,
+  findExpense,
+  updateExpense,
+  deleteExpense,
+  storeReceipt,
+  refundList,
+  markRefunded,
+  membershipsOf,
+  recordMembership,
+  deleteMembership,
+  addNote,
 } from '../services/activities.js';
+import {
+  requestOutingConsent,
+  outingConsentPage,
+  signOutingConsent,
+  outingConsentFile,
+} from '../services/outingConsent.js';
+import { fileUrl, privateDownloadUrl } from '../config/aws.config.js';
+import Users from '../models/users.model.js';
 import { conflictsOf, releaseTutors, tellTutors } from '../services/activityConflicts.js';
 import { MANAGER_ROLES } from '../middlewares/authAdmin.js';
 
@@ -231,5 +250,135 @@ export const tick = async (req, res) => {
     );
   } catch (err) {
     fail(res, err, "La présence n'a pas pu être enregistrée");
+  }
+};
+
+// ---- Preparation notes ----
+export const note = async (req, res) => {
+  try {
+    const u = await Users.findByPk(me(req), { attributes: ['first_name', 'last_name'] });
+    const author = u ? `${u.first_name} ${u.last_name ? `${u.last_name[0]}.` : ''}`.trim() : 'Équipe';
+    answer(res, await addNote(Number(req.params.id), req.body.text, author), 'notes', 201);
+  } catch (err) {
+    fail(res, err, "La note n'a pas pu être enregistrée");
+  }
+};
+
+// ---- Expenses ----
+export const createExpense = async (req, res) => {
+  try {
+    answer(res, await addExpense(Number(req.params.id), req.body, me(req)), 'expense', 201);
+  } catch (err) {
+    fail(res, err, "La dépense n'a pas pu être enregistrée");
+  }
+};
+export const changeExpense = async (req, res) => {
+  try {
+    if (!(await findExpense(Number(req.params.id)))) return res.status(404).json({ error: 'Dépense introuvable' });
+    answer(res, await updateExpense(Number(req.params.id), req.body), 'expense');
+  } catch (err) {
+    fail(res, err, "La dépense n'a pas pu être modifiée");
+  }
+};
+export const removeExpense = async (req, res) => {
+  try {
+    await deleteExpense(Number(req.params.id));
+    res.json({ ok: true });
+  } catch (err) {
+    fail(res, err, "La dépense n'a pas pu être supprimée");
+  }
+};
+// Body: { file: 'data:…;base64,…', name }
+export const uploadReceipt = async (req, res) => {
+  try {
+    answer(res, await storeReceipt(Number(req.params.id), req.body.file, req.body.name), 'expense');
+  } catch (err) {
+    fail(res, err, "Le justificatif n'a pas pu être enregistré");
+  }
+};
+export const receiptLink = async (req, res) => {
+  try {
+    const e = await findExpense(Number(req.params.id));
+    if (!e?.receipt_key) return res.status(404).json({ error: 'Pas de justificatif' });
+    res.json({ url: await privateDownloadUrl(e.receipt_key, e.receipt_name || 'justificatif') });
+  } catch (err) {
+    fail(res, err, 'Justificatif indisponible');
+  }
+};
+export const refunds = async (req, res) => {
+  try {
+    res.json(await refundList());
+  } catch (err) {
+    fail(res, err, 'Liste indisponible');
+  }
+};
+// Body: { refunded: true | false } (the treasurer, a manager)
+export const refund = async (req, res) => {
+  try {
+    const e = await markRefunded(Number(req.params.id), !!req.body.refunded, me(req));
+    if (!e) return res.status(404).json({ error: 'Dépense à rembourser introuvable' });
+    res.json(e);
+  } catch (err) {
+    fail(res, err, "Le remboursement n'a pas pu être enregistré");
+  }
+};
+
+// ---- Yearly membership fee ----
+export const memberships = async (req, res) => {
+  try {
+    res.json(await membershipsOf(Number(req.params.id)));
+  } catch (err) {
+    fail(res, err, 'Cotisations indisponibles');
+  }
+};
+// Body: { school_year, amount, paid_at, method, note }
+export const addMembership = async (req, res) => {
+  try {
+    answer(res, await recordMembership(Number(req.params.id), req.body, me(req)), 'membership', 201);
+  } catch (err) {
+    fail(res, err, "La cotisation n'a pas pu être enregistrée");
+  }
+};
+export const removeMembership = async (req, res) => {
+  try {
+    await deleteMembership(Number(req.params.id));
+    res.json({ ok: true });
+  } catch (err) {
+    fail(res, err, "La cotisation n'a pas pu être supprimée");
+  }
+};
+
+// ---- Outing authorisation signed online ----
+// Body: { channel: 'email' | 'whatsapp', parent: 1 | 2 }
+export const askConsent = async (req, res) => {
+  try {
+    const u = await Users.findByPk(me(req), { attributes: ['first_name'] });
+    answer(res, await requestOutingConsent(Number(req.params.id), req.body, u), 'request');
+  } catch (err) {
+    fail(res, err, "La demande n'a pas pu être envoyée");
+  }
+};
+export const consentPdf = async (req, res) => {
+  try {
+    const file = await outingConsentFile(Number(req.params.id));
+    if (!file) return res.status(404).json({ error: 'Pas d’autorisation signée en ligne' });
+    res.json({ url: await fileUrl(file.path) });
+  } catch (err) {
+    fail(res, err, 'Document indisponible');
+  }
+};
+export const consentPage = async (req, res) => {
+  try {
+    answer(res, await outingConsentPage(String(req.params.token)), 'page');
+  } catch (err) {
+    fail(res, err, 'Page indisponible');
+  }
+};
+export const signConsent = async (req, res) => {
+  try {
+    const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim();
+    answer(res, await signOutingConsent(String(req.params.token), req.body, ip), 'result');
+  } catch (err) {
+    fail(res, err, "L'autorisation n'a pas pu être enregistrée");
   }
 };

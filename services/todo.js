@@ -174,6 +174,19 @@ export const todoList = async () => {
       link: { path: '/binomes', pairId: p.id },
     }));
 
+  // ---- Cultural outings: expenses advanced by someone, to refund ----
+  const [toRefund] = await db.query(
+    `select e.id, e.label, e.amount, e.paid_by, a.title from activity_expenses e join activities a on a.id = e.activity_id
+      where e.to_refund and e.refunded_at is null order by e.paid_on nulls last, e.id`,
+    { logging: false }
+  );
+  const refunds = toRefund.map((e) => ({
+    id: e.id,
+    label: `${e.paid_by || 'Quelqu’un'} · ${Number(e.amount).toLocaleString('fr-FR')} €`,
+    detail: `${e.title} : ${e.label}`,
+    link: { path: '/activites', open: 'remboursements' },
+  }));
+
   // ---- Validated tutors never proposed to a student ----
   const everPaired = new Set(pairs.map((p) => p.tutor_id));
   const neverProposed = validated
@@ -197,6 +210,8 @@ export const todoList = async () => {
     block('match', 'Jotform et Zoom à rattacher', 'warning', { path: '/binomes/seances', open: 'jotform-zoom' },
       toMatch.length ? [{ id: 'all', label: [pending.jotform && `${pending.jotform} signature(s) Jotform`, pending.zoom && `${pending.zoom} séance(s) Zoom`].filter(Boolean).join(' et ') }] : [],
       'Non reconnues automatiquement : à rattacher au bon binôme.'),
+    block('refunds', 'Remboursements à faire', 'warning', { path: '/activites', open: 'remboursements' }, refunds,
+      'Dépenses des sorties avancées par un bénévole : à rembourser, puis « Remboursé » dans Activités culturelles.'),
     block('reports', 'Comptes-rendus en retard', 'info', { path: '/binomes' }, reports,
       'Binômes sans compte-rendu écrit depuis plus d’un mois.'),
     block('documents', 'Documents manquants des tuteurs validés', 'info', { path: '/documents' }, missingDocs),

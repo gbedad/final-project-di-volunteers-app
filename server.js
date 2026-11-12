@@ -58,6 +58,8 @@ app.put('/admin/president-signature', express.json({ limit: '1mb' }));
 // Cultural activities: the card's image
 app.post('/admin/activites', express.json({ limit: '1mb' }));
 app.patch('/admin/activites/:id', express.json({ limit: '1mb' }));
+app.post('/admin/depenses/:id/justificatif', express.json({ limit: '9mb' }));
+app.post('/autorisation-sortie/:token', express.json({ limit: '1mb' }));
 // Zoom webhook: signed, the signature is checked on the raw body
 app.post(
   '/webhooks/zoom',
