@@ -7,6 +7,8 @@ export const STUDENT_STATUSES = [
   'En pause',
   'Terminé',
   'Abandon',
+  // Cultural activities only, no tutoring asked
+  'Activités culturelles seulement',
 ];
 
 // Existing database enum: TOP, P1…P4

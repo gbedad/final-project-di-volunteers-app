@@ -4,15 +4,16 @@ import Users from '../models/users.model.js';
 import sendEmail from '../config/sendEmails.js';
 import { formatName } from '../services/names.js';
 
-export const ROLES = ['volunteer', 'interviewer', 'admin', 'superadmin'];
+export const ROLES = ['volunteer', 'interviewer', 'culture', 'admin', 'superadmin'];
 
 const PUBLIC_FIELDS = ['id', 'first_name', 'last_name', 'email', 'role'];
 
 // Which role changes the current user is allowed to make on the target
 const canChangeRole = (actor, target, newRole) => {
   if (actor.role === 'superadmin') return true;
-  // Admins can only switch people between volunteer and interviewer
-  const editable = ['volunteer', 'interviewer'];
+  // Admins can only switch people between volunteer, interviewer and
+  // cultural activities
+  const editable = ['volunteer', 'interviewer', 'culture'];
   return (
     actor.role === 'admin' &&
     editable.includes(target.role) &&
@@ -22,6 +23,7 @@ const canChangeRole = (actor, target, newRole) => {
 
 const STAFF_ROLE_LABELS = {
   interviewer: 'interviewer',
+  culture: 'responsable des activités culturelles',
   admin: 'administrateur',
   superadmin: 'super-administrateur',
 };
@@ -129,9 +131,9 @@ export const updateUserRole = async (req, res) => {
 // Roles a manager can give to a new member
 const invitableRoles = (actor) =>
   actor.role === 'superadmin'
-    ? ['interviewer', 'admin', 'superadmin']
+    ? ['interviewer', 'culture', 'admin', 'superadmin']
     : actor.role === 'admin'
-    ? ['interviewer']
+    ? ['interviewer', 'culture']
     : [];
 
 export const inviteMember = async (req, res) => {

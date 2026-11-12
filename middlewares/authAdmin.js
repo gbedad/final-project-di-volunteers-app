@@ -4,6 +4,9 @@ import { verifyToken } from './verifyToken.js';
 export const STAFF_ROLES = ['superadmin', 'admin', 'interviewer'];
 // Managers: can also edit missions, delete documents, name interviewers
 export const MANAGER_ROLES = ['superadmin', 'admin'];
+// Cultural activities: the managers, and the people in charge of the
+// outings (no access to anything else)
+export const CULTURE_ROLES = ['superadmin', 'admin', 'culture'];
 
 const hasAdminAccess = (user) => !!user && STAFF_ROLES.includes(user.role);
 
@@ -19,6 +22,7 @@ const requireRoles = (roles) => (req, res, next) => {
 export const adminAuth = requireRoles(STAFF_ROLES);
 export const managerAuth = requireRoles(MANAGER_ROLES);
 export const superadminAuth = requireRoles(['superadmin']);
+export const cultureAuth = requireRoles(CULTURE_ROLES);
 
 export const userAuth = (req, res, next) => {
   verifyToken(req, res, () => {
