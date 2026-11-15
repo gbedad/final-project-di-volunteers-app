@@ -47,7 +47,8 @@ router.delete('/admin/activites/:id', cultureAuth, remove);
 router.post('/admin/activites/:id/inscriptions', cultureAuth, addRegistration);
 // Tutoring sessions at the time of the outing (before registering), tutors told
 router.get('/admin/activites/:id/conflits', cultureAuth, checkConflicts);
-router.post('/admin/inscriptions-activites/:id/prevenir', cultureAuth, tellRegistrationTutors);
+// Telling the tutor (session cancelled): the admins only
+router.post('/admin/inscriptions-activites/:id/prevenir', managerAuth, tellRegistrationTutors);
 router.patch('/admin/inscriptions-activites/:id', cultureAuth, changeRegistration);
 router.delete('/admin/inscriptions-activites/:id', cultureAuth, removeRegistration);
 router.post('/admin/activites/:id/accompagnateurs', cultureAuth, addAdult);

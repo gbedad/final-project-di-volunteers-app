@@ -133,11 +133,11 @@ export const checkConflicts = async (req, res) => {
 };
 
 // Body: { student_id, tell_tutor }: tell_tutor = the sessions at that time
-// are cancelled and the tutors told
+// are cancelled and the tutors told (admins only)
 export const addRegistration = async (req, res) => {
   try {
     const out = await register(Number(req.params.id), Number(req.body.student_id), me(req));
-    if (!out.error && out.registration.status === 'inscrit' && req.body.tell_tutor) {
+    if (!out.error && out.registration.status === 'inscrit' && req.body.tell_tutor && MANAGER_ROLES.includes(req.user?.role)) {
       const a = await getActivity(Number(req.params.id));
       out.registration.tutors_told = await tellTutors(a, out.registration.student_id, me(req));
     }
