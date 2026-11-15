@@ -8,7 +8,7 @@ import { findTutors, OPEN_PAIR_STATUSES } from '../services/matching.js';
 import Seances from '../models/seances.model.js';
 import { fileUrl } from '../config/aws.config.js';
 import { writeObject } from '../services/conventionSigning.js';
-import { pairStats, ATTENDANCES } from '../services/followUp.js';
+import { pairStats, ATTENDANCES, CANCELLED_BY } from '../services/followUp.js';
 import { MANAGER_ROLES } from '../middlewares/authAdmin.js';
 import { sessionLog, parisToday } from '../services/sessionLog.js';
 import { slotOn as slotOnDate, withNewSchedule } from '../services/pairSchedule.js';
@@ -311,6 +311,10 @@ export const confirmSession = async (req, res) => {
       return res.status(400).json({ error: 'Date invalide (pas de séance dans le futur)' });
     }
     const attendance = ATTENDANCES.includes(req.body.attendance) ? req.body.attendance : 'présent';
+    const cancelledBy = attendance === 'annulé' ? req.body.cancelled_by : null;
+    if (attendance === 'annulé' && !CANCELLED_BY[cancelledBy]) {
+      return res.status(400).json({ error: 'Indiquez qui a annulé : l’élève ou le tuteur' });
+    }
     const channel = CONFIRMATION_CHANNELS[req.body.channel];
     if (!channel) return res.status(400).json({ error: 'Indiquez comment la séance a été confirmée' });
     if (await Seances.count({ where: { binome_id: pair.id, date } })) {
@@ -334,6 +338,7 @@ export const confirmSession = async (req, res) => {
       duration_minutes: attendance === 'présent' ? (given > 0 && given <= 600 ? given : fromSlot > 0 ? fromSlot : null) : null,
       // The student arrived 15 minutes late or more (known by the team)
       late: attendance === 'présent' && req.body.late === true,
+      cancelled_by: cancelledBy,
       source: 'equipe',
       confirmation: note ? `${channel} — ${note}` : channel,
     });
@@ -588,6 +593,9 @@ export const addSession = async (req, res) => {
     if (!ATTENDANCES.includes(attendance)) {
       return res.status(400).json({ error: 'Présence invalide' });
     }
+    if (attendance === 'annulé' && !CANCELLED_BY[req.body.cancelled_by]) {
+      return res.status(400).json({ error: 'Indiquez qui a annulé : l’élève ou le tuteur' });
+    }
     const duration = Number(req.body.duration_minutes) || null;
     const progress = Number(req.body.progress) || null;
     const fields = {
@@ -598,6 +606,7 @@ export const addSession = async (req, res) => {
       work: req.body.work?.trim() || null,
       remark: req.body.remark?.trim() || null,
       late: attendance === 'présent' && req.body.late === true,
+      cancelled_by: attendance === 'annulé' ? req.body.cancelled_by : null,
     };
     // A report for a day already signed in completes that session (the
     // time of the sign-in, created_at, stays as the proof)

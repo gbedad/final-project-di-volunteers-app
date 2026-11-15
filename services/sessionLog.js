@@ -119,6 +119,7 @@ export const sessionLog = async (from, to) => {
         signed_in_at: s.signed_in_at || null,
         attendance: s.attendance,
         late: !!s.late,
+        cancelled_by: s.cancelled_by || null,
         duration_minutes: s.duration_minutes,
         signature: signatureOf(s, remote),
         // Application, Jotform, or both (signed in here, signed there)

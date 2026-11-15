@@ -16,6 +16,8 @@ const Seances = db.define(
     attendance: { type: DataTypes.STRING, allowNull: false, defaultValue: 'présent' },
     // The student arrived 15 minutes late or more (incident, see the Charte)
     late: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    // Session cancelled (attendance 'annulé'): by the student or the tutor
+    cancelled_by: { type: DataTypes.STRING },
     // Signature of the student at the end of an on-site session (image in the
     // private storage), or the tutor said the student could not sign
     student_signature: { type: DataTypes.STRING },

@@ -14,6 +14,8 @@ const REMIND_JOTFORM_PAIRS = false;
 // A proposal should be answered within a week
 export const ANSWER_DAYS = 7;
 export const ATTENDANCES = ['présent', 'absent', 'annulé'];
+// Who cancelled a session (attendance 'annulé')
+export const CANCELLED_BY = { eleve: "Annulée par l'élève", tuteur: 'Annulée par le tuteur' };
 // Alert from this number of late arrivals in 30 days
 export const LATE_ALERT = 2;
 
