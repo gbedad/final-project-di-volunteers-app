@@ -11,6 +11,7 @@ import Users from '../models/users.model.js';
 import { changedSince, scheduleOn, slotOn } from './pairSchedule.js';
 import { addDays, dayOf, offDayFinder, parisDate, parisToday, weekOf } from './schoolCalendar.js';
 import { breakOn, breaksOf } from './pairBreaks.js';
+import { extraOn, extrasOf } from './extraSessions.js';
 
 export { parisToday };
 
@@ -80,6 +81,10 @@ export const sessionLog = async (from, to) => {
       },
     ])
   );
+  // Exceptional sessions of the period (in addition, or replacing one)
+  const extras = await extrasOf(Object.keys(pairOf).map(Number), from, to);
+  const extraInfo = (e) =>
+    e ? { id: e.id, kind: e.kind, kind_label: e.kind_label, replaces_date: e.replaces_date, note: e.note } : null;
   const common = (pair, date) => ({
     binome_id: pair.id,
     date,
@@ -103,9 +108,12 @@ export const sessionLog = async (from, to) => {
     .map((s) => {
       const pair = pairOf[s.binome_id];
       const date = String(s.date).slice(0, 10);
-      const remote = isRemote(pair);
+      const extra = extraOn(extras[pair.id], date);
+      const remote = extra ? extra.remote : isRemote(pair);
       return {
         ...common(pair, date),
+        ...(extra && { slot: { day: dayOf(date), startTime: extra.start_time, endTime: extra.end_time }, remote }),
+        extra: extraInfo(extra),
         kind: 'session',
         id: s.id,
         signed_in_at: s.signed_in_at || null,
@@ -160,8 +168,10 @@ export const sessionLog = async (from, to) => {
     Object.values(pairOf).filter((p) => p.status === 'actif').map((p) => p.id),
     from
   );
+  // Sessions of an exceptional day do not stand for a regular session
   const byPairWeek = {};
   for (const s of sessions) {
+    if (extraOn(extras[s.binome_id], String(s.date).slice(0, 10))) continue;
     const key = `${s.binome_id}|${weekOf(String(s.date).slice(0, 10))}`;
     (byPairWeek[key] = byPairWeek[key] || new Set()).add(String(s.date).slice(0, 10));
   }
@@ -179,6 +189,8 @@ export const sessionLog = async (from, to) => {
     for (let d = first; d <= last; d = addDays(d, 1)) {
       const daySlots = scheduleOn(pair, d).filter((sl) => sl.day === dayOf(d));
       if (!daySlots.length) continue;
+      // An exceptional session that day: expected as such (below)
+      if (extraOn(extras[pair.id], d)) continue;
       // Holidays: nothing expected, unless the pair goes on (public
       // holidays always off)
       const holiday = off(d);
@@ -209,6 +221,29 @@ export const sessionLog = async (from, to) => {
         });
         missing -= 1;
       }
+    }
+  }
+  // Exceptional sessions with nothing recorded: expected whatever the
+  // holidays (set on purpose), unless a "Pas de séance" covers the day
+  const heldOn = new Set(sessions.map((s) => `${s.binome_id}|${String(s.date).slice(0, 10)}`));
+  for (const [pairId, list] of Object.entries(extras)) {
+    const pair = pairOf[pairId];
+    if (!pair || pair.status !== 'actif') continue;
+    for (const e of list) {
+      if (e.date > last || heldOn.has(`${pair.id}|${e.date}`)) continue;
+      const base = {
+        ...common(pair, e.date),
+        slot: { day: dayOf(e.date), startTime: e.start_time, endTime: e.end_time },
+        remote: e.remote,
+        extra: extraInfo(e),
+      };
+      const told = breakOn(breaks[pair.id], e.date);
+      if (told) {
+        rows.push({ ...base, kind: 'prevenue', id: `prevenue-x${e.id}`, break: told });
+        continue;
+      }
+      if (e.date === today && nowMinutes < toMinutes(e.end_time) + SIGN_IN_GRACE) continue;
+      rows.push({ ...base, kind: 'attendue', id: `attendue-x${e.id}`, today: e.date === today });
     }
   }
   rows.sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? 1 : -1));

@@ -26,6 +26,12 @@ import {
   deleteStudentRecord,
   searchSchools,
 } from '../../controllers/students_module/admin-students.controllers.js';
+import {
+  listIncidents,
+  createIncident,
+  updateIncident,
+  removeIncident,
+} from '../../controllers/incidents.controllers.js';
 
 const router = express.Router();
 
@@ -75,5 +81,10 @@ router.post(
 );
 router.delete('/admin/students/:id', managerAuth, deleteStudentRecord);
 router.get('/admin/schools', adminAuth, searchSchools);
+// Incidents of a student, by type (listed in "Contrôles" until dealt with)
+router.get('/admin/students/:id/incidents', adminAuth, listIncidents);
+router.post('/admin/students/:id/incidents', adminAuth, createIncident);
+router.patch('/admin/students/:id/incidents/:incidentId', managerAuth, updateIncident);
+router.delete('/admin/students/:id/incidents/:incidentId', managerAuth, removeIncident);
 
 export default router;

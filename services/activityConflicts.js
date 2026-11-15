@@ -5,6 +5,7 @@ import db from '../config/database.js';
 import { slotOn } from './pairSchedule.js';
 import { offDayFinder } from './schoolCalendar.js';
 import { addBreak, breakOn, breaksOf, deleteBreak } from './pairBreaks.js';
+import { extraOn, extrasOf } from './extraSessions.js';
 import { notifyOutingCancelled, notifyOutingConflict } from './binomesMail.js';
 
 // Travel time around the outing
@@ -41,14 +42,17 @@ export const conflictsOf = async (activity, studentIds) => {
     ({ off } = await offDayFinder());
   } catch {}
   const breaks = await breaksOf(pairs.map((p) => p.id), date);
+  // Exceptional sessions that day count like a slot (holidays included)
+  const extras = await extrasOf(pairs.map((p) => p.id), date, date);
   const start = minutes(activity.start_time);
   const end = minutes(activity.end_time) ?? (start !== null ? start + 180 : null);
   const out = {};
   for (const p of pairs) {
-    const slot = slotOn(p, date);
+    const extra = extraOn(extras[p.id], date);
+    const slot = extra ? { startTime: extra.start_time, endTime: extra.end_time } : slotOn(p, date);
     if (!slot) continue;
     const holiday = off(date);
-    if (holiday && (holiday === 'Jour férié' || !p.during_holidays)) continue;
+    if (!extra && holiday && (holiday === 'Jour férié' || !p.during_holidays)) continue;
     let state;
     const told = breakOn(breaks[p.id], date);
     if (told) state = isOutingBreak(told) ? 'prévenu' : 'déjà annulée';

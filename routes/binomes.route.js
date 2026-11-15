@@ -19,7 +19,9 @@ import {
   skipSignature,
   signatureUrl,
   deleteSession,
+  editSession,
 } from '../controllers/binomes.controllers.js';
+import { listExtras, teamAddExtra, teamDeleteExtra } from '../controllers/extraSessions.controllers.js';
 import {
   myAddBreak,
   myDeleteBreak,
@@ -54,6 +56,8 @@ router.post('/my/binomes/:id/seances', verifyToken, addSession);
 // Attendance sheet: one tap, date and time set by the server
 router.post('/my/binomes/:id/emargement', verifyToken, signIn);
 router.delete('/seances/:id', verifyToken, deleteSession);
+// The tutor comes back to a report afterwards (work, rating, remark, late)
+router.patch('/my/seances/:id', verifyToken, editSession);
 // Signature of the student at the end of the session (the tutor's phone)
 router.post('/my/seances/:id/signature', verifyToken, signSession);
 router.post('/my/seances/:id/no-signature', verifyToken, skipSignature);
@@ -65,5 +69,9 @@ router.post('/my/binomes/:id/creneau', verifyToken, mySlotRequest);
 router.get('/admin/binomes/:id/pas-de-seance', adminAuth, listBreaks);
 router.post('/admin/binomes/:id/pas-de-seance', managerAuth, teamAddBreak);
 router.delete('/admin/pas-de-seance/:id', managerAuth, teamDeleteBreak);
+// Exceptional sessions (in addition, or instead of a regular one): the team
+router.get('/admin/binomes/:id/exceptionnelles', adminAuth, listExtras);
+router.post('/admin/binomes/:id/exceptionnelles', managerAuth, teamAddExtra);
+router.delete('/admin/exceptionnelles/:id', managerAuth, teamDeleteExtra);
 
 export default router;

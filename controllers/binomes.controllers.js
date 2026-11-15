@@ -14,6 +14,7 @@ import { sessionLog, parisToday } from '../services/sessionLog.js';
 import { slotOn as slotOnDate, withNewSchedule } from '../services/pairSchedule.js';
 import { syncTutorActive } from '../services/tutorActivity.js';
 import { breaksOf } from '../services/pairBreaks.js';
+import { addExtra, extraMinutes, extraOn, extrasOf } from '../services/extraSessions.js';
 import {
   notifyPairProposed,
   notifyPairAnswered,
@@ -49,9 +50,12 @@ const sessionsByPair = async (pairIds) => {
         raw: true,
       })
     : [];
+  // Exceptional session of that day (badge "Supplémentaire", "Remplacement")
+  const extras = sessions.length ? await extrasOf([...new Set(sessions.map((s) => s.binome_id))]) : {};
   const groups = {};
   for (const session of sessions) {
-    (groups[session.binome_id] = groups[session.binome_id] || []).push(session);
+    const extra = extraOn(extras[session.binome_id], String(session.date).slice(0, 10));
+    (groups[session.binome_id] = groups[session.binome_id] || []).push({ ...session, extra_kind: extra?.kind || null });
   }
   return groups;
 };
@@ -312,9 +316,14 @@ export const confirmSession = async (req, res) => {
     if (await Seances.count({ where: { binome_id: pair.id, date } })) {
       return res.status(409).json({ error: 'Une séance est déjà enregistrée ce jour-là pour ce binôme' });
     }
-    // Duration given, else the slot in force that day
+    // Duration given, else the exceptional session or the slot of that day
+    const extra = extraOn((await extrasOf([pair.id], date, date))[pair.id], date);
     const slot = slotOnDate(pair, date);
-    const fromSlot = slot ? minutesOf(slot.endTime) - minutesOf(slot.startTime) : null;
+    const fromSlot = extra
+      ? extraMinutes(extra)
+      : slot
+      ? minutesOf(slot.endTime) - minutesOf(slot.startTime)
+      : null;
     const given = Number(req.body.duration_minutes);
     const note = String(req.body.note || '').trim().slice(0, 500);
     const session = await Seances.create({
@@ -323,6 +332,8 @@ export const confirmSession = async (req, res) => {
       date,
       attendance,
       duration_minutes: attendance === 'présent' ? (given > 0 && given <= 600 ? given : fromSlot > 0 ? fromSlot : null) : null,
+      // The student arrived 15 minutes late or more (known by the team)
+      late: attendance === 'présent' && req.body.late === true,
       source: 'equipe',
       confirmation: note ? `${channel} — ${note}` : channel,
     });
@@ -365,12 +376,15 @@ export const myPairs = async (req, res) => {
     const sessions = await sessionsByPair(pairs.map((p) => p.id));
     // "Pas de séance" still to come or in progress
     const breaks = await breaksOf(pairs.map((p) => p.id), parisToday());
+    // Exceptional sessions from today on (set by the association)
+    const extras = await extrasOf(pairs.map((p) => p.id), parisToday());
     res.json(
       pairs.map((p) => {
         const s = students.find((x) => x.id === p.student_id) || {};
         return {
           ...p,
           breaks: breaks[p.id] || [],
+          extras: extras[p.id] || [],
           sessions: sessions[p.id] || [],
           stats: pairStats(p, sessions[p.id] || []),
           student: {
@@ -462,18 +476,20 @@ export const signIn = async (req, res) => {
     const pair = await Binomes.findByPk(req.params.id);
     if (!pair || pair.tutor_id !== me(req)) return res.status(404).json({ error: 'Binôme introuvable' });
     if (pair.status !== 'actif') return res.status(409).json({ error: 'Ce binôme n’est pas en cours' });
-    if (!needsSignIn(pair)) {
+    const { date, day } = parisNow();
+    // Exceptional session today: its hours, and its place (on site or not)
+    const extra = extraOn((await extrasOf([pair.id], date, date))[pair.id], date);
+    if (extra ? extra.remote : !needsSignIn(pair)) {
       return res.status(400).json({ error: 'Séance à distance : le rapport Zoom fait foi, pas d’émargement.' });
     }
     const attendance = req.body.attendance === 'absent' ? 'absent' : 'présent';
     const late = attendance === 'présent' && req.body.late === true;
-    const { date, day } = parisNow();
     const existing = await Seances.findOne({ where: { binome_id: pair.id, date } });
     if (existing) {
       return res.status(409).json({ error: 'Séance déjà émargée aujourd’hui', session: existing });
     }
     const slot = slotOn(pair, day) || (pair.schedule || [])[0];
-    const duration = slot ? minutesOf(slot.endTime) - minutesOf(slot.startTime) : null;
+    const duration = extra ? extraMinutes(extra) : slot ? minutesOf(slot.endTime) - minutesOf(slot.startTime) : null;
     const session = await Seances.create({
       binome_id: pair.id,
       author_id: me(req),
@@ -595,6 +611,17 @@ export const addSession = async (req, res) => {
       if (fields.late && !wasLate) tellLate(pair, signed);
       return;
     }
+    // A session in addition to the slot, held earlier (told by the tutor)
+    if (req.body.extra) {
+      const out = await addExtra(
+        pair,
+        { ...req.body.extra, kind: 'supplementaire', date, note: 'Déclarée par le tuteur' },
+        me(req),
+        { byTutor: true }
+      );
+      if (out.error) return res.status(400).json({ error: out.error });
+      if (attendance === 'présent' && !duration) fields.duration_minutes = extraMinutes(out.extra);
+    }
     const session = await Seances.create({ binome_id: pair.id, author_id: me(req), date, ...fields });
     res.status(201).json(session);
     if (fields.late) tellLate(pair, session);
@@ -620,4 +647,42 @@ export const deleteSession = async (req, res) => {
     console.log(err);
     res.status(500).json({ error: "Le compte-rendu n'a pas pu être supprimé" });
   }
+};
+
+// The tutor comes back to a report of their pair afterwards (30 days after
+// the session): what was worked on, the rating, the remark, a late arrival.
+// The date, the attendance and the duration stay (sign-in, hours).
+// Body: { work, progress, remark, late }
+export const EDIT_DAYS = 30;
+export const editSession = async (req, res) => {
+  try {
+    const session = await Seances.findByPk(req.params.id);
+    const pair = session && (await Binomes.findByPk(session.binome_id));
+    if (!session || !pair || pair.tutor_id !== me(req)) {
+      return res.status(404).json({ error: 'Compte-rendu introuvable' });
+    }
+    const date = String(session.date).slice(0, 10);
+    if (date < addDaysTo(parisNow().date, -EDIT_DAYS)) {
+      return res.status(409).json({ error: `Plus de ${EDIT_DAYS} jours : demandez à l’association` });
+    }
+    const held = session.attendance === 'présent';
+    const progress = Number(req.body.progress) || null;
+    const wasLate = session.late;
+    await session.update({
+      work: String(req.body.work ?? '').trim() || null,
+      remark: String(req.body.remark ?? '').trim() || null,
+      progress: held && progress >= 1 && progress <= 5 ? progress : null,
+      late: held && req.body.late === true,
+    });
+    res.json(session);
+    if (session.late && !wasLate) tellLate(pair, session);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Le compte-rendu n'a pas pu être modifié" });
+  }
+};
+const addDaysTo = (date, n) => {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
 };
