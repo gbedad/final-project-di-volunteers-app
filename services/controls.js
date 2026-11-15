@@ -6,7 +6,6 @@ import Students from '../models/students/students.model.js';
 import Binomes from '../models/binomes.model.js';
 import Seances from '../models/seances.model.js';
 import { slotOn, dayOf } from './pairSchedule.js';
-import { openIncidents } from './incidents.js';
 
 const SHOWN = 8;
 // Sessions looked at: the last two months
@@ -144,30 +143,7 @@ export const controlList = async () => {
     .map((s) => studentItem(s, s.qf_proof ? 'justificatif choisi, QF non saisi' : 'ni QF ni justificatif'));
   const noSchool = followed.filter((s) => !s.school?.name).map((s) => studentItem(s, s.status));
 
-  // 5. Incidents declared on the students' pages, not dealt with yet
-  const incidents = (await openIncidents()).map((i) => ({
-    id: `incident-${i.id}`,
-    label: `${i.student} · ${i.type_label}`,
-    detail: [
-      new Date(`${i.date}T12:00:00Z`).toLocaleDateString('fr-FR', { timeZone: 'UTC' }),
-      i.tutor && `tuteur : ${i.tutor}`,
-      i.note,
-    ]
-      .filter(Boolean)
-      .join(' · '),
-    link: { path: `/eleves/${i.student_id}`, open: 'incidents' },
-  }));
-
   return [
-    {
-      ...block(
-        'incidents',
-        'Incidents à traiter',
-        'Déclarés sur la fiche de l’élève. Marquez-les « Traité » une fois réglés.',
-        incidents
-      ),
-      severity: 'error',
-    },
     block('zoom', 'Binômes « Sur site » faits sur Zoom', 'À passer « À distance » dans la fiche du binôme.', onZoom),
     block(
       'offslot',

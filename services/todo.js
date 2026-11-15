@@ -12,6 +12,7 @@ import { ANSWER_DAYS, pairStats } from './followUp.js';
 import { sessionLog, parisToday } from './sessionLog.js';
 import { resumeProblems, RESUME_SLOTS } from './pairBreaks.js';
 import { toCollect } from './accounting.js';
+import { incidentItems } from './incidents.js';
 
 const SHOWN = 6;
 // Family conventions exist since then: students registered before are not
@@ -231,7 +232,12 @@ export const todoList = async () => {
     .filter((u) => !everPaired.has(u.id))
     .map((u) => ({ id: u.id, label: name(u), detail: 'validé, aucun élève proposé', link: tutorLink(u) }));
 
+  // ---- Incidents declared on the students' pages, not dealt with ----
+  const incidents = await incidentItems();
+
   return [
+    block('incidents', 'Incidents élèves à traiter', 'error', null, incidents,
+      'Déclarés sur la fiche de l’élève : touchez une ligne, puis « Traité… » une fois réglé.'),
     block('countersign', 'Conventions à contresigner', 'warning', { path: '/view-users' }, countersign,
       'Signées par le bénévole, en attente de la présidente.'),
     block('consent', 'Accords parentaux manquants', 'error', { path: '/eleves' }, consentStudents,

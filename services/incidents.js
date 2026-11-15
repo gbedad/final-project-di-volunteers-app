@@ -1,6 +1,6 @@
 // Incidents of a student, declared by the team on the student's page by
 // type (Charte: a late arrival of 15 minutes or more is an incident), and
-// shown in "Contrôles" until they are marked as dealt with.
+// shown in "À traiter" until they are marked as dealt with.
 import db from '../config/database.js';
 
 export const INCIDENT_TYPES = {
@@ -92,7 +92,7 @@ export const resolveIncident = async (id, { resolved = true, resolution }, userI
 };
 export const deleteIncident = (id) => q('delete from student_incidents where id = :id', { id });
 
-// Incidents not dealt with yet (page "Contrôles"); demonstration students
+// Incidents not dealt with yet (page "À traiter"); demonstration students
 // left out
 export const openIncidents = async () =>
   (
@@ -101,3 +101,18 @@ export const openIncidents = async () =>
         order by i.date desc, i.id desc`
     )
   ).map(row);
+
+// Items of "À traiter": one per incident not dealt with
+export const incidentItems = async () =>
+  (await openIncidents()).map((i) => ({
+    id: `incident-${i.id}`,
+    label: `${i.student} · ${i.type_label}`,
+    detail: [
+      new Date(`${i.date}T12:00:00Z`).toLocaleDateString('fr-FR', { timeZone: 'UTC' }),
+      i.tutor && `tuteur : ${i.tutor}`,
+      i.note,
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    link: { path: `/eleves/${i.student_id}`, open: 'incidents' },
+  }));
