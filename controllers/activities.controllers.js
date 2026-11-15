@@ -29,7 +29,10 @@ import {
   recordMembership,
   deleteMembership,
   addNote,
+  ownerCandidates,
+  setOwner,
 } from '../services/activities.js';
+import { canEditActivity, changesAllOutings } from '../middlewares/activityAccess.js';
 import {
   requestOutingConsent,
   outingConsentPage,
@@ -56,6 +59,12 @@ const withConflicts = async (a, req) => {
     })),
   };
 };
+// One outing as the page shows it: what this person may do with it
+const shown = async (a, req) => ({
+  ...(await withConflicts(a, req)),
+  can_edit: canEditActivity(req, a),
+  can_change_owner: changesAllOutings(req),
+});
 const registeredIds = (a) => a.registrations.filter((r) => r.status === 'inscrit').map((r) => r.student_id);
 
 const me = (req) => Number(req.user?.userid ?? req.user?.userId);
@@ -67,9 +76,10 @@ const fail = (res, err, message) => {
 const answer = (res, out, key, code = 200) =>
   out.error ? res.status(out.status || 400).json({ error: out.error }) : res.status(code).json(out[key]);
 
+// can_edit: the outings this person may change (the others are read only)
 export const list = async (req, res) => {
   try {
-    res.json(await listActivities());
+    res.json((await listActivities()).map((a) => ({ ...a, can_edit: canEditActivity(req, a) })));
   } catch (err) {
     fail(res, err, 'Liste indisponible');
   }
@@ -78,7 +88,7 @@ export const show = async (req, res) => {
   try {
     const a = await getActivity(Number(req.params.id));
     if (!a) return res.status(404).json({ error: 'Activité introuvable' });
-    res.json(await withConflicts(a, req));
+    res.json(await shown(a, req));
   } catch (err) {
     fail(res, err, 'Activité indisponible');
   }
@@ -98,21 +108,43 @@ export const update = async (req, res) => {
     if (error) return res.status(400).json({ error });
     const before = await getActivity(Number(req.params.id));
     if (!before) return res.status(404).json({ error: 'Activité introuvable' });
+    // Who is in charge: changed by "superculture" and the admins only
+    if (req.body.owner_id !== undefined && Number(req.body.owner_id) !== Number(before.owner_id)) {
+      if (!changesAllOutings(req)) return res.status(403).json({ error: 'Seuls les admins et les super culture changent le responsable' });
+      const out = await setOwner(before.id, Number(req.body.owner_id));
+      if (out.error) return res.status(400).json({ error: out.error });
+    }
     const a = await updateActivity(before.id, fields);
     // Another day: the sessions said cancelled for the old one take place
     const moved = 'date' in fields && (fields.date || null) !== (before.date || null);
     if (moved || fields.status === 'annulée') await releaseTutors(before, registeredIds(before), before.date);
-    res.json(await withConflicts(await getActivity(a.id), req));
+    res.json(await shown(await getActivity(a.id), req));
   } catch (err) {
     fail(res, err, "L'activité n'a pas pu être enregistrée");
   }
 };
+// An outing with registered children: deleted by "superculture" and the
+// admins only (its creator can cancel it)
 export const remove = async (req, res) => {
   try {
-    await deleteActivity(Number(req.params.id));
+    const a = await getActivity(Number(req.params.id));
+    if (!a) return res.status(404).json({ error: 'Activité introuvable' });
+    if (!changesAllOutings(req) && a.registrations.some((r) => r.status !== 'désisté'))
+      return res.status(403).json({
+        error: 'Cette sortie a des inscrits : seul un admin ou un super culture peut la supprimer. Vous pouvez l’annuler.',
+      });
+    await deleteActivity(a.id);
     res.json({ ok: true });
   } catch (err) {
     fail(res, err, "L'activité n'a pas pu être supprimée");
+  }
+};
+
+export const owners = async (req, res) => {
+  try {
+    res.json(await ownerCandidates());
+  } catch (err) {
+    fail(res, err, 'Liste indisponible');
   }
 };
 

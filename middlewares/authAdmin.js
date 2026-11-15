@@ -5,8 +5,11 @@ export const STAFF_ROLES = ['superadmin', 'admin', 'interviewer'];
 // Managers: can also edit missions, delete documents, name interviewers
 export const MANAGER_ROLES = ['superadmin', 'admin'];
 // Cultural activities: the managers, and the people in charge of the
-// outings (no access to anything else)
-export const CULTURE_ROLES = ['superadmin', 'admin', 'culture'];
+// outings (no access to anything else): "superculture" changes every
+// outing, "culture" only those it is in charge of (activityAccess.js)
+export const CULTURE_ROLES = ['superadmin', 'admin', 'superculture', 'culture'];
+// Change every outing
+export const ALL_OUTINGS_ROLES = ['superadmin', 'admin', 'superculture'];
 
 const hasAdminAccess = (user) => !!user && STAFF_ROLES.includes(user.role);
 

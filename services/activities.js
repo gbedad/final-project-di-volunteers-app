@@ -152,8 +152,8 @@ const value = (c) => (CASTS[c] ? `cast(:${c} as ${CASTS[c]})` : `:${c}`);
 export const createActivity = async (fields, userId) => {
   const cols = columns(fields);
   return one(
-    `insert into activities (${cols.join(', ')}, created_by)
-     values (${cols.map(value).join(', ')}, :userId) returning *`,
+    `insert into activities (${cols.join(', ')}, created_by, owner_id)
+     values (${cols.map(value).join(', ')}, :userId, :userId) returning *`,
     { ...fields, userId }
   );
 };
@@ -167,6 +167,22 @@ export const updateActivity = async (id, fields) => {
   );
 };
 export const deleteActivity = (id) => q('delete from activities where id = :id', { id });
+
+// ---- Who is in charge of an outing ----
+const OWNER_ROLES = ['superadmin', 'admin', 'superculture', 'culture'];
+export const ownerCandidates = () =>
+  q(
+    `select id, first_name, last_name, role from users where role in (:roles) and coalesce(status, '') <> 'Archivé'
+      order by first_name, last_name`,
+    { roles: OWNER_ROLES }
+  );
+export const setOwner = async (id, ownerId) => {
+  const owner = await one('select id from users where id = :ownerId and role in (:roles)', { ownerId, roles: OWNER_ROLES });
+  if (!owner) return { error: 'Responsable invalide' };
+  await q('update activities set owner_id = :ownerId, updated_at = now() where id = :id', { id, ownerId });
+  return { ok: true };
+};
+const ownerName = (a) => [a.owner_first_name, a.owner_last_name].filter(Boolean).join(' ') || null;
 
 // Expected participation of a registration
 const dueOf = (r, activity) => (r.fee_override !== null && r.fee_override !== undefined ? Number(r.fee_override) : Number(activity.fee || 0));
@@ -206,15 +222,26 @@ export const listActivities = async () => {
             a.deadline, a.status, a.fee, a.costs, a.adults_per_students,
             (select count(*)::int from activity_registrations r where r.activity_id = a.id and r.status = 'inscrit') as registered,
             (select count(*)::int from activity_registrations r where r.activity_id = a.id and r.status = 'attente') as waiting,
-            (select count(*)::int from activity_staff s where s.activity_id = a.id) as staff
-       from activities a
+            (select count(*)::int from activity_staff s where s.activity_id = a.id) as staff,
+            coalesce(a.owner_id, a.created_by) as owner_id, u.first_name as owner_first_name, u.last_name as owner_last_name
+       from activities a left join users u on u.id = coalesce(a.owner_id, a.created_by)
       order by a.date nulls last, a.id`
   );
-  return rows.map((a) => ({ ...a, date: day(a.date), deadline: day(a.deadline), shown_status: shownStatus(a, a.registered) }));
+  return rows.map(({ owner_first_name, owner_last_name, ...a }) => ({
+    ...a,
+    owner: ownerName({ owner_first_name, owner_last_name }),
+    date: day(a.date),
+    deadline: day(a.deadline),
+    shown_status: shownStatus(a, a.registered),
+  }));
 };
 
 export const getActivity = async (id) => {
-  const a = await one('select * from activities where id = :id', { id });
+  const a = await one(
+    `select a.*, coalesce(a.owner_id, a.created_by) as owner_id, u.first_name as owner_first_name, u.last_name as owner_last_name
+       from activities a left join users u on u.id = coalesce(a.owner_id, a.created_by) where a.id = :id`,
+    { id }
+  );
   if (!a) return null;
   const registrations = await q(
     `select r.*, s.first_name, s.last_name, s.level, s.status as student_status, s.is_demo,
@@ -243,8 +270,10 @@ export const getActivity = async (id) => {
       })
     : [];
   const memberOf = Object.fromEntries(members.map((m) => [m.student_id, m]));
+  const { owner_first_name, owner_last_name, ...rest } = a;
   return {
-    ...a,
+    ...rest,
+    owner: ownerName(a),
     date: day(a.date),
     deadline: day(a.deadline),
     shown_status: shownStatus(a, registered),
