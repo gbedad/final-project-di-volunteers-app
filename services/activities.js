@@ -21,6 +21,23 @@ function parisTodayRaw() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
 }
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+// Flyers by destination, and what can be shown on them
+export const FLYER_TYPES = ['familles', 'ambassadeurs', 'partenaires', 'reseaux'];
+export const FLYER_FIELDS = [
+  'photo',
+  'quand',
+  'ou',
+  'aller',
+  'retour',
+  'pour',
+  'inscription',
+  'description',
+  'presentation',
+  'participation',
+  'places',
+  'organisateur',
+  'cta',
+];
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 // The adults' link works from the day before to two days after the outing
 const LINK_DAYS_BEFORE = 1;
@@ -53,13 +70,16 @@ export const activityFields = (body, { partial = false } = {}) => {
     if (!title) return { error: 'Donnez un titre à l’activité' };
     out.title = title.slice(0, 120);
   }
-  const LONG = ['description', 'objective', 'review', 'bring'];
+  const LONG = ['description', 'objective', 'review', 'bring', 'ambassador_brief'];
   for (const k of [
     'kind',
     'description',
     'place',
     'meeting_point',
     'meeting_point2',
+    'return_point',
+    'return_point2',
+    'ambassador_brief',
     'program',
     'objective',
     'bring',
@@ -67,7 +87,25 @@ export const activityFields = (body, { partial = false } = {}) => {
     'whatsapp_group',
     'review',
   ]) {
-    if (has(k)) out[k] = String(body[k] || '').trim().slice(0, LONG.includes(k) ? 4000 : 200) || null;
+    if (has(k)) out[k] = String(body[k] || '').trim().slice(0, LONG.includes(k) ? 8000 : 200) || null;
+  }
+  // The organiser: an account (checked by the controller), or nobody
+  if (has('organizer_id')) {
+    const id = num(body.organizer_id);
+    if (id !== null && !Number.isInteger(id)) return { error: 'Organisateur invalide' };
+    out.organizer_id = id;
+  }
+  // Flyers by destination: the fields ticked and the call to action
+  if (has('flyer_settings')) {
+    const settings = {};
+    for (const [type, v] of Object.entries(body.flyer_settings || {})) {
+      if (!FLYER_TYPES.includes(type) || !v) continue;
+      settings[type] = {
+        fields: (Array.isArray(v.fields) ? v.fields : []).filter((f) => FLYER_FIELDS.includes(f)),
+        cta: String(v.cta ?? '').slice(0, 300),
+      };
+    }
+    out.flyer_settings = JSON.stringify(settings);
   }
   if (has('link')) {
     const link = String(body.link || '').trim();
@@ -103,7 +141,7 @@ export const activityFields = (body, { partial = false } = {}) => {
       out[k] = body[k] || null;
     }
   }
-  for (const k of ['start_time', 'end_time', 'meeting_time', 'meeting_time2']) {
+  for (const k of ['start_time', 'end_time', 'meeting_time', 'meeting_time2', 'return_time', 'return_time2']) {
     if (has(k)) {
       if (body[k] && !TIME_RE.test(body[k])) return { error: 'Heure invalide' };
       out[k] = body[k] || null;
@@ -147,7 +185,7 @@ export const activityFields = (body, { partial = false } = {}) => {
 };
 
 const columns = (fields) => Object.keys(fields);
-const CASTS = { costs: 'jsonb', levels: 'text[]', prep: 'jsonb', debrief: 'jsonb' };
+const CASTS = { costs: 'jsonb', levels: 'text[]', prep: 'jsonb', debrief: 'jsonb', flyer_settings: 'jsonb' };
 const value = (c) => (CASTS[c] ? `cast(:${c} as ${CASTS[c]})` : `:${c}`);
 export const createActivity = async (fields, userId) => {
   const cols = columns(fields);
@@ -182,6 +220,16 @@ export const setOwner = async (id, ownerId) => {
   await q('update activities set owner_id = :ownerId, updated_at = now() where id = :id', { id, ownerId });
   return { ok: true };
 };
+// The organiser: a name of the base (team, or a validated tutor)
+const ORGANIZER_SQL = `select id, first_name, last_name, role, phone from users
+   where coalesce(status, '') <> 'Archivé'
+     and (role in (:roles) or (role = 'volunteer' and status = 'Validé' and coalesce(is_demo, false) = false))`;
+export const organizerCandidates = async () =>
+  (await q(`${ORGANIZER_SQL} order by first_name, last_name`, { roles: [...OWNER_ROLES, 'interviewer'] })).map(
+    ({ phone, ...u }) => u
+  );
+export const isOrganizer = async (id) =>
+  !!(await one(`${ORGANIZER_SQL} and id = :id`, { id, roles: [...OWNER_ROLES, 'interviewer'] }));
 const ownerName = (a) => [a.owner_first_name, a.owner_last_name].filter(Boolean).join(' ') || null;
 
 // Expected participation of a registration
@@ -238,14 +286,17 @@ export const listActivities = async () => {
 
 export const getActivity = async (id) => {
   const a = await one(
-    `select a.*, coalesce(a.owner_id, a.created_by) as owner_id, u.first_name as owner_first_name, u.last_name as owner_last_name
-       from activities a left join users u on u.id = coalesce(a.owner_id, a.created_by) where a.id = :id`,
+    `select a.*, coalesce(a.owner_id, a.created_by) as owner_id, u.first_name as owner_first_name, u.last_name as owner_last_name,
+            nullif(trim(coalesce(o.first_name, '') || ' ' || coalesce(o.last_name, '')), '') as organizer,
+            o.phone as organizer_phone
+       from activities a left join users u on u.id = coalesce(a.owner_id, a.created_by)
+       left join users o on o.id = a.organizer_id where a.id = :id`,
     { id }
   );
   if (!a) return null;
   const registrations = await q(
     `select r.*, s.first_name, s.last_name, s.level, s.status as student_status, s.is_demo,
-            s.parent1_firstname, s.parent1_phone, s.parent2_firstname, s.parent2_phone, s.phone as student_phone,
+            s.parent1_firstname, s.parent1_phone, s.parent2_firstname, s.parent2_phone, s.phone as student_phone, s.school->>'name' as school_name,
             (coalesce(s.parent1_email, '') <> '') as parent1_has_email, (coalesce(s.parent2_email, '') <> '') as parent2_has_email,
             s.parental_consent_at
        from activity_registrations r join students s on s.id = r.student_id
@@ -318,19 +369,25 @@ export const register = async (activityId, studentId, userId) => {
     { activityId }
   );
   const status = a.places && n >= a.places ? 'attente' : 'inscrit';
+  // Meeting points of the student: point 1, there and back (the team can
+  // change them)
+  const meeting = a.meeting_point ? 1 : null;
+  const back = a.return_point ? 1 : null;
   if (existing) {
     return {
       registration: await one(
-        `update activity_registrations set status = :status, created_at = now() where id = :id returning *`,
-        { status, id: existing.id }
+        `update activity_registrations set status = :status, created_at = now(),
+            meeting_choice = coalesce(meeting_choice, :meeting), return_choice = coalesce(return_choice, :back)
+          where id = :id returning *`,
+        { status, id: existing.id, meeting, back }
       ),
     };
   }
   return {
     registration: await one(
-      `insert into activity_registrations (activity_id, student_id, status, created_by)
-       values (:activityId, :studentId, :status, :userId) returning *`,
-      { activityId, studentId, status, userId }
+      `insert into activity_registrations (activity_id, student_id, status, created_by, meeting_choice, return_choice)
+       values (:activityId, :studentId, :status, :userId, :meeting, :back) returning *`,
+      { activityId, studentId, status, userId, meeting, back }
     ),
   };
 };
@@ -371,6 +428,13 @@ export const updateRegistration = async (id, body) => {
     if (k in body) {
       if (body[k] && !WAYS.includes(body[k])) return { error: 'Valeur inconnue' };
       set[k] = body[k] || null;
+    }
+  }
+  for (const k of ['meeting_choice', 'return_choice']) {
+    if (k in body) {
+      const v = num(body[k]);
+      if (v !== null && ![1, 2].includes(v)) return { error: 'Point de rendez-vous inconnu' };
+      set[k] = v;
     }
   }
   if ('emergency_phone' in body) set.emergency_phone = String(body.emergency_phone || '').trim().slice(0, 30) || null;
@@ -436,6 +500,7 @@ export const attendancePage = async (token) => {
   const students = open
     ? await q(
         `select r.id, r.attendance, r.arrival, r.departure, r.emergency_phone, r.consent_at,
+                r.meeting_choice, r.return_choice, s.phone as student_phone, s.school->>'name' as school_name,
                 s.first_name, s.last_name, s.level, s.parent1_firstname, s.parent1_phone, s.parent2_phone
            from activity_registrations r join students s on s.id = r.student_id
           where r.activity_id = :id and r.status = 'inscrit'
@@ -456,6 +521,10 @@ export const attendancePage = async (token) => {
         meeting_time: a.meeting_time,
         meeting_point2: a.meeting_point2,
         meeting_time2: a.meeting_time2,
+        return_point: a.return_point,
+        return_time: a.return_time,
+        return_point2: a.return_point2,
+        return_time2: a.return_time2,
         bring: a.bring,
       },
       open,
@@ -467,6 +536,10 @@ export const attendancePage = async (token) => {
         arrival: s.arrival,
         departure: s.departure,
         consent: !!s.consent_at,
+        school: s.school_name || null,
+        phone: s.student_phone || null,
+        meeting_choice: s.meeting_choice,
+        return_choice: s.return_choice,
         // Who to call if needed (the number given for the day first)
         parent:
           s.emergency_phone || s.parent1_phone || s.parent2_phone
@@ -699,6 +772,25 @@ export const recordMembership = async (studentId, body, userId) => {
   };
 };
 export const deleteMembership = (id) => q('delete from student_memberships where id = :id', { id });
+
+// ---- Chat of an outing: messages of the people in charge, oldest first,
+// each starting with the first name of who wrote it ----
+export const chatOf = async (activityId) => {
+  const a = await one('select chat from activities where id = :activityId', { activityId });
+  return a ? { chat: a.chat || [] } : { error: 'Activité introuvable', status: 404 };
+};
+export const addChatMessage = async (activityId, text, user) => {
+  const t = String(text || '').trim().slice(0, 4000);
+  if (!t) return { error: 'Message vide' };
+  const a = await one(
+    `update activities set chat = coalesce(chat, '[]'::jsonb) || cast(:message as jsonb) where id = :activityId returning chat`,
+    {
+      activityId,
+      message: JSON.stringify([{ at: new Date().toISOString(), user_id: user.id, by: user.first_name || 'Équipe', text: t }]),
+    }
+  );
+  return a ? { chat: a.chat } : { error: 'Activité introuvable', status: 404 };
+};
 
 // ---- Preparation notes ("EB : livret préparatoire transmis…") ----
 export const addNote = async (activityId, text, author) => {

@@ -4,6 +4,9 @@ import { activityEditor } from '../middlewares/activityAccess.js';
 import {
   list,
   owners,
+  chat,
+  postChat,
+  organizers,
   show,
   create,
   update,
@@ -45,6 +48,8 @@ const router = express.Router();
 router.get('/admin/activites', cultureAuth, list);
 // People who can be in charge of an outing
 router.get('/admin/activites-responsables', cultureAuth, owners);
+// Names the organiser of an outing is chosen from
+router.get('/admin/activites-organisateurs', cultureAuth, organizers);
 router.post('/admin/activites', cultureAuth, create);
 router.get('/admin/activites/:id', cultureAuth, show);
 router.patch('/admin/activites/:id', cultureAuth, activityEditor('activity'), update);
@@ -64,6 +69,9 @@ router.get('/admin/students/:id/activites', adminAuth, studentActivities);
 router.get('/admin/activites-eleves', cultureAuth, studentsForActivities);
 router.post('/admin/activites-eleves', cultureAuth, createActivityStudent);
 
+// Chat of the outing: read and written by everyone who sees it
+router.get('/admin/activites/:id/chat', cultureAuth, chat);
+router.post('/admin/activites/:id/chat', cultureAuth, postChat);
 // Preparation notes
 router.post('/admin/activites/:id/notes', cultureAuth, activityEditor('activity'), note);
 // Expenses, receipts, refunds (marked refunded by a manager: the treasurer)

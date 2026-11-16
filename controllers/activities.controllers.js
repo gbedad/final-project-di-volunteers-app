@@ -29,7 +29,11 @@ import {
   recordMembership,
   deleteMembership,
   addNote,
+  addChatMessage,
+  chatOf,
   ownerCandidates,
+  organizerCandidates,
+  isOrganizer,
   setOwner,
 } from '../services/activities.js';
 import { canEditActivity, changesAllOutings } from '../middlewares/activityAccess.js';
@@ -97,6 +101,9 @@ export const create = async (req, res) => {
   try {
     const { fields, error } = activityFields(req.body);
     if (error) return res.status(400).json({ error });
+    if (fields.organizer_id && !(await isOrganizer(fields.organizer_id))) {
+      return res.status(400).json({ error: 'Organisateur inconnu' });
+    }
     res.status(201).json(await createActivity(fields, me(req)));
   } catch (err) {
     fail(res, err, "L'activité n'a pas pu être créée");
@@ -106,6 +113,9 @@ export const update = async (req, res) => {
   try {
     const { fields, error } = activityFields(req.body, { partial: true });
     if (error) return res.status(400).json({ error });
+    if (fields.organizer_id && !(await isOrganizer(fields.organizer_id))) {
+      return res.status(400).json({ error: 'Organisateur inconnu' });
+    }
     const before = await getActivity(Number(req.params.id));
     if (!before) return res.status(404).json({ error: 'Activité introuvable' });
     // Who is in charge: changed by "superculture" and the admins only
@@ -140,6 +150,14 @@ export const remove = async (req, res) => {
   }
 };
 
+// Names the organiser is chosen from (team and validated tutors)
+export const organizers = async (req, res) => {
+  try {
+    res.json(await organizerCandidates());
+  } catch (err) {
+    fail(res, err, 'Liste indisponible');
+  }
+};
 export const owners = async (req, res) => {
   try {
     res.json(await ownerCandidates());
@@ -282,6 +300,23 @@ export const tick = async (req, res) => {
     );
   } catch (err) {
     fail(res, err, "La présence n'a pas pu être enregistrée");
+  }
+};
+
+// ---- Chat (everyone who sees the outing can write) ----
+export const chat = async (req, res) => {
+  try {
+    answer(res, await chatOf(Number(req.params.id)), 'chat');
+  } catch (err) {
+    fail(res, err, 'Messages indisponibles');
+  }
+};
+export const postChat = async (req, res) => {
+  try {
+    const u = await Users.findByPk(me(req), { attributes: ['id', 'first_name'] });
+    answer(res, await addChatMessage(Number(req.params.id), req.body.text, u || { id: me(req) }), 'chat', 201);
+  } catch (err) {
+    fail(res, err, "Le message n'a pas pu être envoyé");
   }
 };
 
