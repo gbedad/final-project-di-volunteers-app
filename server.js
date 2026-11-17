@@ -61,6 +61,7 @@ app.put('/admin/president-signature', express.json({ limit: '1mb' }));
 app.post('/admin/activites', express.json({ limit: '1mb' }));
 app.patch('/admin/activites/:id', express.json({ limit: '1mb' }));
 app.post('/admin/depenses/:id/justificatif', express.json({ limit: '9mb' }));
+app.post('/admin/inscriptions-activites/:id/autorisation-papier', express.json({ limit: '13mb' }));
 app.post('/autorisation-sortie/:token', express.json({ limit: '1mb' }));
 app.post('/convention-famille/:token', express.json({ limit: '1mb' }));
 app.post('/admin/students/:id/conventions-famille/papier', express.json({ limit: '13mb' }));

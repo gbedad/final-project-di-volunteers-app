@@ -38,6 +38,7 @@ import {
   removeMembership,
   askConsent,
   consentPdf,
+  paperConsent,
   consentPage,
   signConsent,
 } from '../controllers/activities.controllers.js';
@@ -92,6 +93,8 @@ router.delete('/admin/cotisations/:id', managerAuth, removeMembership);
 // Outing authorisation signed online by the parent
 router.post('/admin/inscriptions-activites/:id/autorisation', cultureAuth, activityEditor('registration'), askConsent);
 router.get('/admin/inscriptions-activites/:id/autorisation-pdf', cultureAuth, consentPdf);
+// Authorisation received on paper: its scan
+router.post('/admin/inscriptions-activites/:id/autorisation-papier', cultureAuth, activityEditor('registration'), paperConsent);
 router.get('/autorisation-sortie/:token', consentPage);
 router.post('/autorisation-sortie/:token', signConsent);
 

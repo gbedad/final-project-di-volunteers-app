@@ -445,7 +445,11 @@ export const updateRegistration = async (id, body) => {
   }
   if ('emergency_phone' in body) set.emergency_phone = String(body.emergency_phone || '').trim().slice(0, 30) || null;
   // Received on paper (an online signature keeps its source)
-  if ('consent_at' in body) set.consent_source = body.consent_at ? 'papier' : null;
+  if ('consent_at' in body) {
+    set.consent_source = body.consent_at ? 'papier' : null;
+    // Unticked: the scan stays in the student's documents, no longer linked
+    if (!body.consent_at) set.consent_file_id = null;
+  }
   if ('attendance' in body) {
     if (body.attendance && !ATTENDANCES.includes(body.attendance)) return { error: 'Présence inconnue' };
     set.attendance = body.attendance || null;

@@ -43,6 +43,7 @@ import {
   outingConsentPage,
   signOutingConsent,
   outingConsentFile,
+  storePaperConsent,
 } from '../services/outingConsent.js';
 import { fileUrl, privateDownloadUrl } from '../config/aws.config.js';
 import Users from '../models/users.model.js';
@@ -435,10 +436,18 @@ export const askConsent = async (req, res) => {
     fail(res, err, "La demande n'a pas pu être envoyée");
   }
 };
+// Body: { file: 'data:…;base64,…', name }
+export const paperConsent = async (req, res) => {
+  try {
+    answer(res, await storePaperConsent(Number(req.params.id), req.body.file, req.body.name), 'result', 201);
+  } catch (err) {
+    fail(res, err, "Le scan n'a pas pu être enregistré");
+  }
+};
 export const consentPdf = async (req, res) => {
   try {
     const file = await outingConsentFile(Number(req.params.id));
-    if (!file) return res.status(404).json({ error: 'Pas d’autorisation signée en ligne' });
+    if (!file) return res.status(404).json({ error: 'Pas de document d’autorisation' });
     res.json({ url: await fileUrl(file.path) });
   } catch (err) {
     fail(res, err, 'Document indisponible');

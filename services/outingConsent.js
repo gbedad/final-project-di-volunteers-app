@@ -322,7 +322,38 @@ export const signOutingConsent = async (token, body, ip) => {
   return { result: { state: 'signed', copy_sent: !!email } };
 };
 
-// The signed PDF, for the team (link valid an hour)
+// Authorisation received on paper: its scan (photo or PDF, sent as a data
+// URL), kept with the student's documents; the registration is marked
+// received on paper. An authorisation signed online is not replaced.
+const SCAN_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' };
+export const storePaperConsent = async (registrationId, dataUrl, name) => {
+  const m = /^data:([\w/.+-]+);base64,(.+)$/.exec(String(dataUrl || ''));
+  const ext = m && SCAN_TYPES[m[1]];
+  if (!ext) return { error: 'Scan : photo (JPEG, PNG) ou PDF' };
+  const body = Buffer.from(m[2], 'base64');
+  if (body.length > 9 * 1024 * 1024) return { error: 'Fichier trop lourd (9 Mo au plus)' };
+  const r = await one(
+    `select r.id, r.student_id, r.activity_id, r.consent_source, a.title, s.first_name, s.last_name
+       from activity_registrations r join activities a on a.id = r.activity_id join students s on s.id = r.student_id
+      where r.id = :registrationId`,
+    { registrationId }
+  );
+  if (!r) return { error: 'Inscription introuvable', status: 404 };
+  if (r.consent_source === 'en ligne') return { error: 'Autorisation déjà signée en ligne', status: 409 };
+  const key = `student-documents/${r.student_id}/autorisation-sortie-papier-${r.activity_id}-${Date.now()}.${ext}`;
+  await s3.send(new PutObjectCommand({ Bucket: PRIVATE_BUCKET, Key: key, Body: body, ContentType: m[1] }));
+  const filename = `Autorisation de sortie (papier) - ${r.title} - ${r.first_name} ${r.last_name || ''}.${ext}`.replace(/\s+/g, ' ');
+  const file = await StudentFiles.create({ filename, mimetype: m[1], path: key, studentId: r.student_id });
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+  await q(
+    `update activity_registrations set consent_at = coalesce(consent_at, :today), consent_source = 'papier',
+       consent_file_id = :fileId where id = :id`,
+    { today, fileId: file.id, id: r.id }
+  );
+  return { result: { ok: true, file: { id: file.id, filename } } };
+};
+
+// The signed PDF, or the paper scan, for the team (link valid an hour)
 export const outingConsentFile = async (registrationId) => {
   const r = await one('select consent_file_id from activity_registrations where id = :registrationId', { registrationId });
   if (!r?.consent_file_id) return null;
