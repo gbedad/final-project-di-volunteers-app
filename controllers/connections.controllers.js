@@ -1,11 +1,11 @@
 // "Connexions" page: who is connected now and when each person last came.
-// Superadmin: the team and the volunteers, apart. Admin: the volunteers only.
+// Superadmin: the team (outings' people included) and the volunteers, apart. Admin: the volunteers only.
 import { Op } from 'sequelize';
 import Users from '../models/users.model.js';
 
 // Seen in the last 5 minutes = connected
 export const ONLINE_MINUTES = 5;
-const TEAM_ROLES = ['superadmin', 'admin', 'interviewer'];
+const TEAM_ROLES = ['superadmin', 'admin', 'interviewer', 'superculture', 'culture'];
 
 const people = (where) =>
   Users.findAll({
