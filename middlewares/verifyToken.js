@@ -17,6 +17,21 @@ const markSeen = (id) => {
   );
 };
 
+// The database out of reach for a moment (network, DNS, pool busy): the
+// lookup is tried again once before giving up
+const DB_DOWN = /Connection|Timeout|ECONNRESET|EAI_AGAIN|ETIMEDOUT|ECONNREFUSED/;
+const isDbDown = (err) => DB_DOWN.test(`${err?.name} ${err?.parent?.code || ''} ${err?.message || ''}`);
+const findUser = async (id) => {
+  const read = () => Users.findByPk(id, { attributes: ['id', 'role', 'status'], logging: false });
+  try {
+    return await read();
+  } catch (err) {
+    if (!isDbDown(err)) throw err;
+    await new Promise((r) => setTimeout(r, 300));
+    return read();
+  }
+};
+
 export function getAccessToken(req) {
   const header = req.headers.authorization;
   if (typeof header === 'string') {
@@ -49,9 +64,7 @@ export function verifyToken(req, res, next) {
     try {
       // The role in the token may be outdated: always use the current one,
       // so that removing someone's rights takes effect immediately
-      const current = await Users.findByPk(user.userid ?? user.userId, {
-        attributes: ['id', 'role', 'status'],
-      });
+      const current = await findUser(user.userid ?? user.userId);
       if (!current) {
         return res.status(401).json({ message: 'Not authorized' });
       }
@@ -63,7 +76,10 @@ export function verifyToken(req, res, next) {
       markSeen(current.id);
       next();
     } catch (error) {
-      console.log(error);
+      console.log('Authentication error:', error.name, error.parent?.code || error.message);
+      // Database briefly unreachable: "try again", not a server bug
+      if (isDbDown(error))
+        return res.status(503).json({ message: 'Service momentanément indisponible, réessayez', error: 'Service momentanément indisponible, réessayez' });
       res.status(500).json({ message: 'Authentication error' });
     }
   });

@@ -203,7 +203,9 @@ export const searchSchools = async (req, res) => {
   const words = query.split(/\s+/).slice(0, 4);
   const where = words
     .map(
-      (w) => `(nom_etablissement like "%${w}%" or nom_commune like "%${w}%")`
+      // search(): words starting with these letters ("mar" finds
+      // "Marcel", "Marseille"); like "%mar%" finds nothing in this directory
+      (w) => `(search(nom_etablissement, "${w}") or search(nom_commune, "${w}"))`
     )
     .join(' and ');
   try {
