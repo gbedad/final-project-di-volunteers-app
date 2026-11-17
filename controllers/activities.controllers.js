@@ -30,6 +30,7 @@ import {
   deleteMembership,
   addNote,
   addChatMessage,
+  deleteChatMessage,
   chatOf,
   ownerCandidates,
   organizerCandidates,
@@ -317,6 +318,15 @@ export const postChat = async (req, res) => {
     answer(res, await addChatMessage(Number(req.params.id), req.body.text, u || { id: me(req) }), 'chat', 201);
   } catch (err) {
     fail(res, err, "Le message n'a pas pu être envoyé");
+  }
+};
+
+// Body: { at } (the message's time); the author only
+export const deleteChat = async (req, res) => {
+  try {
+    answer(res, await deleteChatMessage(Number(req.params.id), String(req.body?.at || ''), me(req)), 'chat');
+  } catch (err) {
+    fail(res, err, "Le message n'a pas pu être supprimé");
   }
 };
 

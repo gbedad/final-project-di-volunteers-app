@@ -6,6 +6,7 @@ import {
   owners,
   chat,
   postChat,
+  deleteChat,
   organizers,
   show,
   create,
@@ -72,6 +73,8 @@ router.post('/admin/activites-eleves', cultureAuth, createActivityStudent);
 // Chat of the outing: read and written by everyone who sees it
 router.get('/admin/activites/:id/chat', cultureAuth, chat);
 router.post('/admin/activites/:id/chat', cultureAuth, postChat);
+// The author deletes their own message (body: { at })
+router.delete('/admin/activites/:id/chat', cultureAuth, deleteChat);
 // Preparation notes
 router.post('/admin/activites/:id/notes', cultureAuth, activityEditor('activity'), note);
 // Expenses, receipts, refunds (marked refunded by a manager: the treasurer)

@@ -798,6 +798,23 @@ export const addChatMessage = async (activityId, text, user) => {
   return a ? { chat: a.chat } : { error: 'Activité introuvable', status: 404 };
 };
 
+// A message deleted by its author only (found by its time)
+export const deleteChatMessage = async (activityId, at, userId) => {
+  const a = await one('select chat from activities where id = :activityId', { activityId });
+  if (!a) return { error: 'Activité introuvable', status: 404 };
+  const found = (a.chat || []).find((m) => m.at === at);
+  if (!found) return { error: 'Message introuvable', status: 404 };
+  if (Number(found.user_id) !== Number(userId)) return { error: 'Vous ne pouvez supprimer que vos messages', status: 403 };
+  const out = await one(
+    `update activities set chat = (
+        select coalesce(jsonb_agg(m), '[]'::jsonb) from jsonb_array_elements(chat) m
+         where not (m->>'at' = :at and cast(m->>'user_id' as int) = :userId))
+      where id = :activityId returning chat`,
+    { activityId, at, userId }
+  );
+  return { chat: out.chat };
+};
+
 // ---- Preparation notes ("EB : livret préparatoire transmis…") ----
 export const addNote = async (activityId, text, author) => {
   const t = String(text || '').trim().slice(0, 1000);
