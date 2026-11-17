@@ -25,7 +25,7 @@ export const activityEditor = (kind) => async (req, res, next) => {
     const [[a]] = await db.query(OWNER_SQL[kind], { replacements: { id: Number(req.params.id) }, logging: false });
     if (!a) return res.status(404).json({ error: 'Activité introuvable' });
     if (!canEditActivity(req, a))
-      return res.status(403).json({ error: 'Cette sortie est gérée par un autre responsable : vous pouvez la consulter, pas la modifier.' });
+      return res.status(403).json({ error: 'Cette sortie a été rédigée par quelqu’un d’autre : vous pouvez la consulter, pas la modifier.' });
     next();
   } catch (err) {
     console.log(err);

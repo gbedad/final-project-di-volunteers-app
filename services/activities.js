@@ -277,8 +277,11 @@ export const listActivities = async () => {
             (select count(*)::int from activity_registrations r where r.activity_id = a.id and r.status = 'inscrit') as registered,
             (select count(*)::int from activity_registrations r where r.activity_id = a.id and r.status = 'attente') as waiting,
             (select count(*)::int from activity_staff s where s.activity_id = a.id) as staff,
-            coalesce(a.owner_id, a.created_by) as owner_id, u.first_name as owner_first_name, u.last_name as owner_last_name
+            coalesce(a.owner_id, a.created_by) as owner_id, u.first_name as owner_first_name, u.last_name as owner_last_name,
+            coalesce(nullif(trim(coalesce(o.first_name, '') || ' ' || coalesce(o.last_name, '')), ''),
+                     nullif(trim(coalesce(u.first_name, '') || ' ' || coalesce(u.last_name, '')), '')) as organizer
        from activities a left join users u on u.id = coalesce(a.owner_id, a.created_by)
+       left join users o on o.id = a.organizer_id
       order by a.date nulls last, a.id`
   );
   return rows.map(({ owner_first_name, owner_last_name, ...a }) => ({
@@ -293,8 +296,11 @@ export const listActivities = async () => {
 export const getActivity = async (id) => {
   const a = await one(
     `select a.*, coalesce(a.owner_id, a.created_by) as owner_id, u.first_name as owner_first_name, u.last_name as owner_last_name,
-            nullif(trim(coalesce(o.first_name, '') || ' ' || coalesce(o.last_name, '')), '') as organizer,
-            o.phone as organizer_phone
+            -- Responsable (in charge of the children): the one chosen, or else
+            -- the writer of the outing
+            coalesce(nullif(trim(coalesce(o.first_name, '') || ' ' || coalesce(o.last_name, '')), ''),
+                     nullif(trim(coalesce(u.first_name, '') || ' ' || coalesce(u.last_name, '')), '')) as organizer,
+            case when a.organizer_id is null then u.phone else o.phone end as organizer_phone
        from activities a left join users u on u.id = coalesce(a.owner_id, a.created_by)
        left join users o on o.id = a.organizer_id where a.id = :id`,
     { id }
@@ -489,6 +495,28 @@ export const addStaff = async (activityId, body) => {
       }
     ),
   };
+};
+// Changes an adult (name, contact, role); the link stays the same
+export const updateStaff = async (id, body) => {
+  const set = {};
+  if ('name' in body) {
+    const name = String(body.name || '').trim();
+    if (!name) return { error: 'Indiquez le nom de l’accompagnateur' };
+    set.name = name.slice(0, 120);
+  }
+  if ('phone' in body) set.phone = String(body.phone || '').trim().slice(0, 30) || null;
+  if ('email' in body) set.email = String(body.email || '').trim().slice(0, 120) || null;
+  if ('role' in body) {
+    if (!STAFF_ROLES.includes(body.role)) return { error: 'Rôle inconnu' };
+    set.role = body.role;
+    set.student_id = body.role === 'parent' ? num(body.student_id) : null;
+  }
+  if (!Object.keys(set).length) return { error: 'Rien à modifier' };
+  const staff = await one(
+    `update activity_staff set ${Object.keys(set).map((k) => `${k} = :${k}`).join(', ')} where id = :id returning *`,
+    { ...set, id }
+  );
+  return staff ? { staff } : { error: 'Accompagnateur introuvable', status: 404 };
 };
 export const deleteStaff = (id) => q('delete from activity_staff where id = :id', { id });
 // A new link (the old one stops working)

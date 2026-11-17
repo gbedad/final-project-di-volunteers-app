@@ -12,6 +12,7 @@ import {
   deleteRegistration,
   addStaff,
   deleteStaff,
+  updateStaff,
   renewStaffToken,
   attendancePage,
   tickAttendance,
@@ -122,7 +123,7 @@ export const update = async (req, res) => {
     if (!before) return res.status(404).json({ error: 'Activité introuvable' });
     // Who is in charge: changed by "superculture" and the admins only
     if (req.body.owner_id !== undefined && Number(req.body.owner_id) !== Number(before.owner_id)) {
-      if (!changesAllOutings(req)) return res.status(403).json({ error: 'Seuls les admins et les super culture changent le responsable' });
+      if (!changesAllOutings(req)) return res.status(403).json({ error: 'Seuls les admins et les super culture changent le rédacteur' });
       const out = await setOwner(before.id, Number(req.body.owner_id));
       if (out.error) return res.status(400).json({ error: out.error });
     }
@@ -240,6 +241,13 @@ export const addAdult = async (req, res) => {
     answer(res, await addStaff(Number(req.params.id), req.body), 'staff', 201);
   } catch (err) {
     fail(res, err, "L'accompagnateur n'a pas pu être ajouté");
+  }
+};
+export const editAdult = async (req, res) => {
+  try {
+    answer(res, await updateStaff(Number(req.params.id), req.body), 'staff');
+  } catch (err) {
+    fail(res, err, "L'accompagnateur n'a pas pu être modifié");
   }
 };
 export const removeAdult = async (req, res) => {

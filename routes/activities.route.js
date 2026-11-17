@@ -19,6 +19,7 @@ import {
   removeRegistration,
   addAdult,
   removeAdult,
+  editAdult,
   renewAdultLink,
   studentActivities,
   studentsForActivities,
@@ -64,6 +65,7 @@ router.post('/admin/inscriptions-activites/:id/prevenir', managerAuth, tellRegis
 router.patch('/admin/inscriptions-activites/:id', cultureAuth, activityEditor('registration'), changeRegistration);
 router.delete('/admin/inscriptions-activites/:id', cultureAuth, activityEditor('registration'), removeRegistration);
 router.post('/admin/activites/:id/accompagnateurs', cultureAuth, activityEditor('activity'), addAdult);
+router.patch('/admin/accompagnateurs/:id', cultureAuth, activityEditor('staff'), editAdult);
 router.delete('/admin/accompagnateurs/:id', cultureAuth, activityEditor('staff'), removeAdult);
 router.post('/admin/accompagnateurs/:id/nouveau-lien', cultureAuth, activityEditor('staff'), renewAdultLink);
 router.get('/admin/students/:id/activites', adminAuth, studentActivities);
