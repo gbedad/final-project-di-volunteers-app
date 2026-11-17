@@ -177,6 +177,12 @@ export const activityFields = (body, { partial = false } = {}) => {
     out.fee = fee;
   }
   if (has('costs')) out.costs = JSON.stringify(cleanCosts(body.costs));
+  // Adults planned to go with the children
+  if (has('companions')) {
+    const n = num(body.companions);
+    if (n !== null && (!Number.isInteger(n) || n < 0 || n > 100)) return { error: 'Nombre d’accompagnants invalide' };
+    out.companions = n;
+  }
   if (has('adults_per_students')) {
     const n = num(body.adults_per_students);
     out.adults_per_students = n && n > 0 ? Math.round(n) : 8;
@@ -267,7 +273,7 @@ const shownStatus = (a, registered) => {
 export const listActivities = async () => {
   const rows = await q(
     `select a.id, a.title, a.kind, a.program, a.date, a.start_time, a.end_time, a.place, a.image, a.levels, a.places,
-            a.deadline, a.status, a.fee, a.costs, a.adults_per_students,
+            a.deadline, a.status, a.fee, a.costs, a.adults_per_students, a.companions,
             (select count(*)::int from activity_registrations r where r.activity_id = a.id and r.status = 'inscrit') as registered,
             (select count(*)::int from activity_registrations r where r.activity_id = a.id and r.status = 'attente') as waiting,
             (select count(*)::int from activity_staff s where s.activity_id = a.id) as staff,
