@@ -58,6 +58,26 @@ const uploadConventionTemplate = multer({
   }),
 });
 
+// Video tutorials: tutorials/<slug>/<timestamp>-<name>, sent as a stream (the
+// file is big: 100 MB at most, video files only)
+export const TUTORIAL_VIDEO_MAX = 100 * 1024 * 1024;
+const uploadTutorialVideo = multer({
+  limits: { fileSize: TUTORIAL_VIDEO_MAX },
+  fileFilter: (req, file, cb) =>
+    /^video\/(mp4|quicktime|webm)$/.test(file.mimetype)
+      ? cb(null, true)
+      : cb(new Error('Fichier vidéo attendu (MP4 de préférence)')),
+  storage: multerS3({
+    s3,
+    bucket: PRIVATE_BUCKET,
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+    key: (req, file, cb) => {
+      fixFileName(file);
+      cb(null, `tutorials/${req.params.slug}/${safeFileName(file.originalname)}`);
+    },
+  }),
+});
+
 // Mission pictures are shown to every visitor, so they stay public
 const uploadMissionImage = multer({
   storage: multerS3({
@@ -93,4 +113,5 @@ export {
   uploadConventionTemplate,
   uploadStudentDocuments,
   uploadMissionImage,
+  uploadTutorialVideo,
 };
