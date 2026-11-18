@@ -539,7 +539,7 @@ export const attendancePage = async (token) => {
     ? await q(
         `select r.id, r.attendance, r.arrival, r.departure, r.emergency_phone, r.consent_at,
                 r.meeting_choice, r.return_choice, s.phone as student_phone, s.school->>'name' as school_name,
-                s.first_name, s.last_name, s.level, s.parent1_firstname, s.parent1_phone, s.parent2_phone
+                s.first_name, s.last_name, s.level, s.parent1_firstname, s.parent1_lastname, s.parent1_phone, s.parent2_phone
            from activity_registrations r join students s on s.id = r.student_id
           where r.activity_id = :id and r.status = 'inscrit'
           order by s.first_name, s.last_name`,
@@ -581,7 +581,7 @@ export const attendancePage = async (token) => {
         // Who to call if needed (the number given for the day first)
         parent:
           s.emergency_phone || s.parent1_phone || s.parent2_phone
-            ? { name: s.parent1_firstname, phone: s.emergency_phone || s.parent1_phone || s.parent2_phone }
+            ? { name: [s.parent1_firstname, s.parent1_lastname].filter(Boolean).join(' ') || null, phone: s.emergency_phone || s.parent1_phone || s.parent2_phone }
             : null,
       })),
     },
