@@ -1,6 +1,6 @@
 import express from 'express';
 import { verifyToken } from '../middlewares/verifyToken.js';
-import { adminAuth, managerAuth } from '../middlewares/authAdmin.js';
+import { adminAuth, managerAuth, pairsViewAuth } from '../middlewares/authAdmin.js';
 import {
   getMatches,
   listStudentPairs,
@@ -43,10 +43,10 @@ router.patch('/admin/binomes/:id/details', managerAuth, updatePairDetails);
 // Session confirmed by the team (no sign-in: call, message…)
 router.post('/admin/binomes/:id/seances', managerAuth, confirmSession);
 // Follow-up: every pair with figures and alerts, reports of a pair
-router.get('/admin/binomes', adminAuth, listPairs);
-router.get('/admin/binomes/:id/seances', adminAuth, pairSessions);
+router.get('/admin/binomes', pairsViewAuth, listPairs);
+router.get('/admin/binomes/:id/seances', pairsViewAuth, pairSessions);
 // Sessions log of the team (recorded and expected sessions of a period)
-router.get('/admin/seances', adminAuth, listSessionLog);
+router.get('/admin/seances', pairsViewAuth, listSessionLog);
 
 // Tutor: their students, answer to a proposal
 router.get('/my/binomes', verifyToken, myPairs);
@@ -66,11 +66,11 @@ router.get('/admin/seances/:id/signature', adminAuth, signatureUrl);
 router.post('/my/binomes/:id/pas-de-seance', verifyToken, myAddBreak);
 router.delete('/my/pas-de-seance/:id', verifyToken, myDeleteBreak);
 router.post('/my/binomes/:id/creneau', verifyToken, mySlotRequest);
-router.get('/admin/binomes/:id/pas-de-seance', adminAuth, listBreaks);
+router.get('/admin/binomes/:id/pas-de-seance', pairsViewAuth, listBreaks);
 router.post('/admin/binomes/:id/pas-de-seance', managerAuth, teamAddBreak);
 router.delete('/admin/pas-de-seance/:id', managerAuth, teamDeleteBreak);
 // Exceptional sessions (in addition, or instead of a regular one): the team
-router.get('/admin/binomes/:id/exceptionnelles', adminAuth, listExtras);
+router.get('/admin/binomes/:id/exceptionnelles', pairsViewAuth, listExtras);
 router.post('/admin/binomes/:id/exceptionnelles', managerAuth, teamAddExtra);
 router.delete('/admin/exceptionnelles/:id', managerAuth, teamDeleteExtra);
 

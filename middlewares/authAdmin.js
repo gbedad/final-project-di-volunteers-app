@@ -26,6 +26,9 @@ export const adminAuth = requireRoles(STAFF_ROLES);
 export const managerAuth = requireRoles(MANAGER_ROLES);
 export const superadminAuth = requireRoles(['superadmin']);
 export const cultureAuth = requireRoles(CULTURE_ROLES);
+// Pairs page, read only: the team, and "superculture" (who sees the pairs
+// and nothing else of the tutoring; every change stays with the managers)
+export const pairsViewAuth = requireRoles([...STAFF_ROLES, 'superculture']);
 
 export const userAuth = (req, res, next) => {
   verifyToken(req, res, () => {
