@@ -2,7 +2,7 @@ import express from 'express';
 import { adminAuth } from '../middlewares/authAdmin.js';
 import { getTodo } from '../controllers/todo.controllers.js';
 import { getControls } from '../controllers/controls.controllers.js';
-import { getAnnualReport } from '../controllers/report.controllers.js';
+import { getAnnualReport, getOutingAnalytics } from '../controllers/report.controllers.js';
 
 const router = express.Router();
 router.get('/admin/todo', adminAuth, getTodo);
@@ -10,5 +10,6 @@ router.get('/admin/todo', adminAuth, getTodo);
 router.get('/admin/controls', adminAuth, getControls);
 // Annual report for the funders
 router.get('/admin/annual-report', adminAuth, getAnnualReport);
+router.get('/admin/analytics/outings', adminAuth, getOutingAnalytics);
 
 export default router;

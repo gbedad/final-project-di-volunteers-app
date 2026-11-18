@@ -10,7 +10,7 @@ import { feeOf } from './fees.js';
 const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
 const round1 = (n) => Math.round(n * 10) / 10;
 const hoursOf = (sessions) => round1(sessions.reduce((n, s) => n + (s.duration_minutes || 0), 0) / 60);
-const countBy = (items, key) => {
+export const countBy = (items, key) => {
   const out = {};
   for (const i of items) {
     const k = key(i);
@@ -18,19 +18,19 @@ const countBy = (items, key) => {
   }
   return out;
 };
-const list = (counts, order) =>
+export const list = (counts, order) =>
   (order || Object.keys(counts).sort((a, b) => counts[b] - counts[a]))
     .filter((k) => counts[k])
     .map((label) => ({ label, count: counts[label] }));
 
-const CYCLES = [
+export const CYCLES = [
   ['Primaire', ['CP', 'CE1', 'CE2', 'CM1', 'CM2']],
   ['Collège', ['6ème', '5ème', '4ème', '3ème']],
   ['Lycée', ['Seconde', 'Première', 'Terminale']],
   ['Supérieur', ['L1', 'L2', 'L3']],
 ];
 const LEVEL_ORDER = CYCLES.flatMap(([, l]) => l);
-const cycleOf = (level) => CYCLES.find(([, l]) => l.includes(level))?.[0] || 'Non renseigné';
+export const cycleOf = (level) => CYCLES.find(([, l]) => l.includes(level))?.[0] || 'Non renseigné';
 const QF_ORDER = [1, 2, 3, 4, 5, 6, 7].map((n) => `Tranche ${n}`).concat([
   'Tranche 8 et plus',
   'QF non communiqué',
