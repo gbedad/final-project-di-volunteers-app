@@ -308,7 +308,7 @@ export const getActivity = async (id) => {
   if (!a) return null;
   const registrations = await q(
     `select r.*, s.first_name, s.last_name, s.level, s.status as student_status, s.is_demo,
-            s.parent1_firstname, s.parent1_phone, s.parent2_firstname, s.parent2_phone, s.phone as student_phone, s.school->>'name' as school_name,
+            s.parent1_firstname, s.parent1_lastname, s.parent1_phone, s.parent2_firstname, s.parent2_lastname, s.parent2_phone, s.phone as student_phone, s.school->>'name' as school_name,
             (coalesce(s.parent1_email, '') <> '') as parent1_has_email, (coalesce(s.parent2_email, '') <> '') as parent2_has_email,
             s.parental_consent_at
        from activity_registrations r join students s on s.id = r.student_id
