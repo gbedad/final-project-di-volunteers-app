@@ -7,6 +7,18 @@ import {
   adminEmails,
   emailButton,
 } from '../config/notify.js';
+import Users from '../models/users.model.js';
+import { isTutor } from './engagements.js';
+
+// The volunteer's activities (the user given may not carry them)
+const tutorOf = async (user) =>
+  isTutor(
+    'engagements' in (user.dataValues || user)
+      ? user
+      : await Users.findByPk(user.id, {
+          attributes: ['id', 'engagements', 'engagements_wished'],
+        })
+  );
 
 const formatDate = (date) => new Date(date).toLocaleDateString('fr-FR');
 const signature = "<p>À très vite,<br>L'équipe MyCogniverse</p>";
@@ -18,8 +30,32 @@ const send = (to, subject, html, label) =>
     console.log(`${label} email not sent:`, err.message)
   );
 
-// Status "A finaliser": the volunteer can now sign the convention
+// Status "A finaliser", accompanying volunteer (no convention): the last
+// documents to give before the validation
+const notifyDocumentsToGive = (user) =>
+  send(
+    user.email2 || user.email,
+    'Votre candidature est retenue : dernière étape, vos documents',
+    `<p>Bonjour ${escapeHtml(user.first_name)},</p>
+    <p>Bonne nouvelle : à la suite de votre entretien, l'association Séphora Berrebi est heureuse de poursuivre avec vous !</p>
+    <p>Comme vous accompagnerez des enfants, deux documents sont nécessaires avant de valider votre candidature :</p>
+    <ul>
+      <li>un <b>extrait de casier judiciaire (B3)</b>, à demander gratuitement en ligne ;</li>
+      <li>une <b>attestation d'honorabilité</b>.</li>
+    </ul>
+    <p>Déposez-les dans l'onglet « Mes documents » de votre espace.</p>
+    <p>${emailButton(`${clientUrl()}/login`, 'Accéder à mon espace')}</p>
+    ${signature}`,
+    'Documents to give'
+  );
+
+// Status "A finaliser": the volunteer can now sign the convention (the
+// accompanying volunteer: his last documents)
 export const notifyConventionToSign = (user) =>
+  tutorOf(user)
+    .then((tutor) => (tutor ? sendConventionToSign(user) : notifyDocumentsToGive(user)))
+    .catch((err) => console.log('Convention to sign email not sent:', err.message));
+const sendConventionToSign = (user) =>
   send(
     user.email2 || user.email,
     'Votre candidature est retenue : dernière étape, la convention',
@@ -76,8 +112,26 @@ export const notifyConventionCountersigned = (user, honorabilityDue) =>
     'Convention countersigned'
   );
 
-// Status "Validé": welcome message to the new tutor
+// Status "Validé": welcome message to the new accompanying volunteer
+const notifyCompanionValidated = (user) =>
+  send(
+    user.email2 || user.email,
+    "Bienvenue parmi les bénévoles de l'association Séphora Berrebi",
+    `<p>Bonjour ${escapeHtml(user.first_name)},</p>
+    <p>Votre candidature est <b>validée</b> : bienvenue parmi les bénévoles accompagnateurs de l'association Séphora Berrebi !</p>
+    <p>L'équipe vous proposera les prochaines sorties à accompagner. Pensez à tenir à jour vos activités et vos périodes de disponibilité dans votre espace.</p>
+    <p>${emailButton(`${clientUrl()}/login`, 'Accéder à mon espace')}</p>
+    <p>Merci pour votre engagement,<br>L'équipe MyCogniverse</p>`,
+    'Companion validated'
+  );
+
+// Status "Validé": welcome message to the new tutor (or accompanying
+// volunteer)
 export const notifyApplicationValidated = (user) =>
+  tutorOf(user)
+    .then((tutor) => (tutor ? sendTutorValidated(user) : notifyCompanionValidated(user)))
+    .catch((err) => console.log('Validation email not sent:', err.message));
+const sendTutorValidated = (user) =>
   send(
     user.email2 || user.email,
     "Bienvenue parmi les tuteurs bénévoles de l'association Séphora Berrebi",

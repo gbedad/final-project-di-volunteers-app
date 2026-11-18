@@ -2,6 +2,7 @@
 // place, and room left (number of students the tutor can follow)
 import { Op } from 'sequelize';
 import Users from '../models/users.model.js';
+import { isTutor } from './engagements.js';
 import Binomes from '../models/binomes.model.js';
 import { LEVELS } from './analytics.js';
 import { isPaused } from './availability.js';
@@ -143,9 +144,11 @@ export const findTutors = async (student, { demo } = {}) => {
       'unavailable_until',
       'interviews',
       'is_demo',
+      'engagements',
+      'engagements_wished',
     ],
     include: ['skill'],
-  });
+  }).then((list) => list.filter(isTutor)); // not the accompanying volunteers
   const openPairs = await Binomes.findAll({
     where: {
       tutor_id: { [Op.in]: tutors.map((t) => t.id) },

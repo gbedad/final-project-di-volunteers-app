@@ -236,6 +236,15 @@ export const organizerCandidates = async () =>
   );
 export const isOrganizer = async (id) =>
   !!(await one(`${ORGANIZER_SQL} and id = :id`, { id, roles: [...OWNER_ROLES, 'interviewer'] }));
+// Validated volunteers given the outings ('culture'), to add as companions
+// (their name and contact filled in)
+export const companionCandidates = async () =>
+  q(
+    `select id, first_name, last_name, phone, email from users
+      where role = 'volunteer' and status = 'Validé' and coalesce(is_demo, false) = false
+        and coalesce(nullif(engagements, '[]'::jsonb), engagements_wished, '["tutorat"]'::jsonb) @> '["culture"]'::jsonb
+      order by first_name, last_name`
+  );
 const ownerName = (a) => [a.owner_first_name, a.owner_last_name].filter(Boolean).join(' ') || null;
 
 // Expected participation of a registration

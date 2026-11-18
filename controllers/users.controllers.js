@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { cleanList, ENGAGEMENTS } from '../services/engagements.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import Users from '../models/users.model.js';
@@ -77,6 +78,9 @@ export const getUsers = async (req, res) => {
         'unavailable_until',
         'paper_documents',
         'is_demo',
+        'engagements',
+        'engagements_wished',
+        'outing_periods',
       ],
       include: ['mission', 'skill', 'file'],
       where: {
@@ -177,7 +181,17 @@ export const register = async (req, res) => {
       birth_date,
       message,
       mission_id,
+      engagements_wished,
     } = req.body;
+    // What the volunteer wishes to do (tutoring, outings…): at least one;
+    // an older form sends nothing: tutoring
+    const wished =
+      engagements_wished === undefined
+        ? ['tutorat']
+        : cleanList(engagements_wished, ENGAGEMENTS);
+    if (!wished) {
+      return res.status(400).json({ error: 'Choisissez au moins une activité' });
+    }
 
     const missing = ['email', 'password', 'first_name', 'last_name', 'phone', 'birth_date']
       .filter((field) => !req.body[field] || !String(req.body[field]).trim());
@@ -222,6 +236,7 @@ export const register = async (req, res) => {
       birth_date: newDate,
       message,
       mission_id,
+      engagements_wished: wished,
       // The volunteer can fill in the application right away
       status: 'A renseigner',
     });

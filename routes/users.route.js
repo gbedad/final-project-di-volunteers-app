@@ -14,6 +14,7 @@ import {
   updateFirstContact,
 } from '../controllers/firstContact.controllers.js';
 import { createTutor, sendTutorAccess } from '../controllers/tutorAccounts.controllers.js';
+import { updateWishes, assignEngagements } from '../controllers/engagements.controllers.js';
 import {
   createInterview,
   deleteInterview,
@@ -146,6 +147,9 @@ router.post('/reset-password/:id/:token', renewPassword);
 router.patch('/update-availability', selfOrAdminBody(), updateUserAvailability);
 // Not available for a new student until a date (tutor or team)
 router.patch('/users/:id/unavailable', selfOrAdmin('id'), setUnavailableUntil);
+// Activities: the volunteer's wishes (and periods), the team's choice
+router.patch('/users/:id/engagements', selfOrAdmin('id'), syncStatusAfter((req) => req.params.id), updateWishes);
+router.patch('/admin/users/:id/engagements', adminAuth, assignEngagements);
 
 // Cohorts of a volunteer (academic years)
 router.get('/admin/users/:userId/cohorts', adminAuth, getCohorts);

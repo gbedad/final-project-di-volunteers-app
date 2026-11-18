@@ -5,6 +5,7 @@ import Binomes from '../models/binomes.model.js';
 import Users from '../models/users.model.js';
 import Students from '../models/students/students.model.js';
 import { findTutors, OPEN_PAIR_STATUSES } from '../services/matching.js';
+import { isTutor } from '../services/engagements.js';
 import Seances from '../models/seances.model.js';
 import { fileUrl } from '../config/aws.config.js';
 import { writeObject } from '../services/conventionSigning.js';
@@ -22,7 +23,7 @@ import {
 } from '../services/binomesMail.js';
 
 const me = (req) => Number(req.user.userid ?? req.user.userId);
-const TUTOR_FIELDS = ['id', 'first_name', 'last_name', 'email', 'email2', 'phone'];
+const TUTOR_FIELDS = ['id', 'first_name', 'last_name', 'email', 'email2', 'phone', 'engagements', 'engagements_wished'];
 
 // Student status follows the pairs: an active pair means "Binôme en cours";
 // when none is left the student is waiting for a tutor again
@@ -174,6 +175,9 @@ export const proposePair = async (req, res) => {
     });
     if (!student || !tutor) {
       return res.status(404).json({ error: 'Élève ou tuteur introuvable' });
+    }
+    if (!isTutor(tutor)) {
+      return res.status(400).json({ error: "Ce bénévole n'est pas affecté au tutorat" });
     }
     const subjects = (req.body.subjects || []).filter(Boolean);
     if (!subjects.length) {

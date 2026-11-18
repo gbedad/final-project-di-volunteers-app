@@ -8,6 +8,7 @@ import Students from '../models/students/students.model.js';
 import Binomes from '../models/binomes.model.js';
 import Seances from '../models/seances.model.js';
 import { conventionState } from './application.js';
+import { isTutor } from './engagements.js';
 import { ANSWER_DAYS, pairStats } from './followUp.js';
 import { sessionLog, parisToday } from './sessionLog.js';
 import { resumeProblems, RESUME_SLOTS } from './pairBreaks.js';
@@ -53,6 +54,8 @@ export const todoList = async () => {
       'b3_received',
       'convention_received',
       'honorability_received',
+      'engagements',
+      'engagements_wished',
     ],
     include: [{ association: 'file', attributes: ['id', 'path', 'filename', 'doc_type', 'uploaded_at'] }],
   });
@@ -66,11 +69,14 @@ export const todoList = async () => {
   const missingDocs = validated
     .map((u) => ({
       u,
-      missing: [
-        !u.b3_received && 'B3',
-        !u.convention_received && 'convention',
-        u.convention_received && !u.honorability_received && "attestation d'honorabilité",
-      ].filter(Boolean),
+      // Accompanying volunteer: no convention, the attestation at once
+      missing: isTutor(u)
+        ? [
+            !u.b3_received && 'B3',
+            !u.convention_received && 'convention',
+            u.convention_received && !u.honorability_received && "attestation d'honorabilité",
+          ].filter(Boolean)
+        : [!u.b3_received && 'B3', !u.honorability_received && "attestation d'honorabilité"].filter(Boolean),
     }))
     .filter((x) => x.missing.length)
     .map(({ u, missing }) => ({ id: u.id, label: name(u), detail: missing.join(', '), link: tutorLink(u) }));

@@ -5,6 +5,7 @@ import Skills from '../models/skills.model.js';
 import Files from '../models/files.model.js';
 import sendEmail from '../config/sendEmails.js';
 import { recordStatusChange } from './statusHistory.js';
+import { engagementsOf, isTutor } from './engagements.js';
 import {
   escapeHtml,
   clientUrl,
@@ -111,9 +112,16 @@ export const applicationProgress = async (userId) => {
       'convention_received',
       'honorability_received',
       'paper_documents',
+      'engagements',
+      'engagements_wished',
+      'outing_periods',
     ],
   });
   if (!user) return null;
+  // Tutor: full application; accompanying volunteer (outings only): no
+  // tutoring wishes, no CV, no convention, but B3 and attestation
+  // d'honorabilité (with minors)
+  const tutor = isTutor(user);
   const skill = await Skills.findOne({ where: { userId } });
   const files = await Files.findAll({
     where: { userId },
@@ -129,9 +137,13 @@ export const applicationProgress = async (userId) => {
     topics: !!skill && hasItems(skill.topics),
     slots: !!skill && hasItems(skill.when_day_slot),
     places: !!skill && placesFilled(skill),
+    engagements: hasItems(user.engagements_wished),
+    periods: hasItems(user.outing_periods),
   };
   const profile = details.address && details.activity;
-  const wishes = details.topics && details.slots && details.places;
+  const wishes = tutor
+    ? details.topics && details.slots && details.places
+    : details.engagements && details.periods;
   const documents = {
     cv: has('cv'),
     id: has('id'),
@@ -148,10 +160,15 @@ export const applicationProgress = async (userId) => {
   const conventionSigned = convention.state === 'complete';
   const due = honorabilityDeadline(files);
   // The criminal record (B3) is only needed for the final validation
-  const readyToSubmit = profile && wishes && documents.cv && documents.id;
+  // (no CV asked from an accompanying volunteer)
+  const readyToSubmit =
+    profile && wishes && (documents.cv || !tutor) && documents.id;
 
   return {
     status: user.status,
+    tutor,
+    engagements: engagementsOf(user),
+    engagements_wished: user.engagements_wished || [],
     profile,
     wishes,
     documents,
@@ -278,12 +295,15 @@ export const submitApplication = async (userId) => {
   const user = await Users.findByPk(userId, {
     attributes: ['id', 'first_name', 'last_name', 'email', 'phone'],
   });
+  const what = progress.tutor
+    ? 'profil, souhaits, CV et pièce d\'identité'
+    : 'profil, activités souhaitées et pièce d\'identité ; bénévole accompagnateur, sans tutorat';
   sendEmail(
     adminEmails(),
     `Dossier complet : ${user.first_name} ${user.last_name}`,
     `<p>${escapeHtml(user.first_name)} ${escapeHtml(
       user.last_name
-    )} a complété son dossier (profil, souhaits, CV et pièce d'identité). Il est prêt pour l'entretien.</p>
+    )} a complété son dossier (${what}). Il est prêt pour l'entretien.</p>
     <p><b>Email :</b> ${escapeHtml(user.email)}<br><b>Téléphone :</b> ${escapeHtml(
       user.phone
     )}</p>
@@ -298,14 +318,16 @@ export const submitApplication = async (userId) => {
     user.email,
     'Nous avons bien reçu votre dossier de candidature',
     `<p>Bonjour ${escapeHtml(user.first_name)},</p>
-    <p>Merci ! Nous avons bien reçu votre dossier de candidature pour devenir tuteur bénévole de l'association Séphora Berrebi.</p>
+    <p>Merci ! Nous avons bien reçu votre dossier de candidature pour devenir ${progress.tutor ? 'tuteur bénévole' : 'bénévole accompagnateur'} de l'association Séphora Berrebi.</p>
     <p>Nous allons l'étudier et vous contacterons prochainement pour organiser un entretien.</p>
     <p>Vous pouvez suivre l'avancement de votre candidature à tout moment depuis votre espace :</p>
     <p>${emailButton(`${clientUrl()}/login`, 'Accéder à mon espace')}</p>
     ${
       progress.documents.b3
         ? ''
-        : "<p>Avant la signature de la convention, il vous sera demandé un extrait de casier judiciaire (B3) : vous pouvez dès maintenant le demander en ligne et le déposer dans l'onglet « Mes documents ».</p>"
+        : !progress.tutor
+          ? "<p>Avant la validation de votre candidature, il vous sera demandé un extrait de casier judiciaire (B3) et une attestation d'honorabilité : vous pouvez dès maintenant les demander en ligne et les déposer dans l'onglet « Mes documents ».</p>"
+          : "<p>Avant la signature de la convention, il vous sera demandé un extrait de casier judiciaire (B3) : vous pouvez dès maintenant le demander en ligne et le déposer dans l'onglet « Mes documents ».</p>"
     }
     <p>À très vite,<br>L'équipe MyCogniverse</p>`
   ).catch((err) =>

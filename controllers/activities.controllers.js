@@ -35,6 +35,7 @@ import {
   chatOf,
   ownerCandidates,
   organizerCandidates,
+  companionCandidates,
   isOrganizer,
   setOwner,
 } from '../services/activities.js';
@@ -157,6 +158,14 @@ export const remove = async (req, res) => {
 export const organizers = async (req, res) => {
   try {
     res.json(await organizerCandidates());
+  } catch (err) {
+    fail(res, err, 'Liste indisponible');
+  }
+};
+// Accompanying volunteers (activities "culture") to add to an outing
+export const companions = async (req, res) => {
+  try {
+    res.json(await companionCandidates());
   } catch (err) {
     fail(res, err, 'Liste indisponible');
   }

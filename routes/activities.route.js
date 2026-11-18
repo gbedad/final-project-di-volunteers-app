@@ -8,6 +8,7 @@ import {
   postChat,
   deleteChat,
   organizers,
+  companions,
   show,
   create,
   update,
@@ -53,6 +54,7 @@ router.get('/admin/activites', cultureAuth, list);
 router.get('/admin/activites-responsables', cultureAuth, owners);
 // Names the organiser of an outing is chosen from
 router.get('/admin/activites-organisateurs', cultureAuth, organizers);
+router.get('/admin/activites-benevoles', cultureAuth, companions);
 router.post('/admin/activites', cultureAuth, create);
 router.get('/admin/activites/:id', cultureAuth, show);
 router.patch('/admin/activites/:id', cultureAuth, activityEditor('activity'), update);

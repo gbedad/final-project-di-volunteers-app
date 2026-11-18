@@ -151,6 +151,13 @@ const Users = db.define(
     validated_at: {
       type: DataTypes.DATE,
     },
+    // Activities the volunteer wishes ('tutorat', 'culture', 'sciences'),
+    // and those the team gives him in the end (null: the wishes count)
+    engagements_wished: { type: DataTypes.JSONB },
+    engagements: { type: DataTypes.JSONB },
+    // Accompanying volunteer: rather free in the week, at weekends, during
+    // the holidays ('semaine', 'weekend', 'vacances')
+    outing_periods: { type: DataTypes.JSONB },
   },
   {
     timestamps: true,
