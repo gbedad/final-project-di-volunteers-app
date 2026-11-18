@@ -3,6 +3,7 @@
 import Users from '../models/users.model.js';
 import StatusChanges from '../models/statusChanges.model.js';
 import { availabilityOf, usedPlaces } from './availability.js';
+import { isTutor, engagementsOf } from './engagements.js';
 
 export const LEVELS = [
   'CP',
@@ -314,8 +315,17 @@ const recruitmentSection = (volunteers, changes) => {
   };
 };
 
+// What the volunteers do: every one, those who tutor, or those who do
+// something else (outings, science…), with or without tutoring
+const ACTIVITIES = {
+  all: () => true,
+  tutorat: (u) => isTutor(u),
+  autres: (u) => engagementsOf(u).some((e) => e !== 'tutorat'),
+};
+
 // includeDemo: the demo volunteers count too (left out by default)
-export const computeAnalytics = async ({ scope = 'active', includeDemo = false } = {}) => {
+// activity: all (default) | tutorat | autres
+export const computeAnalytics = async ({ scope = 'active', includeDemo = false, activity = 'all' } = {}) => {
   const records = await Users.findAll({
     where: includeDemo ? { role: 'volunteer' } : { role: 'volunteer', is_demo: false },
     attributes: [
@@ -328,11 +338,14 @@ export const computeAnalytics = async ({ scope = 'active', includeDemo = false }
       'created_at',
       'updated_at',
       'unavailable_until',
+      'engagements',
+      'engagements_wished',
     ],
     include: ['skill', 'mission'],
   });
   // Plain objects: the timestamps are only readable this way
-  const volunteers = records.map((r) => r.toJSON());
+  const ofActivity = ACTIVITIES[activity] || ACTIVITIES.all;
+  const volunteers = records.map((r) => r.toJSON()).filter(ofActivity);
   // The history table may not exist yet (before its migration)
   const changes = await StatusChanges.findAll({ raw: true }).catch(() => []);
   const inScope = SCOPES[scope] || SCOPES.active;
@@ -344,7 +357,21 @@ export const computeAnalytics = async ({ scope = 'active', includeDemo = false }
   ).length;
   return {
     scope: SCOPES[scope] ? scope : 'active',
+    activity: ACTIVITIES[activity] ? activity : 'all',
     tutors: { ...tutorsSection(tutors), available },
+    // Who they are (view "Autres"): name, status, activities
+    people:
+      activity === 'autres'
+        ? tutors
+            .map((u) => ({
+              id: u.id,
+              name: [u.first_name, u.last_name].filter(Boolean).join(' '),
+              status: u.status,
+              is_active: u.is_active === true,
+              activities: engagementsOf(u),
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+        : [],
     supply: supplySection(tutors),
     recruitment: recruitmentSection(volunteers, changes),
   };

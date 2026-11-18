@@ -10,6 +10,7 @@ export const getAnalytics = async (req, res) => {
       await computeAnalytics({
         scope: req.query.scope,
         includeDemo: req.query.demo === '1',
+        activity: req.query.activity,
       })
     );
   } catch (err) {
