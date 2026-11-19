@@ -1,4 +1,13 @@
 import express from 'express';
+import {
+  knownKind,
+  session as annexSession,
+  conflicts as annexConflicts,
+  addToSession as annexAdd,
+  changePresence as annexPresence,
+  removeFromSession as annexRemove,
+  tellTutor as annexTell,
+} from '../controllers/outingSessions.controllers.js';
 import { adminAuth, cultureAuth, managerAuth } from '../middlewares/authAdmin.js';
 import { activityEditor } from '../middlewares/activityAccess.js';
 import {
@@ -62,6 +71,13 @@ router.delete('/admin/activites/:id', cultureAuth, activityEditor('activity'), r
 router.post('/admin/activites/:id/inscriptions', cultureAuth, activityEditor('activity'), addRegistration);
 // Tutoring sessions at the time of the outing (before registering), tutors told
 router.get('/admin/activites/:id/conflits', cultureAuth, checkConflicts);
+// Preparation and return sessions: the children, their presence, the check of their tutoring
+router.get('/admin/activites/:id/annexes/:kind', cultureAuth, knownKind, annexSession);
+router.get('/admin/activites/:id/annexes/:kind/conflits', cultureAuth, knownKind, annexConflicts);
+router.post('/admin/activites/:id/annexes/:kind', cultureAuth, knownKind, activityEditor('activity'), annexAdd);
+router.patch('/admin/annexes/:id', cultureAuth, activityEditor('annex'), annexPresence);
+router.delete('/admin/annexes/:id', cultureAuth, activityEditor('annex'), annexRemove);
+router.post('/admin/annexes/:id/prevenir', managerAuth, annexTell);
 // Telling the tutor (session cancelled): the admins only
 router.post('/admin/inscriptions-activites/:id/prevenir', managerAuth, tellRegistrationTutors);
 router.patch('/admin/inscriptions-activites/:id', cultureAuth, activityEditor('registration'), changeRegistration);

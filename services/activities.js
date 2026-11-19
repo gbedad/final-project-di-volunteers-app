@@ -1,6 +1,7 @@
 // Cultural activities (outings), apart from the tutoring: the outing, its
 // registrations (students of the base), the adults who go, the budget, and
 // the presences ticked by the adults through their own link.
+import { sessionCounts } from './outingSessions.js';
 import crypto from 'crypto';
 import db from '../config/database.js';
 
@@ -117,7 +118,7 @@ export const activityFields = (body, { partial = false } = {}) => {
     if (m !== null && (m < 0 || m > 100000)) return { error: 'Temps bénévole invalide' };
     out.volunteer_minutes = m === null ? null : Math.round(m);
   }
-  // Preparation and debrief sessions: { date, start_time, end_time, place, by }
+  // Preparation and debrief sessions: { date, start_time, end_time, place, by, bilan }
   for (const k of ['prep', 'debrief']) {
     if (!has(k)) continue;
     const v = body[k];
@@ -133,6 +134,8 @@ export const activityFields = (body, { partial = false } = {}) => {
       end_time: v.end_time || null,
       place: String(v.place || '').trim().slice(0, 200) || null,
       by: String(v.by || '').trim().slice(0, 120) || null,
+      // Written in the "Retour" tab: what came out of the debrief session
+      bilan: String(v.bilan || '').trim().slice(0, 5000) || null,
     });
   }
   for (const k of ['date', 'deadline']) {
@@ -367,6 +370,8 @@ export const getActivity = async (id) => {
           : 'à demander',
     })),
     staff,
+    // Children of the preparation and return sessions (tabs of the page)
+    session_counts: await sessionCounts(id),
     expenses: expenses.map((e) => ({ ...e, paid_on: day(e.paid_on), refunded_at: day(e.refunded_at), amount: Number(e.amount) })),
     budget: budgetOf(a, registrations, expenses),
   };

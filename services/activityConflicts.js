@@ -24,8 +24,10 @@ const isOutingBreak = (b) => b.reason === 'eleve' && String(b.note || '').starts
 // { student_id: [{ pair_id, tutor, subjects, slot, state }] } for the
 // students given; state: 'conflit' (overlap, margin included), 'à vérifier'
 // (outing without hours), 'prévenu' (a "Pas de séance" made for an outing),
-// 'déjà annulée' (another "Pas de séance" that day)
-export const conflictsOf = async (activity, studentIds) => {
+// 'déjà annulée' (another "Pas de séance" that day).
+// sameDay: also the sessions that day which do not overlap ('même jour'),
+// shown for the preparation and return sessions; never told to the tutors
+export const conflictsOf = async (activity, studentIds, { sameDay = false } = {}) => {
   const date = day(activity.date);
   if (!date || !studentIds.length) return {};
   const pairs = await q(
@@ -60,8 +62,8 @@ export const conflictsOf = async (activity, studentIds) => {
     else {
       const overlap =
         minutes(slot.startTime) < end + MARGIN_MINUTES && minutes(slot.endTime) > start - MARGIN_MINUTES;
-      if (!overlap) continue;
-      state = 'conflit';
+      if (!overlap && !sameDay) continue;
+      state = overlap ? 'conflit' : 'même jour';
     }
     (out[p.student_id] = out[p.student_id] || []).push({
       pair_id: p.id,

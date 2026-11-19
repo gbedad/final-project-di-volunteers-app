@@ -14,6 +14,9 @@ const OWNER_SQL = {
   activity: 'select id, owner_id, created_by from activities where id = :id',
   registration:
     'select a.id, a.owner_id, a.created_by from activity_registrations r join activities a on a.id = r.activity_id where r.id = :id',
+  // A child of the preparation or return session
+  annex:
+    'select a.id, a.owner_id, a.created_by from activity_session_participants p join activities a on a.id = p.activity_id where p.id = :id',
   staff: 'select a.id, a.owner_id, a.created_by from activity_staff s join activities a on a.id = s.activity_id where s.id = :id',
   expense: 'select a.id, a.owner_id, a.created_by from activity_expenses e join activities a on a.id = e.activity_id where e.id = :id',
 };
