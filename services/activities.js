@@ -78,8 +78,10 @@ export const activityFields = (body, { partial = false } = {}) => {
     'place',
     'meeting_point',
     'meeting_point2',
+    'meeting_point3',
     'return_point',
     'return_point2',
+    'return_point3',
     'ambassador_brief',
     'program',
     'objective',
@@ -144,7 +146,7 @@ export const activityFields = (body, { partial = false } = {}) => {
       out[k] = body[k] || null;
     }
   }
-  for (const k of ['start_time', 'end_time', 'meeting_time', 'meeting_time2', 'return_time', 'return_time2']) {
+  for (const k of ['start_time', 'end_time', 'meeting_time', 'meeting_time2', 'meeting_time3', 'return_time', 'return_time2', 'return_time3']) {
     if (has(k)) {
       if (body[k] && !TIME_RE.test(body[k])) return { error: 'Heure invalide' };
       out[k] = body[k] || null;
@@ -459,7 +461,7 @@ export const updateRegistration = async (id, body) => {
   for (const k of ['meeting_choice', 'return_choice']) {
     if (k in body) {
       const v = num(body[k]);
-      if (v !== null && ![1, 2].includes(v)) return { error: 'Point de rendez-vous inconnu' };
+      if (v !== null && ![1, 2, 3].includes(v)) return { error: 'Point de rendez-vous inconnu' };
       set[k] = v;
     }
   }
@@ -573,10 +575,14 @@ export const attendancePage = async (token) => {
         meeting_time: a.meeting_time,
         meeting_point2: a.meeting_point2,
         meeting_time2: a.meeting_time2,
+        meeting_point3: a.meeting_point3,
+        meeting_time3: a.meeting_time3,
         return_point: a.return_point,
         return_time: a.return_time,
         return_point2: a.return_point2,
         return_time2: a.return_time2,
+        return_point3: a.return_point3,
+        return_time3: a.return_time3,
         bring: a.bring,
       },
       open,

@@ -61,7 +61,8 @@ export const outingItems = (child, a) => [
 const registrationWithAll = (where, replacements) =>
   one(
     `select r.*, a.title, a.date, a.start_time, a.end_time, a.place, a.meeting_point, a.meeting_time,
-            a.meeting_point2, a.meeting_time2, a.return_point, a.return_time, a.return_point2, a.return_time2,
+            a.meeting_point2, a.meeting_time2, a.meeting_point3, a.meeting_time3,
+            a.return_point, a.return_time, a.return_point2, a.return_time2, a.return_point3, a.return_time3,
             a.bring, a.status as activity_status,
             s.first_name, s.last_name, s.level,
             s.parent1_firstname, s.parent1_lastname, s.parent1_email, s.parent1_phone,
@@ -149,10 +150,14 @@ export const outingConsentPage = async (token) => {
         meeting_time: r.meeting_time,
         meeting_point2: r.meeting_point2,
         meeting_time2: r.meeting_time2,
+        meeting_point3: r.meeting_point3,
+        meeting_time3: r.meeting_time3,
         return_point: r.return_point,
         return_time: r.return_time,
         return_point2: r.return_point2,
         return_time2: r.return_time2,
+        return_point3: r.return_point3,
+        return_time3: r.return_time3,
         // The child's points, set by the team
         meeting_choice: r.meeting_choice,
         return_choice: r.return_choice,
