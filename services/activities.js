@@ -495,6 +495,25 @@ export const addStaff = async (activityId, body) => {
   const name = String(body.name || '').trim();
   if (!name) return { error: 'Indiquez le nom de l’accompagnateur' };
   const role = STAFF_ROLES.includes(body.role) ? body.role : 'accompagnateur';
+  // Already in the list (same account, or same name): the same adult keeps
+  // the same link, a second one would replace what was sent to them
+  const userId = num(body.user_id);
+  const same = await one(
+    `select * from activity_staff where activity_id = :activityId
+        and ((cast(:userId as int) is not null and user_id = cast(:userId as int)) or lower(trim(name)) = lower(:name))
+      order by id limit 1`,
+    { activityId, userId, name }
+  );
+  if (same) {
+    const phone = String(body.phone || '').trim().slice(0, 30) || null;
+    const email = String(body.email || '').trim().slice(0, 120) || null;
+    const updated = await one(
+      `update activity_staff set phone = coalesce(:phone, phone), email = coalesce(:email, email),
+              user_id = coalesce(user_id, cast(:userId as int)) where id = :id returning *`,
+      { id: same.id, phone, email, userId }
+    );
+    return { staff: { ...updated, already: true } };
+  }
   return {
     staff: await one(
       `insert into activity_staff (activity_id, user_id, name, phone, email, role, token, student_id)
@@ -540,6 +559,8 @@ export const renewStaffToken = (id) =>
   one('update activity_staff set token = :token where id = :id returning *', { id, token: newToken() });
 
 // ---- The adults' page (public: the link is the access) ----
+// What the phone reads when the link no longer works
+const LINK_REPLACED = 'Ce lien n’est plus valable : l’association vous a peut-être envoyé un nouveau lien. Demandez-le-lui.';
 const linkOpen = (a) => {
   if (!a.date) return true;
   const today = parisToday();
@@ -547,7 +568,7 @@ const linkOpen = (a) => {
 };
 export const attendancePage = async (token) => {
   const staff = await one('select * from activity_staff where token = :token', { token });
-  if (!staff) return { error: 'Lien inconnu ou remplacé', status: 404 };
+  if (!staff) return { error: LINK_REPLACED, status: 404 };
   const a = await one('select * from activities where id = :id', { id: staff.activity_id });
   if (!a || a.status === 'annulée') return { error: 'Activité annulée', status: 410 };
   const open = linkOpen(a);
@@ -610,7 +631,7 @@ export const attendancePage = async (token) => {
 export const tickAttendance = async (token, registrationId, attendance) => {
   if (attendance && !['présent', 'absent'].includes(attendance)) return { error: 'Présence inconnue' };
   const staff = await one('select * from activity_staff where token = :token', { token });
-  if (!staff) return { error: 'Lien inconnu ou remplacé', status: 404 };
+  if (!staff) return { error: LINK_REPLACED, status: 404 };
   const a = await one('select * from activities where id = :id', { id: staff.activity_id });
   if (!a || a.status === 'annulée' || !linkOpen(a)) return { error: 'Le lien n’est pas ouvert ce jour-là', status: 409 };
   const r = await one(

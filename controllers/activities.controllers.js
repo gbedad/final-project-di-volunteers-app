@@ -247,7 +247,8 @@ export const tellRegistrationTutors = async (req, res) => {
 
 export const addAdult = async (req, res) => {
   try {
-    answer(res, await addStaff(Number(req.params.id), req.body), 'staff', 201);
+    const out = await addStaff(Number(req.params.id), req.body);
+    answer(res, out, 'staff', out.staff?.already ? 200 : 201);
   } catch (err) {
     fail(res, err, "L'accompagnateur n'a pas pu être ajouté");
   }
