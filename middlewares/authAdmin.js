@@ -26,6 +26,8 @@ export const adminAuth = requireRoles(STAFF_ROLES);
 export const managerAuth = requireRoles(MANAGER_ROLES);
 export const superadminAuth = requireRoles(['superadmin']);
 export const cultureAuth = requireRoles(CULTURE_ROLES);
+// Write what is common to every outing (admins and "superculture")
+export const allOutingsAuth = requireRoles(ALL_OUTINGS_ROLES);
 // Pairs page, read only: the team, and "superculture" (who sees the pairs
 // and nothing else of the tutoring; every change stays with the managers)
 export const pairsViewAuth = requireRoles([...STAFF_ROLES, 'superculture']);

@@ -1,4 +1,5 @@
 import express from 'express';
+import { read as readGuidelines, write as writeGuidelines } from '../controllers/outingGuidelines.controllers.js';
 import {
   knownKind,
   session as annexSession,
@@ -8,7 +9,7 @@ import {
   removeFromSession as annexRemove,
   tellTutor as annexTell,
 } from '../controllers/outingSessions.controllers.js';
-import { adminAuth, cultureAuth, managerAuth } from '../middlewares/authAdmin.js';
+import { adminAuth, allOutingsAuth, cultureAuth, managerAuth } from '../middlewares/authAdmin.js';
 import { activityEditor } from '../middlewares/activityAccess.js';
 import {
   list,
@@ -70,6 +71,9 @@ router.patch('/admin/activites/:id', cultureAuth, activityEditor('activity'), up
 router.delete('/admin/activites/:id', cultureAuth, activityEditor('activity'), remove);
 router.post('/admin/activites/:id/inscriptions', cultureAuth, activityEditor('activity'), addRegistration);
 // Tutoring sessions at the time of the outing (before registering), tutors told
+// "Consignes": one text for all the outings (every cultural role reads it)
+router.get('/admin/consignes-sorties', cultureAuth, readGuidelines);
+router.put('/admin/consignes-sorties', allOutingsAuth, writeGuidelines);
 router.get('/admin/activites/:id/conflits', cultureAuth, checkConflicts);
 // Preparation and return sessions: the children, their presence, the check of their tutoring
 router.get('/admin/activites/:id/annexes/:kind', cultureAuth, knownKind, annexSession);
