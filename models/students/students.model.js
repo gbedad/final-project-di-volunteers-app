@@ -189,6 +189,12 @@ const Students = db.define(
     // Fixed amount per term agreed with the family as an exception (QF above
     // tranche 7, or no QF): replaces the hourly rate
     fee_term: { type: DataTypes.DECIMAL(10, 2) },
+    // Permanent tags of the programmes the student takes part in
+    // (services/fees.js PROGRAMMES): e.g. 'lionnes', exempt from participation
+    programmes: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      defaultValue: [],
+    },
     // Fictitious student used to try the features (removable at once)
     is_demo: {
       type: DataTypes.BOOLEAN,

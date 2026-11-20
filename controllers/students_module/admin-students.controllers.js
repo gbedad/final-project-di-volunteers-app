@@ -3,7 +3,7 @@ import axios from 'axios';
 import Students from '../../models/students/students.model.js';
 import { formatName } from '../../services/names.js';
 import { consentOverview } from '../../services/parentalConsent.js';
-import { feeOf, hoursByTerm, QF_PROOFS } from '../../services/fees.js';
+import { feeOf, hoursByTerm, PROGRAMMES, QF_PROOFS } from '../../services/fees.js';
 import Binomes from '../../models/binomes.model.js';
 import Seances from '../../models/seances.model.js';
 import StudentFiles from '../../models/students/studentsFiles.model.js';
@@ -53,6 +53,12 @@ const cleanChanges = (body) => {
   }
   if ('address_citycode' in changes) changes.address_citycode = String(changes.address_citycode || '').slice(0, 10) || null;
   if ('fee_special' in changes) changes.fee_special = !!changes.fee_special;
+  if ('programmes' in changes) {
+    const keys = PROGRAMMES.map((p) => p.key);
+    changes.programmes = [...new Set(Array.isArray(changes.programmes) ? changes.programmes : [])].filter((k) =>
+      keys.includes(k)
+    );
+  }
   if ('is_demo' in changes) changes.is_demo = !!changes.is_demo;
   if ('status' in changes && !STUDENT_STATUSES.includes(changes.status)) {
     delete changes.status;

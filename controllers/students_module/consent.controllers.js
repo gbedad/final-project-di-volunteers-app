@@ -10,6 +10,7 @@ import Users from '../../models/users.model.js';
 import { formatName } from '../../services/names.js';
 import { feeOf } from '../../services/fees.js';
 import {
+  ADULT_RELATION,
   MAX_ATTEMPTS,
   RELATIONS,
   TEXTS_VERSION,
@@ -17,9 +18,10 @@ import {
   consentItems,
   consentState,
   consentOverview,
+  contactOf,
   createConsentRequest,
   hashToken,
-  parentOf,
+  isAdult,
   parentWithEmail,
   sendSignedEmails,
   storeConsentPdf,
@@ -89,7 +91,7 @@ export const requestConsent = async (req, res) => {
   try {
     const student = await Students.findByPk(req.params.id);
     if (!student) return res.status(404).json({ error: 'Élève introuvable' });
-    const parent = parentOf(student, n);
+    const parent = contactOf(student, n);
     if (channel === 'email' && !parent.email) {
       return res.status(400).json({ error: "Ce responsable n'a pas d'adresse e-mail" });
     }
@@ -204,15 +206,17 @@ export const getConsentPage = async (req, res) => {
     }
     const student = await Students.findByPk(row.student_id);
     if (!student) return res.status(404).json({ state: 'invalid' });
+    const adult = isAdult(student);
     res.json({
       state,
       child: student.first_name,
+      adult,
       parent_name: row.parent_name,
       expires_at: row.expires_at,
       needs_birth_date: !!student.birth_date,
       attempts_left: MAX_ATTEMPTS - row.failed_attempts,
-      relations: RELATIONS,
-      items: consentItems(student.first_name, feeOf(student)),
+      relations: adult ? [ADULT_RELATION] : RELATIONS,
+      items: consentItems(student.first_name, feeOf(student), adult),
     });
   } catch (err) {
     console.log(err);
@@ -247,8 +251,10 @@ export const signConsent = async (req, res) => {
     }
 
     // The participation shown on the page must still be the current one
+    // The signer depends on the age on the day of the signature
+    const adult = isAdult(student);
     const fee = feeOf(student);
-    const items = consentItems(student.first_name, fee);
+    const items = consentItems(student.first_name, fee, adult);
     const shown = items.find((i) => i.id === 'participation')?.text || null;
     if ((req.body.participation_text || null) !== shown) {
       return res.status(409).json({
@@ -266,7 +272,8 @@ export const signConsent = async (req, res) => {
     if (signerName.length < 3 || signerName.length > 120) {
       return res.status(400).json({ error: 'Merci d’indiquer votre nom et prénom.', field: 'signer_name' });
     }
-    if (!RELATIONS.includes(req.body.signer_relation)) {
+    const relations = adult ? [ADULT_RELATION] : RELATIONS;
+    if (!relations.includes(req.body.signer_relation)) {
       return res.status(400).json({ error: "Merci d'indiquer votre lien avec l'enfant." });
     }
     const match = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(
@@ -326,7 +333,7 @@ export const signConsent = async (req, res) => {
       row.channel === 'email'
         ? row.sent_to
         : [1, 2]
-            .map((n) => parentOf(student, n))
+            .map((n) => contactOf(student, n))
             .find((p) => p.phone === row.sent_to)?.email || null;
     sendSignedEmails({ student, row, pdfBytes, filename, parentEmail });
     res.json({ state: 'signed', signed_at: signedAt, copy_sent: !!parentEmail });

@@ -25,13 +25,66 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const LINK_DAYS = 15;
 export const MAX_ATTEMPTS = 5;
 export const RELATIONS = ['Mère', 'Père', 'Tuteur légal', 'Autre responsable légal'];
+// Signer of an adult student (18 or more on the day of the signature)
+export const ADULT_AGE = 18;
+export const ADULT_RELATION = 'Élève majeur';
 
 // Texts shown to the parent and copied into the signed PDF. Change
 // TEXTS_VERSION whenever a text changes: each signature keeps the version
 // and the exact texts it was given on.
-export const TEXTS_VERSION = '2026-10-b';
+export const TEXTS_VERSION = '2026-11-a';
+// Texts for an adult student who signs for himself or herself
+const adultItems = (fee) => [
+  {
+    id: 'tutorat',
+    required: true,
+    title: 'Accompagnement scolaire',
+    text: `Je souhaite bénéficier d'un accompagnement scolaire assuré par un tuteur bénévole de l'association Séphora Berrebi, à distance (plateforme sKOLa) et/ou en présentiel dans un lieu proposé par l'association.`,
+  },
+  ...(fee?.text
+    ? [
+        {
+          id: 'participation',
+          required: true,
+          title: 'Participation aux frais',
+          text: `Je m'engage à verser à l'association une participation aux frais de ${fee.text}.`,
+        },
+      ]
+    : []),
+  {
+    id: 'donnees',
+    required: true,
+    title: 'Données personnelles',
+    text: `J'accepte que l'association enregistre mes informations (identité, scolarité, besoins, disponibilités) uniquement pour organiser et suivre mon tutorat. Mon tuteur ne reçoit que ce qui est utile aux séances. Je peux consulter, corriger ou faire supprimer ces informations en écrivant à skola@sephoraberrebi.org.`,
+  },
+  {
+    id: 'whatsapp',
+    required: true,
+    title: 'Groupe WhatsApp',
+    text: `J'accepte d'être ajouté(e) au groupe WhatsApp réunissant mon tuteur et l'association, qui sert à organiser les séances.`,
+  },
+  {
+    id: 'assiduite',
+    required: true,
+    title: 'Présence aux séances',
+    text: `Je m'engage à prévenir sur ce groupe de tout retard ou absence. Je suis informé(e) qu'un retard de plus de 15 minutes est signalé comme incident et que des absences répétées sans justification peuvent mettre fin au tutorat.`,
+  },
+  {
+    id: 'besoins',
+    required: false,
+    title: 'Besoins particuliers (facultatif)',
+    text: `J'accepte que l'association note mes besoins particuliers (troubles dys, handicap, aménagements) pour adapter l'accompagnement. Ces informations ne sont visibles que par l'équipe de l'association.`,
+  },
+  {
+    id: 'image',
+    required: false,
+    title: "Droit à l'image (facultatif)",
+    text: `J'autorise l'association à utiliser des photos ou vidéos de moi prises pendant les activités, pour ma communication (site internet, réseaux sociaux, rapport d'activité). Sans cette autorisation, aucune image de moi ne sera diffusée.`,
+  },
+];
+
 // fee: participation of the family (services/fees.js), shown for acceptance
-export const consentItems = (child, fee) => [
+export const consentItems = (child, fee, adult = false) => adult ? adultItems(fee) : [
   {
     id: 'tutorat',
     required: true,
@@ -123,14 +176,45 @@ export const parentOf = (student, n = 1) => ({
 });
 const parentName = (p) => [p.first_name, p.last_name].filter(Boolean).join(' ');
 
+// ---- Adult students ----
+// From 18 on the student signs for himself or herself: the request goes to
+// the student and the responsible stays an optional contact. Age is counted
+// on the calendar day of the signature (Paris time, as birth dates are stored).
+const parisDay = (d) => (d ? new Date(d).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' }) : null);
+export const ageAt = (birthDate, date = new Date()) => {
+  const birth = parisDay(birthDate);
+  const today = parisDay(date);
+  if (!birth || !today) return null;
+  const [by, bm, bd] = birth.split('-').map(Number);
+  const [y, m, d] = today.split('-').map(Number);
+  let age = y - by;
+  if (m < bm || (m === bm && d < bd)) age -= 1;
+  return age;
+};
+export const isAdult = (student, date = new Date()) => {
+  const age = ageAt(student.birth_date, date);
+  return age !== null && age >= ADULT_AGE;
+};
+// Who answers a request: the student when adult, else responsible n
+export const contactOf = (student, n = 1, date = new Date()) =>
+  isAdult(student, date)
+    ? {
+        first_name: student.first_name || '',
+        last_name: student.last_name || '',
+        email: student.email || null,
+        phone: student.phone || null,
+        adult: true,
+      }
+    : { ...parentOf(student, n), adult: false };
+
 export const whatsappMessage = ({ parent, student, me, link, expiresAt }) =>
   `Bonjour${parent.first_name ? ` ${parent.first_name}` : ''}, je suis ${
     me?.first_name || ''
-  } de l'association Séphora Berrebi. Pour commencer l'accompagnement scolaire de ${
-    student.first_name
-  }, merci de donner votre accord en ligne (2 minutes) :\n\n${link}\n\nCe lien est personnel et valable jusqu'au ${frDate(
-    expiresAt
-  )}.`;
+  } de l'association Séphora Berrebi. ${
+    parent.adult
+      ? "Pour commencer votre accompagnement scolaire, merci de donner votre accord en ligne (2 minutes)"
+      : `Pour commencer l'accompagnement scolaire de ${student.first_name}, merci de donner votre accord en ligne (2 minutes)`
+  } :\n\n${link}\n\nCe lien est personnel et valable jusqu'au ${frDate(expiresAt)}.`;
 
 // ---- E-mails ----
 
@@ -141,7 +225,25 @@ const send = (to, subject, html, label, attachments) =>
 
 // Subject and body of the e-mail asking for the parent's consent
 // reminder: sent automatically when the first link was not used
-export const consentRequestEmail = ({ parent, student, link, expiresAt, reminder }) => ({
+const adultRequestEmail = ({ parent, student, link, expiresAt, reminder }) => ({
+  subject: `${reminder ? 'Rappel : ' : ''}Accompagnement scolaire : votre accord`,
+  html: `<p>Bonjour${parent.first_name ? ` ${escapeHtml(parent.first_name)}` : ''},</p>
+    ${
+      reminder
+        ? `<p>Il y a quelques jours, nous vous avons demandé votre accord pour votre accompagnement scolaire. Nous ne l'avons pas encore reçu : voici un nouveau lien.</p>`
+        : `<p>L'association Séphora Berrebi va vous proposer un accompagnement scolaire, assuré par un tuteur bénévole.</p>`
+    }
+    <p>Avant de commencer, nous avons besoin de votre accord. Il vous suffit de lire, cocher et signer en ligne (environ 2 minutes, depuis votre téléphone ou votre ordinateur) :</p>
+    <p>${emailButton(link, 'Donner mon accord')}</p>
+    <p>Ce lien vous est personnel et reste valable jusqu'au ${frDate(expiresAt)}.</p>
+    <p>Une question ? Écrivez-nous à skola@sephoraberrebi.org.</p>
+    <p>Bien cordialement,<br>L'association Séphora Berrebi</p>`,
+});
+
+export const consentRequestEmail = (data) =>
+  data.parent.adult ? adultRequestEmail(data) : minorRequestEmail(data);
+
+const minorRequestEmail = ({ parent, student, link, expiresAt, reminder }) => ({
   subject: `${reminder ? 'Rappel : ' : ''}Accompagnement scolaire de ${student.first_name} : votre accord`,
   html: `<p>Bonjour${parent.first_name ? ` ${escapeHtml(parent.first_name)}` : ''},</p>
     ${
@@ -280,7 +382,11 @@ export const buildConsentPdf = async ({ student, row, items, signaturePng }) => 
     }`,
     { font: bold }
   );
-  paragraph(`Responsable légal : ${row.signer_name} (${row.signer_relation})`, {
+  paragraph(
+    row.signer_relation === ADULT_RELATION
+      ? `Signé par l'élève majeur : ${row.signer_name}`
+      : `Responsable légal : ${row.signer_name} (${row.signer_relation})`,
+    {
     font: bold,
     gap: 12,
   });
@@ -383,7 +489,7 @@ export const createConsentRequest = async ({
   channel = 'email',
   requestedBy = null,
 }) => {
-  const parent = parentOf(student, n);
+  const parent = contactOf(student, n);
   await ParentalConsents.update(
     { cancelled_at: new Date() },
     { where: { student_id: student.id, signed_at: null, cancelled_at: null } }
@@ -415,7 +521,7 @@ export const createConsentRequest = async ({
 
 // Responsible (1 or 2) who has an e-mail address, the first one by default
 export const parentWithEmail = (student) =>
-  [1, 2].find((n) => parentOf(student, n).email) || null;
+  isAdult(student) ? (student.email ? 1 : null) : [1, 2].find((n) => parentOf(student, n).email) || null;
 
 // State of the consent of each student, for the list and the analysis:
 // signed (online), paper, pending (link sent) or missing
@@ -489,12 +595,13 @@ export const remindConsents = async () => {
     const student = await Students.findByPk(row.student_id);
     if (!student || student.parental_consent_at) continue;
     if (!CONSENT_STATUSES.includes(student.status)) continue;
-    const n =
-      [1, 2].find((k) => {
-        const p = parentOf(student, k);
-        return row.channel === 'email' ? p.email === row.sent_to : p.phone === row.sent_to;
-      }) || parentWithEmail(student);
-    if (!n || !parentOf(student, n).email) continue;
+    const n = isAdult(student)
+      ? 1
+      : [1, 2].find((k) => {
+          const p = parentOf(student, k);
+          return row.channel === 'email' ? p.email === row.sent_to : p.phone === row.sent_to;
+        }) || parentWithEmail(student);
+    if (!n || !contactOf(student, n).email) continue;
     await createConsentRequest({ student, n, channel: 'email', requestedBy: null });
     sent += 1;
   }

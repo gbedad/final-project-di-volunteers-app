@@ -51,12 +51,33 @@ export const trancheOf = (qf) => {
   return t ? t.tranche : 8;
 };
 
+// Permanent tags of programmes. An exempt programme pays the annual
+// membership only: no participation, no deposit, no consent item.
+export const PROGRAMMES = [{ key: 'lionnes', label: 'Les Lionnes', exempt: true }];
+export const programmeOf = (key) => PROGRAMMES.find((p) => p.key === key) || null;
+export const isExempt = (student) =>
+  (student.programmes || []).some((k) => programmeOf(k)?.exempt);
+
 // Participation of a student. Returns null while nothing is known (no QF and
 // "not given" not chosen). Fields:
-//   mode 'term' (tranches 1-7) or 'hourly'; tranche; amount (per term or
-//   per hour); deposit; pack5 (5 hours, hourly mode); computed (before a
-//   manual change); text (sentence shown to the parents)
+//   mode 'term' (tranches 1-7), 'hourly' or 'exempt' (programme tag);
+//   tranche; amount (per term or per hour); deposit; pack5 (5 hours, hourly
+//   mode); computed (before a manual change); text (sentence shown to the
+//   parents; null when nothing is due)
 export const feeOf = (student) => {
+  if (isExempt(student)) {
+    const label = (student.programmes || []).map((k) => programmeOf(k)?.label).find(Boolean);
+    return {
+      mode: 'exempt',
+      programme: label,
+      tranche: null,
+      amount: 0,
+      deposit: 0,
+      computed: 0,
+      year: FEES_YEAR,
+      text: null,
+    };
+  }
   const qf = student.qf === null || student.qf === undefined ? null : Number(student.qf);
   const noProof = student.qf_proof === 'none';
   if (qf === null && !noProof) return null;
@@ -131,7 +152,9 @@ export const hoursByTerm = (sessions, fee) => {
         label: t.label,
         hours,
         due:
-          fee?.mode === 'hourly' && fee.amount !== undefined
+          fee?.mode === 'exempt'
+            ? 0
+            : fee?.mode === 'hourly' && fee.amount !== undefined
             ? Math.round(hours * fee.amount * 100) / 100
             : fee?.mode === 'term'
             ? fee.amount

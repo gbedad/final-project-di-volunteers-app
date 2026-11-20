@@ -16,7 +16,7 @@ import sendEmail from '../config/sendEmails.js';
 import { adminEmails, clientUrl, emailButton, escapeHtml } from '../config/notify.js';
 import StudentFiles from '../models/students/studentsFiles.model.js';
 import { feeOf } from './fees.js';
-import { hashToken, newToken, parentOf, RELATIONS } from './parentalConsent.js';
+import { contactOf, hashToken, newToken, RELATIONS } from './parentalConsent.js';
 import { PRESIDENT_SIGNATURE_KEY, placesText, readStored, slotsText } from './conventionSigning.js';
 import { schoolYearOf, MEMBERSHIP_FEE } from './activities.js';
 
@@ -63,7 +63,7 @@ export const teamDefaults = (student) => {
 
 // From the student's page (the parent can correct contact and address)
 export const prefill = (student) => {
-  const parent = parentOf(student, 1);
+  const parent = contactOf(student, 1);
   const how = student.how_location || '';
   const school = student.school?.name ? `${student.school.name}${student.school.city ? ` (${student.school.city})` : ''}` : '';
   return {
@@ -284,9 +284,12 @@ export const requestConvention = async (studentId, body, me) => {
   const student = await studentRow(studentId);
   if (!student) return { error: 'Élève introuvable', status: 404 };
   const channel = body.channel === 'whatsapp' ? 'whatsapp' : 'email';
-  const parent = parentOf(student, Number(body.parent) === 2 ? 2 : 1);
+  const parent = contactOf(student, Number(body.parent) === 2 ? 2 : 1);
   if (channel === 'email' && !parent.email) return { error: "Pas d'e-mail pour ce parent : utilisez WhatsApp" };
   if (channel === 'whatsapp' && !parent.phone) return { error: 'Pas de téléphone pour ce parent' };
+  if (feeOf(student)?.mode === 'exempt') {
+    return { error: 'Élève des Lionnes : pas de participation aux frais, donc pas de convention à envoyer' };
+  }
   if (!feeOf(student)?.amount) {
     return { error: 'Participation non calculée : renseignez le quotient familial dans « Participation aux frais »' };
   }

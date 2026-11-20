@@ -46,6 +46,7 @@ export const computeStudentAnalytics = async ({ includeDemo = false } = {}) => {
         'fee_special',
         'fee_override',
         'fee_term',
+        'programmes',
       ],
     })
   ).map((s) => s.toJSON());
@@ -194,6 +195,8 @@ export const computeStudentAnalytics = async ({ includeDemo = false } = {}) => {
   const feeLabel = (f) =>
     !f
       ? 'Non renseigné'
+      : f.mode === 'exempt'
+      ? 'Les Lionnes (exonérées)'
       : f.mode === 'term' && !f.agreed
       ? `Tranche ${f.tranche}`
       : f.tranche
@@ -202,6 +205,7 @@ export const computeStudentAnalytics = async ({ includeDemo = false } = {}) => {
   const ORDER = [1, 2, 3, 4, 5, 6, 7].map((n) => `Tranche ${n}`).concat([
     'Tranche 8 et plus (à l’heure)',
     'QF non communiqué (à l’heure)',
+    'Les Lionnes (exonérées)',
     'Non renseigné',
   ]);
   const withFee = currentStudents.map((s) => ({ s, fee: feeOf(s) }));

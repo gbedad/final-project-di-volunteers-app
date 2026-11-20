@@ -38,6 +38,7 @@ const QF_ORDER = [1, 2, 3, 4, 5, 6, 7].map((n) => `Tranche ${n}`).concat([
 ]);
 const qfLabel = (s) => {
   const fee = feeOf(s);
+  if (fee?.mode === 'exempt') return 'Les Lionnes (exonérées)';
   if (s.qf_proof === 'none') return 'QF non communiqué';
   if (!fee || fee.tranche === undefined || fee.tranche === null) return 'Non renseigné';
   return fee.tranche <= 7 ? `Tranche ${fee.tranche}` : 'Tranche 8 et plus';
@@ -70,7 +71,7 @@ export const annualReport = async (year = currentYear()) => {
 
   const students = await Students.findAll({
     where: { is_demo: { [Op.not]: true } },
-    attributes: ['id', 'level', 'school', 'qf', 'qf_proof', 'fee_special', 'fee_override', 'fee_term', 'created_at', 'zipcode', 'city', 'status'],
+    attributes: ['id', 'level', 'school', 'qf', 'qf_proof', 'fee_special', 'fee_override', 'fee_term', 'programmes', 'created_at', 'zipcode', 'city', 'status'],
     raw: true,
   });
   const studentOf = Object.fromEntries(students.map((s) => [s.id, s]));
