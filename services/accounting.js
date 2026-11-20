@@ -114,8 +114,9 @@ const computeAccount = ({ student, lines, membership, pairs, minutes, year, toda
       });
     }
   }
-  // Deposit
-  const deposit = fee ? fee.deposit || DEFAULT_DEPOSIT : null;
+  // Deposit (none for the exempt programmes: the 0 of their fee must not fall
+  // back to the default deposit)
+  const deposit = fee && fee.mode !== 'exempt' ? fee.deposit || DEFAULT_DEPOSIT : null;
   const depositLine = [...lines].reverse().find((l) => l.nature === 'caution') || null;
   if (deposit && began) {
     items.push({
