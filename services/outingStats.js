@@ -3,21 +3,13 @@
 // report. Drafts are left out, demonstration students too.
 import db from '../config/database.js';
 import { yearRange, currentYear, cycleOf, CYCLES, countBy, list } from './annualReport.js';
+import { hoursBetween, sessionFigures } from './outingSessionFigures.js';
 
 const q = (sql, replacements) => db.query(sql, { replacements, logging: false }).then(([rows]) => rows);
 const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
 const day = (d) => (d ? new Date(d).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' }) : null);
 const round = (n) => Math.round(n * 100) / 100;
 const pct = (n, total) => (total ? Math.round((n * 100) / total) : null);
-// "11:00" - "16:30" -> 5.5 hours (null when unknown)
-const hoursBetween = (start, end) => {
-  const m = (t) => /^(\d{1,2})[:h](\d{2})/.exec(t || '');
-  const a = m(start);
-  const b = m(end);
-  if (!a || !b) return null;
-  const h = (Number(b[1]) * 60 + Number(b[2]) - Number(a[1]) * 60 - Number(a[2])) / 60;
-  return h > 0 ? h : null;
-};
 
 export const outingStats = async (year = currentYear()) => {
   const { from, to, complete, year: label } = yearRange(year);
@@ -25,7 +17,7 @@ export const outingStats = async (year = currentYear()) => {
   // the year, not today)
   const end = `${Number(label.slice(0, 4)) + 1}-08-31`;
   const outings = await q(
-    `select id, title, kind, date, start_time, end_time, status, places, companions
+    `select id, title, kind, date, start_time, end_time, status, places, companions, prep, debrief
        from activities
       where date between :from and :end and status <> 'brouillon'
       order by date, id`,
@@ -54,6 +46,18 @@ export const outingStats = async (year = currentYear()) => {
   ),
   ]);
 
+  // Children of the preparation and return sessions (not the outing itself).
+  // The table only exists after its migration: no session before that.
+  const sessionRows = await q(
+    `select p.activity_id, p.kind, p.student_id, p.attendance
+       from activity_session_participants p join students s on s.id = p.student_id
+      where p.activity_id in (:ids) and coalesce(s.is_demo, false) = false`,
+    { ids: ids.length ? ids : none }
+  ).catch((err) => {
+    if (err.parent?.code === '42P01') return [];
+    throw err;
+  });
+
   const now = today();
   const dateOf = (o) => day(o.date);
   const cancelled = outings.filter((o) => o.status === 'annulée');
@@ -61,6 +65,11 @@ export const outingStats = async (year = currentYear()) => {
   const held = kept.filter((o) => dateOf(o) <= now);
   const coming = kept.filter((o) => dateOf(o) > now);
   const heldIds = new Set(held.map((o) => o.id));
+  const sessions = sessionFigures({
+    outings: kept.map((o) => ({ ...o, date: dateOf(o) })),
+    participants: sessionRows,
+    now,
+  });
 
   // Children registered (not withdrawn) to the outings that took place
   const registered = regs.filter((r) => r.status === 'inscrit' && heldIds.has(r.activity_id));
@@ -92,6 +101,10 @@ export const outingStats = async (year = currentYear()) => {
       marked: mine.some((r) => r.attendance),
       places: o.places,
       adults: staff.filter((s) => s.activity_id === o.id).length,
+      // Preparation and return sessions (null for a cancelled outing)
+      prep: sessions.byOuting[o.id]?.prep ?? null,
+      debrief: sessions.byOuting[o.id]?.debrief ?? null,
+      bilan: sessions.byOuting[o.id]?.bilan ?? false,
     };
   };
 
@@ -118,6 +131,8 @@ export const outingStats = async (year = currentYear()) => {
       collected: round(collected),
       cost_per_child: registered.length ? round((spent - collected) / registered.length) : null,
     },
+    // Preparation sessions and bilans: apart from the outings' figures
+    sessions: sessions.figures,
     kinds: list(countBy(held, (o) => o.kind || 'Non précisé')),
     cycles: list(countBy(children, (c) => cycleOf(c.level)), [...CYCLES.map(([c]) => c), 'Non renseigné']),
     priority: list(
