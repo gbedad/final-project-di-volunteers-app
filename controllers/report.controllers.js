@@ -1,4 +1,5 @@
 import { outingStats } from '../services/outingStats.js';
+import { masterclassStats } from '../services/masterclassStats.js';
 // Annual report for the funders
 import { annualReport, currentYear } from '../services/annualReport.js';
 
@@ -7,8 +8,8 @@ export const getAnnualReport = async (req, res) => {
   const year = /^\d{4}-\d{4}$/.test(req.query.year || '') ? req.query.year : currentYear();
   try {
     // The cultural outings of the same year, with the tutoring
-    const [report, outings] = await Promise.all([annualReport(year), outingStats(year)]);
-    res.json({ ...report, outings });
+    const [report, outings, masterclasses] = await Promise.all([annualReport(year), outingStats(year), masterclassStats(year)]);
+    res.json({ ...report, outings, masterclasses });
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: 'Le rapport n’a pas pu être calculé' });
@@ -24,4 +25,10 @@ export const getOutingAnalytics = async (req, res) => {
     console.log(err);
     res.status(500).json({ error: 'L’analyse des sorties n’a pas pu être calculée' });
   }
+};
+
+// "Master Classes" view of the analysis: figures read from the MCL application
+export const getMasterclassAnalytics = async (req, res) => {
+  const year = /^\d{4}-\d{4}$/.test(req.query.year || '') ? req.query.year : currentYear();
+  res.json(await masterclassStats(year));
 };
