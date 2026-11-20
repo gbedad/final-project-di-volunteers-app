@@ -200,8 +200,15 @@ export const deleteStudentRecord = async (req, res) => {
   }
 };
 
+// Higher education (L1 to L3): the ministry's list of the main establishments,
+// the school directory has no universities
+const SUPERIOR_URL =
+  'https://data.enseignementsup-recherche.gouv.fr/api/explore/v2.1/catalog/datasets/fr-esr-principaux-etablissements-enseignement-superieur/records';
+const SUPERIOR_LEVELS = ['L1', 'L2', 'L3'];
+
 // School search in the national directory: name or town
 export const searchSchools = async (req, res) => {
+  const superior = SUPERIOR_LEVELS.includes(String(req.query.level || ''));
   const query = String(req.query.q || '')
     .replace(/["\\]/g, ' ')
     .trim();
@@ -211,24 +218,40 @@ export const searchSchools = async (req, res) => {
     .map(
       // search(): words starting with these letters ("mar" finds
       // "Marcel", "Marseille"); like "%mar%" finds nothing in this directory
-      (w) => `(search(nom_etablissement, "${w}") or search(nom_commune, "${w}"))`
+      (w) =>
+        superior
+          ? `(search(uo_lib, "${w}") or search(localisation, "${w}"))`
+          : `(search(nom_etablissement, "${w}") or search(nom_commune, "${w}"))`
     )
     .join(' and ');
   try {
-    const { data } = await axios.get(SCHOOLS_URL, {
+    const { data } = await axios.get(superior ? SUPERIOR_URL : SCHOOLS_URL, {
       params: { where, limit: 10 },
       timeout: 10000,
     });
     res.json(
-      data.results.map((r) => ({
-        uai: r.identifiant_de_l_etablissement,
-        name: r.nom_etablissement,
-        type: r.type_etablissement,
-        city: r.nom_commune,
-        zipcode: r.code_postal,
-        sector: r.statut_public_prive,
-        rep: r.appartenance_education_prioritaire || null,
-      }))
+      data.results.map((r) =>
+        superior
+          ? {
+              uai: r.uai,
+              name: r.uo_lib,
+              type: (r.type_d_etablissement || []).join(', ') || 'Enseignement supérieur',
+              // "Région>Métropole>Département>Ville"
+              city: r.localisation ? r.localisation.split('>').pop() : null,
+              zipcode: null,
+              sector: r.secteur_d_etablissement,
+              rep: null,
+            }
+          : {
+              uai: r.identifiant_de_l_etablissement,
+              name: r.nom_etablissement,
+              type: r.type_etablissement,
+              city: r.nom_commune,
+              zipcode: r.code_postal,
+              sector: r.statut_public_prive,
+              rep: r.appartenance_education_prioritaire || null,
+            }
+      )
     );
   } catch (err) {
     console.log('School search failed:', err.message);

@@ -569,6 +569,8 @@ export const consentOverview = async (students) => {
         at: last ? last.requested_at : null,
       };
     }
+    // Adult: the consent is the student's own, not the parents'
+    summary.adult = isAdult(s);
     summary.needed = CONSENT_STATUSES.includes(s.status);
     summary.open_pair = pairs.some((p) => p.student_id === s.id);
     result[s.id] = summary;

@@ -18,6 +18,8 @@ export const LEVELS = [
   'Seconde',
   'Première',
   'Terminale',
+  'Maths sup',
+  'Maths spé',
   'L1',
   'L2',
   'L3',

@@ -27,7 +27,8 @@ export const HOURLY = [
   { key: 'seconde', label: '2nde', levels: ['Seconde'], t8: [50, 233], none: [55, 256] },
   { key: 'premiere', label: '1ère', levels: ['Première'], t8: [55, 256], none: [65, 302] },
   { key: 'terminale', label: 'Terminale', levels: ['Terminale'], t8: [60, 279], none: [75, 349] },
-  { key: 'superieur', label: 'Supérieur', levels: ['L1', 'L2', 'L3'], t8: [70, 326], none: [85, 395] },
+  // Maths sup / Maths spé: classes préparatoires, priced with the higher education
+  { key: 'superieur', label: 'Supérieur', levels: ['Maths sup', 'Maths spé', 'L1', 'L2', 'L3'], t8: [70, 326], none: [85, 395] },
   // Learning disorders, remediation, STEM private lessons…
   { key: 'autres', label: 'Autres (besoins particuliers)', levels: [], t8: [65, 302], none: [85, 395] },
 ];

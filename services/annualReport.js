@@ -26,7 +26,7 @@ export const list = (counts, order) =>
 export const CYCLES = [
   ['Primaire', ['CP', 'CE1', 'CE2', 'CM1', 'CM2']],
   ['Collège', ['6ème', '5ème', '4ème', '3ème']],
-  ['Lycée', ['Seconde', 'Première', 'Terminale']],
+  ['Lycée', ['Seconde', 'Première', 'Terminale', 'Maths sup', 'Maths spé']],
   ['Supérieur', ['L1', 'L2', 'L3']],
 ];
 const LEVEL_ORDER = CYCLES.flatMap(([, l]) => l);
