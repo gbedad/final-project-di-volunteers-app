@@ -5,6 +5,7 @@ import {
   cleanList,
   ENGAGEMENTS,
   OUTING_PERIODS,
+  WISHABLE,
   engagementsOf,
 } from '../services/engagements.js';
 
@@ -23,7 +24,7 @@ export const updateWishes = async (req, res) => {
     if (!user || user.role !== 'volunteer') return res.status(404).json({ error: 'Bénévole introuvable' });
     const set = {};
     if ('engagements_wished' in req.body) {
-      const list = cleanList(req.body.engagements_wished, ENGAGEMENTS);
+      const list = cleanList(req.body.engagements_wished, WISHABLE);
       if (!list) return res.status(400).json({ error: 'Choisissez au moins une activité' });
       set.engagements_wished = list;
     }

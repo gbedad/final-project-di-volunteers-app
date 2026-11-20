@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { cleanList, ENGAGEMENTS } from '../services/engagements.js';
+import { cleanList, WISHABLE } from '../services/engagements.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import Users from '../models/users.model.js';
@@ -188,7 +188,7 @@ export const register = async (req, res) => {
     const wished =
       engagements_wished === undefined
         ? ['tutorat']
-        : cleanList(engagements_wished, ENGAGEMENTS);
+        : cleanList(engagements_wished, WISHABLE);
     if (!wished) {
       return res.status(400).json({ error: 'Choisissez au moins une activité' });
     }

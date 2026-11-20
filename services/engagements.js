@@ -3,7 +3,10 @@
 // volunteer ticks his wishes; the team decides in the end.
 import Users from '../models/users.model.js';
 
-export const ENGAGEMENTS = ['tutorat', 'culture', 'sciences'];
+export const ENGAGEMENTS = ['tutorat', 'culture', 'sciences', 'masterclasses'];
+// Wishes a volunteer can tick himself: « masterclasses » is a label put by
+// the team only (the volunteer agreed to be proposed to the Master Classes)
+export const WISHABLE = ENGAGEMENTS.filter((e) => e !== 'masterclasses');
 export const OUTING_PERIODS = ['semaine', 'weekend', 'vacances'];
 
 // Only known values, once each; null when nothing valid is given
