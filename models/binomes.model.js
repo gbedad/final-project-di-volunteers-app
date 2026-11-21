@@ -8,6 +8,8 @@ const { DataTypes } = Sequelize;
 const Binomes = db.define(
   'binomes',
   {
+    // Follows the student's activity: 'benevolat' or 'payant'
+    activite: { type: DataTypes.STRING, allowNull: false, defaultValue: 'benevolat' },
     student_id: { type: DataTypes.INTEGER, allowNull: false },
     tutor_id: { type: DataTypes.INTEGER },
     subjects: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] },

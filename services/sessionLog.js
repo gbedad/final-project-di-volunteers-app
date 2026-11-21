@@ -36,16 +36,18 @@ const signatureOf = (s, remote) => {
   return 'manquante';
 };
 
-// from, to: YYYY-MM-DD, both included
-export const sessionLog = async (from, to) => {
+// from, to: YYYY-MM-DD, both included. activites: the activities read (free
+// tutoring by default, see middlewares/activiteAccess.js)
+export const sessionLog = async (from, to, activites = ['benevolat']) => {
   const sessions = await Seances.findAll({
-    where: { date: { [Op.between]: [from, to] } },
+    where: { date: { [Op.between]: [from, to] }, activite: activites },
     order: [['date', 'DESC'], ['id', 'DESC']],
     raw: true,
   });
   // Pairs of these sessions, and the pairs in progress (expected sessions)
   const pairs = await Binomes.findAll({
     where: {
+      activite: activites,
       [Op.or]: [
         { id: [...new Set(sessions.map((s) => s.binome_id))] },
         { status: 'actif' },

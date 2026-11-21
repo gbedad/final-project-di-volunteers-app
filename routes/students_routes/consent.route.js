@@ -1,5 +1,6 @@
 import express from 'express';
 import { adminAuth, managerAuth } from '../../middlewares/authAdmin.js';
+import { guardActivite } from '../../middlewares/activiteAccess.js';
 import {
   bulkRequestConsents,
   cancelConsent,
@@ -11,6 +12,9 @@ import {
 } from '../../controllers/students_module/consent.controllers.js';
 
 const router = express.Router();
+
+// Consents of a paid-tutoring student are not handled here
+router.use('/admin/students/:id', guardActivite('students'));
 
 // Team
 router.post('/admin/consents/bulk', managerAuth, bulkRequestConsents);

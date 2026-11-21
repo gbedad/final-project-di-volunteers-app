@@ -10,6 +10,9 @@ export const MANAGER_ROLES = ['superadmin', 'admin'];
 export const CULTURE_ROLES = ['superadmin', 'admin', 'superculture', 'culture'];
 // Change every outing
 export const ALL_OUTINGS_ROLES = ['superadmin', 'admin', 'superculture'];
+// Paid tutoring (activite 'payant'): its own managers, no access to the
+// free tutoring data (see activiteAccess.js)
+export const PAYANT_ROLES = ['superadmin', 'gestion_payant'];
 
 const hasAdminAccess = (user) => !!user && STAFF_ROLES.includes(user.role);
 
@@ -26,6 +29,7 @@ export const adminAuth = requireRoles(STAFF_ROLES);
 export const managerAuth = requireRoles(MANAGER_ROLES);
 export const superadminAuth = requireRoles(['superadmin']);
 export const cultureAuth = requireRoles(CULTURE_ROLES);
+export const payantAuth = requireRoles(PAYANT_ROLES);
 // Write what is common to every outing (admins and "superculture")
 export const allOutingsAuth = requireRoles(ALL_OUTINGS_ROLES);
 // Pairs page, read only: the team, and "superculture" (who sees the pairs

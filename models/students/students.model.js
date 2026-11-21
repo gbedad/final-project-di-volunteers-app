@@ -8,6 +8,13 @@ const { DataTypes } = Sequelize;
 const Students = db.define(
   'students',
   {
+    // 'benevolat' (free tutoring) or 'payant' (paid tutoring), see
+    // middlewares/activiteAccess.js
+    activite: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'benevolat',
+    },
     email: {
       type: DataTypes.STRING,
     },

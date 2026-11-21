@@ -17,6 +17,7 @@ import {
   addStudentInternalThread,
 } from '../../controllers/students_module/students.controllers.js';
 import { adminAuth, managerAuth } from '../../middlewares/authAdmin.js';
+import { guardActivite } from '../../middlewares/activiteAccess.js';
 import {
   listStudents,
   getStudent,
@@ -34,6 +35,20 @@ import {
 } from '../../controllers/incidents.controllers.js';
 
 const router = express.Router();
+
+// A student of another activity (paid tutoring) is refused here: see
+// middlewares/activiteAccess.js
+router.use(
+  [
+    '/students/:id',
+    '/students-interview/:id',
+    '/students-school-history/:id',
+    '/students-topics/:id',
+    '/students-locations/:id',
+    '/admin/students/:id',
+  ],
+  guardActivite('students')
+);
 
 router.get('/students', adminAuth, getAllStudents);
 router.post('/students', adminAuth, addStudent);

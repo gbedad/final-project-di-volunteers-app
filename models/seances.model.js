@@ -8,6 +8,8 @@ const { DataTypes } = Sequelize;
 const Seances = db.define(
   'seances',
   {
+    // Follows the pair's activity: 'benevolat' or 'payant'
+    activite: { type: DataTypes.STRING, allowNull: false, defaultValue: 'benevolat' },
     binome_id: { type: DataTypes.INTEGER, allowNull: false },
     author_id: { type: DataTypes.INTEGER },
     date: { type: DataTypes.DATEONLY, allowNull: false },

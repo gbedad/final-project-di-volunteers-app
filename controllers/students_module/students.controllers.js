@@ -5,6 +5,7 @@ import axios from 'axios';
 import Students from '../../models/students/students.model.js';
 import StudentFiles from '../../models/students/studentsFiles.model.js';
 import { formatName } from '../../services/names.js';
+import { activiteWhere } from '../../middlewares/activiteAccess.js';
 
 dotenv.config();
 
@@ -50,6 +51,7 @@ export const getAllStudents = async (req, res) => {
         'internal_thread',
       ],
 
+      where: activiteWhere(req.user),
       order: [['created_at', 'desc']],
     });
     // console.log(students);

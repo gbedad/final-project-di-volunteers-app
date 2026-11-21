@@ -8,6 +8,7 @@ import Binomes from '../../models/binomes.model.js';
 import Seances from '../../models/seances.model.js';
 import StudentFiles from '../../models/students/studentsFiles.model.js';
 import { Op } from 'sequelize';
+import { activiteWhere } from '../../middlewares/activiteAccess.js';
 import {
   EDITABLE_FIELDS,
   LIST_FIELDS,
@@ -77,6 +78,7 @@ export const listStudents = async (req, res) => {
   try {
     const students = await Students.findAll({
       attributes: LIST_FIELDS,
+      where: activiteWhere(req.user),
       order: [['created_at', 'DESC']],
     });
     const consents = await consentOverview(students);

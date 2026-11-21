@@ -11,6 +11,7 @@ import { fileUrl } from '../config/aws.config.js';
 import { writeObject } from '../services/conventionSigning.js';
 import { pairStats, ATTENDANCES, CANCELLED_BY } from '../services/followUp.js';
 import { MANAGER_ROLES } from '../middlewares/authAdmin.js';
+import { activitesOf, canSeeActivite, activiteWhere } from '../middlewares/activiteAccess.js';
 import { sessionLog, parisToday } from '../services/sessionLog.js';
 import { slotOn as slotOnDate, withNewSchedule } from '../services/pairSchedule.js';
 import { syncTutorActive } from '../services/tutorActivity.js';
@@ -66,7 +67,11 @@ const sessionsByPair = async (pairIds) => {
 // Every pair with its student, tutor, figures and alerts (page "Binômes")
 export const listPairs = async (req, res) => {
   try {
-    const pairs = await Binomes.findAll({ order: [['proposed_at', 'DESC']], raw: true });
+    const pairs = await Binomes.findAll({
+      where: activiteWhere(req.user),
+      order: [['proposed_at', 'DESC']],
+      raw: true,
+    });
     const students = await Students.findAll({
       where: { id: [...new Set(pairs.map((p) => p.student_id))] },
       attributes: ['id', 'first_name', 'last_name', 'level', 'is_demo'],
@@ -100,7 +105,7 @@ export const listSessionLog = async (req, res) => {
   const to = valid(req.query.to) ? req.query.to : today;
   if (from > to) return res.status(400).json({ error: 'Période invalide' });
   try {
-    res.json(await sessionLog(from, to));
+    res.json(await sessionLog(from, to, activitesOf(req.user)));
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "Le journal des séances n'a pas pu être chargé" });
@@ -173,7 +178,7 @@ export const proposePair = async (req, res) => {
       where: { id: tutor_id, role: 'volunteer', status: 'Validé' },
       attributes: TUTOR_FIELDS,
     });
-    if (!student || !tutor) {
+    if (!student || !tutor || !canSeeActivite(req.user, student.activite)) {
       return res.status(404).json({ error: 'Élève ou tuteur introuvable' });
     }
     if (!isTutor(tutor)) {
@@ -194,6 +199,8 @@ export const proposePair = async (req, res) => {
     const binome = await Binomes.create({
       student_id,
       tutor_id,
+      // The pair follows its student's activity
+      activite: student.activite,
       subjects,
       schedule: req.body.schedule || [],
       how_location: req.body.how_location || null,

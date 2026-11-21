@@ -1,6 +1,7 @@
 import express from 'express';
 import { verifyToken } from '../middlewares/verifyToken.js';
 import { adminAuth, managerAuth, pairsViewAuth } from '../middlewares/authAdmin.js';
+import { guardActivite } from '../middlewares/activiteAccess.js';
 import {
   getMatches,
   listStudentPairs,
@@ -32,6 +33,12 @@ import {
 } from '../controllers/pairBreaks.controllers.js';
 
 const router = express.Router();
+
+// Pairs, students and sessions of another activity (paid tutoring) are refused
+// here: see middlewares/activiteAccess.js
+router.use('/admin/students/:id', guardActivite('students'));
+router.use('/admin/binomes/:id', guardActivite('binomes'));
+router.use('/admin/seances/:id', guardActivite('seances'));
 
 // Team: tutors who fit a student, pairs of a student, proposal and changes
 router.get('/admin/students/:id/matches', adminAuth, getMatches);
