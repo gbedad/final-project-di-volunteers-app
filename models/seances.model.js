@@ -34,6 +34,9 @@ const Seances = db.define(
     jotform_id: { type: DataTypes.STRING },
     jotform_signature_url: { type: DataTypes.TEXT },
     // Zoom meeting and day of the session (its 40-minute parts are one)
+    // Exceptional session the row belongs to (NULL: the regular session of the
+    // slot). A day can hold both: the slot and a session in addition
+    extra_id: { type: DataTypes.INTEGER },
     zoom_key: { type: DataTypes.STRING },
     // When the tutor joined on Zoom (lateness counts from the later of the
     // slot and the tutor)
