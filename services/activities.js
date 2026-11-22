@@ -71,7 +71,7 @@ export const activityFields = (body, { partial = false } = {}) => {
     if (!title) return { error: 'Donnez un titre à l’activité' };
     out.title = title.slice(0, 120);
   }
-  const LONG = ['description', 'objective', 'review', 'bring', 'ambassador_brief'];
+  const LONG = ['description', 'objective', 'review', 'bring', 'ambassador_brief', 'ambassador_guide'];
   for (const k of [
     'kind',
     'description',
@@ -83,6 +83,7 @@ export const activityFields = (body, { partial = false } = {}) => {
     'return_point2',
     'return_point3',
     'ambassador_brief',
+    'ambassador_guide',
     'program',
     'objective',
     'bring',
