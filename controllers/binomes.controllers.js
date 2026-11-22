@@ -706,11 +706,16 @@ export const editSession = async (req, res) => {
     const held = session.attendance === 'présent';
     const progress = Number(req.body.progress) || null;
     const wasLate = session.late;
+    // The real duration can be corrected (a session that ran longer than the slot)
+    const duration = Number(req.body.duration_minutes) || null;
     await session.update({
       work: String(req.body.work ?? '').trim() || null,
       remark: String(req.body.remark ?? '').trim() || null,
       progress: held && progress >= 1 && progress <= 5 ? progress : null,
       late: held && req.body.late === true,
+      ...(held && duration
+        ? { duration_minutes: Math.min(Math.max(duration, 15), 600) }
+        : {}),
     });
     res.json(session);
     if (session.late && !wasLate) tellLate(pair, session);
