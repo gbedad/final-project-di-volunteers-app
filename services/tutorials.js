@@ -24,9 +24,25 @@ export const CATALOGUE = [
   },
   {
     slug: 'seance-hors-creneau',
-    title: 'Séance hors créneau : la déclarer',
+    title: 'Séance en plus : la déclarer',
     description:
-      "Une séance tenue à un autre horaire que le créneau habituel, en plus de la séance prévue : la déclarer avec ses horaires.",
+      "Une deuxième séance le même jour, en plus du créneau : la déclarer avec ses horaires, puis émarger la séance en plus.",
+    audience: 'tuteurs',
+    minutes: 1,
+  },
+  {
+    slug: 'seance-deplacee',
+    title: 'Créneau déplacé : le déclarer',
+    description:
+      "Le créneau du jour a eu lieu à un autre horaire : indiquer le nouvel horaire, puis émarger la séance déplacée.",
+    audience: 'tuteurs',
+    minutes: 1,
+  },
+  {
+    slug: 'seance-sans-creneau',
+    title: 'Séance sans créneau : la déclarer',
+    description:
+      "Une séance le jour où l'élève n'a pas de créneau : la déclarer depuis la fiche de l'élève, puis l'émarger.",
     audience: 'tuteurs',
     minutes: 1,
   },
@@ -45,17 +61,21 @@ const rows = async (sql, replacements) => {
   }
 };
 
+// has_file: the video is in the storage (team); has_video: the tutors see it,
+// which needs the video to be published (team switch in Documents)
 const shown = (tutorial, video) => ({
   ...tutorial,
-  has_video: !!video,
+  has_file: !!video,
+  has_video: !!video && !!video.published,
+  published: !!video && !!video.published,
   filename: video?.filename || null,
   size: video ? Number(video.size) : null,
   uploaded_at: video?.uploaded_at || null,
 });
 
-// Every tutorial of the catalogue, with whether its video is there
+// Every tutorial of the catalogue, with whether its video is there and published
 export const listTutorials = async () => {
-  const videos = await rows('select slug, filename, size, uploaded_at from tutorial_videos');
+  const videos = await rows('select slug, filename, size, uploaded_at, published from tutorial_videos');
   return CATALOGUE.map((t) => shown(t, videos.find((v) => v.slug === t.slug)));
 };
 
@@ -64,10 +84,19 @@ export const getTutorial = async (slug) => {
   const tutorial = findTutorial(slug);
   if (!tutorial) return null;
   const [video] = await rows('select * from tutorial_videos where slug = :slug', { slug });
+  const published = !!video && !!video.published;
   return {
     ...shown(tutorial, video),
-    url: video ? await fileUrl(video.video_key, 6 * 3600) : null,
+    url: published ? await fileUrl(video.video_key, 6 * 3600) : null,
   };
+};
+
+// Team: the tutors see the video (or not). Needs a video in the storage.
+export const setPublished = async (slug, published) => {
+  const [video] = await rows('select slug from tutorial_videos where slug = :slug', { slug });
+  if (!video) return false;
+  await q('update tutorial_videos set published = :published where slug = :slug', { slug, published: !!published });
+  return true;
 };
 
 // The new video replaces the previous one (same link for the tutors)

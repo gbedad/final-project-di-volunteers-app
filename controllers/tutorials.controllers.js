@@ -1,6 +1,6 @@
 import { uploadTutorialVideo, TUTORIAL_VIDEO_MAX } from '../config/multer.js';
 import { deleteStoredFile } from '../config/aws.config.js';
-import { findTutorial, getTutorial, listTutorials, removeVideo, saveVideo } from '../services/tutorials.js';
+import { findTutorial, getTutorial, listTutorials, removeVideo, saveVideo, setPublished } from '../services/tutorials.js';
 
 const fail = (res, err, message) => {
   console.log(err);
@@ -55,5 +55,19 @@ export const deleteVideo = async (req, res) => {
     res.json(await getTutorial(req.params.slug));
   } catch (err) {
     fail(res, err, 'La vidéo n’a pas pu être supprimée');
+  }
+};
+
+// Team: the tutors see the video of this tutorial, or not. Body: { published }
+export const publication = async (req, res) => {
+  try {
+    if (typeof req.body.published !== 'boolean') {
+      return res.status(400).json({ error: 'Indiquez si le tutoriel est publié ou non' });
+    }
+    const done = await setPublished(req.params.slug, req.body.published);
+    if (!done) return res.status(409).json({ error: 'Envoyez d’abord la vidéo de ce tutoriel' });
+    res.json({ slug: req.params.slug, published: req.body.published });
+  } catch (err) {
+    fail(res, err, 'Le statut de publication n’a pas pu être enregistré');
   }
 };
