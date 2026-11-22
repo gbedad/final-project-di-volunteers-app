@@ -43,6 +43,27 @@ const syncStudentStatus = async (studentId) => {
 };
 
 // Reports of several pairs, grouped by pair
+// The session a sign-in or a report is for, on a day. Its exceptional
+// session when named (extra_id), else: the replacement of the slot, the
+// slot, or the session in addition. null = the regular session of the slot.
+export const targetOf = (pair, date, dayExtras, extraId) => {
+  if (extraId) {
+    const named = dayExtras.find((e) => e.id === Number(extraId));
+    return named ? { extra: named } : { error: 'Cette séance exceptionnelle n’existe pas ce jour-là' };
+  }
+  const moved = dayExtras.find((e) => e.kind === 'remplacement');
+  if (moved) return { extra: moved };
+  if (slotOnDate(pair, date)) return { extra: null };
+  return { extra: dayExtras.find((e) => e.kind === 'supplementaire') || null };
+};
+// Rows of the same session on that day: its exceptional session (or none).
+// When it is the only session of the day, every row of that day is its own
+// (rows written before the extra_id column)
+const sameSession = (pair, date, extra) => {
+  if (extra && (extra.kind === 'remplacement' || !slotOnDate(pair, date))) return {};
+  return extra ? { extra_id: extra.id } : { extra_id: null };
+};
+
 const sessionsByPair = async (pairIds) => {
   const sessions = pairIds.length
     ? await Seances.findAll({
@@ -55,7 +76,9 @@ const sessionsByPair = async (pairIds) => {
   const extras = sessions.length ? await extrasOf([...new Set(sessions.map((s) => s.binome_id))]) : {};
   const groups = {};
   for (const session of sessions) {
-    const extra = extraOn(extras[session.binome_id], String(session.date).slice(0, 10));
+    const extra = session.extra_id
+      ? (extras[session.binome_id] || []).find((e) => e.id === session.extra_id) || null
+      : null;
     (groups[session.binome_id] = groups[session.binome_id] || []).push({ ...session, extra_kind: extra?.kind || null });
   }
   return groups;
@@ -486,14 +509,17 @@ export const signIn = async (req, res) => {
     if (!pair || pair.tutor_id !== me(req)) return res.status(404).json({ error: 'Binôme introuvable' });
     if (pair.status !== 'actif') return res.status(409).json({ error: 'Ce binôme n’est pas en cours' });
     const { date, day } = parisNow();
-    // Exceptional session today: its hours, and its place (on site or not)
-    const extra = extraOn((await extrasOf([pair.id], date, date))[pair.id], date);
+    // Which session: the slot, or an exceptional one of today (its hours and
+    // its place, on site or not); body.extra_id names it when there are two
+    const target = targetOf(pair, date, (await extrasOf([pair.id], date, date))[pair.id] || [], req.body.extra_id);
+    if (target.error) return res.status(400).json({ error: target.error });
+    const extra = target.extra;
     if (extra ? extra.remote : !needsSignIn(pair)) {
       return res.status(400).json({ error: 'Séance à distance : le rapport Zoom fait foi, pas d’émargement.' });
     }
     const attendance = req.body.attendance === 'absent' ? 'absent' : 'présent';
     const late = attendance === 'présent' && req.body.late === true;
-    const existing = await Seances.findOne({ where: { binome_id: pair.id, date } });
+    const existing = await Seances.findOne({ where: { binome_id: pair.id, date, ...sameSession(pair, date, extra) } });
     if (existing) {
       return res.status(409).json({ error: 'Séance déjà émargée aujourd’hui', session: existing });
     }
@@ -503,6 +529,7 @@ export const signIn = async (req, res) => {
       binome_id: pair.id,
       author_id: me(req),
       date,
+      extra_id: extra ? extra.id : null,
       attendance,
       duration_minutes: attendance === 'présent' && duration > 0 ? duration : null,
       late,
@@ -616,10 +643,21 @@ export const addSession = async (req, res) => {
     // time of the sign-in, created_at, stays as the proof)
     // One session is one row: the report completes the row already there for
     // that day when it has no report yet (sign-in, Zoom, Jotform, the team)
+    // The session reported: the one named (extra_id), or the one the day holds
+    // (see targetOf). When it is the only session of the day, every row of
+    // that day is its own (rows written before the extra_id column)
+    let target = { extra: null };
+    if (!req.body.extra) {
+      target = targetOf(pair, date, (await extrasOf([pair.id], date, date))[pair.id] || [], req.body.extra_id);
+      if (target.error) return res.status(400).json({ error: target.error });
+    }
+    const scope = sameSession(pair, date, target.extra);
+    const solo = Object.keys(scope).length === 0;
     const complete = await Seances.findOne({
       where: {
         binome_id: pair.id,
         date,
+        ...scope,
         [Op.or]: [
           { work: { [Op.ne]: null } },
           { progress: { [Op.ne]: null } },
@@ -632,6 +670,7 @@ export const addSession = async (req, res) => {
       return res.status(409).json({ error: 'Un compte-rendu est déjà enregistré pour cette date' });
     }
     // A session in addition to the slot, held earlier (told by the tutor)
+    let extraId = target.extra ? target.extra.id : null;
     if (req.body.extra) {
       const out = await addExtra(
         pair,
@@ -641,17 +680,19 @@ export const addSession = async (req, res) => {
       );
       if (out.error) return res.status(400).json({ error: out.error });
       if (attendance === 'présent' && !duration) fields.duration_minutes = extraMinutes(out.extra);
+      extraId = out.extra.id;
     }
     const open = req.body.extra
       ? null
       : await Seances.findOne({
-          where: { binome_id: pair.id, date, work: null, progress: null, remark: null },
+          where: { binome_id: pair.id, date, ...scope, work: null, progress: null, remark: null },
           order: [['id', 'ASC']],
         });
     if (open) {
       const wasLate = open.late;
       await open.update({
         ...fields,
+        ...(solo && extraId && !open.extra_id ? { extra_id: extraId } : {}),
         author_id: me(req),
         duration_minutes:
           attendance === 'présent' ? fields.duration_minutes ?? open.duration_minutes : null,
@@ -660,7 +701,13 @@ export const addSession = async (req, res) => {
       if (fields.late && !wasLate) tellLate(pair, open);
       return;
     }
-    const session = await Seances.create({ binome_id: pair.id, author_id: me(req), date, ...fields });
+    const session = await Seances.create({
+      binome_id: pair.id,
+      author_id: me(req),
+      date,
+      extra_id: extraId,
+      ...fields,
+    });
     res.status(201).json(session);
     if (fields.late) tellLate(pair, session);
   } catch (err) {

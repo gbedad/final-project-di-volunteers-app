@@ -71,8 +71,15 @@ export const addExtra = async (pair, body, userId, { byTutor = false } = {}) => 
   if (!HHMM.test(start) || !HHMM.test(end) || end <= start) {
     return { error: 'Horaire incomplet ou heure de fin avant le début' };
   }
-  if (byTutor && (kind !== 'supplementaire' || date > parisToday())) {
-    return { error: 'Seule l’association programme une séance exceptionnelle à venir' };
+  // Tutor: a past or today session in addition, or today's session moved
+  // (replacing today's slot). Anything else is set by the association.
+  if (byTutor) {
+    const today = parisToday();
+    const inAddition = kind === 'supplementaire' && date <= today;
+    const moved = kind === 'remplacement' && date === today;
+    if (!inAddition && !moved) {
+      return { error: 'Seule l’association programme une séance exceptionnelle à venir' };
+    }
   }
   const [taken] = await q('select id from extra_sessions where binome_id = :id and date = :date', { id: pair.id, date });
   if (taken) return { error: 'Une séance exceptionnelle existe déjà ce jour-là' };
