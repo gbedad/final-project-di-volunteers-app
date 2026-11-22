@@ -14,6 +14,22 @@ export const CATALOGUE = [
     audience: 'tuteurs',
     minutes: 1,
   },
+  {
+    slug: 'seance-supplementaire',
+    title: 'Séance supplémentaire : écrire le compte-rendu',
+    description:
+      "Une séance ajoutée par l'association (souvent à distance, sur Zoom) : écrire le compte-rendu sans émarger, en corrigeant la durée réelle.",
+    audience: 'tuteurs',
+    minutes: 1,
+  },
+  {
+    slug: 'seance-hors-creneau',
+    title: 'Séance hors créneau : la déclarer',
+    description:
+      "Une séance tenue à un autre horaire que le créneau habituel, en plus de la séance prévue : la déclarer avec ses horaires.",
+    audience: 'tuteurs',
+    minutes: 1,
+  },
 ];
 
 export const findTutorial = (slug) => CATALOGUE.find((t) => t.slug === slug) || null;
