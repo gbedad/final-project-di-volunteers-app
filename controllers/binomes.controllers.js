@@ -614,15 +614,22 @@ export const addSession = async (req, res) => {
     };
     // A report for a day already signed in completes that session (the
     // time of the sign-in, created_at, stays as the proof)
-    const signed = await Seances.findOne({
-      where: { binome_id: pair.id, date, author_id: me(req), work: null, progress: null, remark: null },
+    // One session is one row: the report completes the row already there for
+    // that day when it has no report yet (sign-in, Zoom, Jotform, the team)
+    const complete = await Seances.findOne({
+      where: {
+        binome_id: pair.id,
+        date,
+        [Op.or]: [
+          { work: { [Op.ne]: null } },
+          { progress: { [Op.ne]: null } },
+          { remark: { [Op.ne]: null } },
+        ],
+      },
     });
-    if (signed) {
-      const wasLate = signed.late;
-      await signed.update(fields);
-      res.status(200).json(signed);
-      if (fields.late && !wasLate) tellLate(pair, signed);
-      return;
+    // A second report for the same day, unless it is a session in addition
+    if (complete && !req.body.extra) {
+      return res.status(409).json({ error: 'Un compte-rendu est déjà enregistré pour cette date' });
     }
     // A session in addition to the slot, held earlier (told by the tutor)
     if (req.body.extra) {
@@ -634,6 +641,24 @@ export const addSession = async (req, res) => {
       );
       if (out.error) return res.status(400).json({ error: out.error });
       if (attendance === 'présent' && !duration) fields.duration_minutes = extraMinutes(out.extra);
+    }
+    const open = req.body.extra
+      ? null
+      : await Seances.findOne({
+          where: { binome_id: pair.id, date, work: null, progress: null, remark: null },
+          order: [['id', 'ASC']],
+        });
+    if (open) {
+      const wasLate = open.late;
+      await open.update({
+        ...fields,
+        author_id: me(req),
+        duration_minutes:
+          attendance === 'présent' ? fields.duration_minutes ?? open.duration_minutes : null,
+      });
+      res.status(200).json(open);
+      if (fields.late && !wasLate) tellLate(pair, open);
+      return;
     }
     const session = await Seances.create({ binome_id: pair.id, author_id: me(req), date, ...fields });
     res.status(201).json(session);
