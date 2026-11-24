@@ -117,7 +117,7 @@ export const requestOutingConsent = async (registrationId, { channel = 'email', 
       channel,
       sent_to: channel === 'email' ? parent.email : parent.phone,
       expires_at: expiresAt,
-      whatsapp: `Bonjour${parent.first_name ? ` ${parent.first_name}` : ''}, ${r.first_name} est inscrit(e) à la sortie « ${r.title} » le ${when(r)}. Merci de donner votre accord spécifique en ligne (2 minutes) :\n\n${link}\n\n${me?.first_name ? `${me.first_name}, ` : ''}association Séphora Berrebi`,
+      whatsapp: `Bonjour${parent.first_name ? ` ${parent.first_name}` : ''},\n\n${r.first_name} est inscrit(e) à la sortie ${r.title} le ${when(r)}.\nMerci de donner en ligne votre accord spécifique pour cette activité (2 minutes) :\n\n${link}\n\n${me?.first_name ? `${me.first_name}\n` : ''}Association Séphora Berrebi`,
     },
   };
 };
