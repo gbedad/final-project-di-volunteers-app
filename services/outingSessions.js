@@ -3,7 +3,7 @@
 // of their tutoring sessions that day (same check as for the outing itself).
 import db from '../config/database.js';
 import { conflictsOf, releaseTutors, tellTutors } from './activityConflicts.js';
-import { ATTENDANCES, getActivity } from './activities.js';
+import { SESSION_ATTENDANCES, getActivity } from './activities.js';
 
 export const KINDS = {
   prep: { label: 'séance préparatoire' },
@@ -104,7 +104,7 @@ export const addChildren = async (activityId, kind, studentIds, userId) => {
 };
 
 export const setPresence = async (participantId, attendance) => {
-  if (attendance && !ATTENDANCES.includes(attendance)) return { error: 'Présence inconnue' };
+  if (attendance && !SESSION_ATTENDANCES.includes(attendance)) return { error: 'Émargement inconnu' };
   const row = await one(
     'update activity_session_participants set attendance = :attendance where id = :id returning id, attendance',
     { id: participantId, attendance: attendance || null }

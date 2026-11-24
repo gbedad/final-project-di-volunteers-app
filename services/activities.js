@@ -11,6 +11,8 @@ export const REGISTRATION_STATUSES = ['inscrit', 'attente', 'désisté'];
 export const PAYMENT_METHODS = ['assoconnect', 'espèces', 'chèque', 'virement', 'carte', 'autre'];
 const STAFF_ROLES = ['responsable', 'accompagnateur', 'parent'];
 export const ATTENDANCES = ['présent', 'absent', 'excusé'];
+// Émargement of the preparation and post-activité sessions (client: activityUtils.js)
+export const SESSION_ATTENDANCES = ["à l'heure", 'en retard', 'excusé(e)', 'non excusé(e)'];
 const WAYS = ['accompagné', 'seul'];
 export const MEMBERSHIP_FEE = 10;
 // School year of a day: "2026-2027" from 1 September

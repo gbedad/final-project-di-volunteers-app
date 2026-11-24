@@ -4,7 +4,9 @@
 // "now" (YYYY-MM-DD, Paris). These sessions are not outings: their children
 // are counted apart and never added to the outing figures.
 
-const ABSENT = ['absent', 'excusé'];
+// Émargement values (SESSION_ATTENDANCES in activities.js): late counts as present
+const PRESENT = ["à l'heure", 'en retard'];
+const ABSENT = ['excusé(e)', 'non excusé(e)'];
 const pct = (n, total) => (total ? Math.round((n * 100) / total) : null);
 
 // "11:00" - "16:30" -> 5.5 hours (null when unknown)
@@ -29,7 +31,7 @@ const kindFigures = (kind, outings, participants, now) => {
   const done = planned.filter((o) => sessionOf(o, kind).date <= now);
   const doneIds = new Set(done.map((o) => o.id));
   const rows = participants.filter((p) => p.kind === kind && doneIds.has(p.activity_id));
-  const present = rows.filter((p) => p.attendance === 'présent').length;
+  const present = rows.filter((p) => PRESENT.includes(p.attendance)).length;
   const absent = rows.filter((p) => ABSENT.includes(p.attendance)).length;
   // Hours the children spent (session length x children who came)
   const hours = done.reduce((n, o) => {
