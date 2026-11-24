@@ -41,8 +41,8 @@ export const outingItems = (child, a) => [
   {
     id: 'transport',
     required: true,
-    title: 'Déplacements',
-    text: `J'autorise les accompagnateurs à emmener ${child} à pied ou en transports en commun pendant la sortie.`,
+    title: 'Aller-retour',
+    text: `J'autorise les accompagnateurs à emmener ${child} à pied ou en transports en commun, à l'aller et au retour de la sortie.`,
   },
   {
     id: 'urgence',
@@ -85,7 +85,7 @@ const send = (to, subject, html, label, attachments) =>
 export const requestOutingConsent = async (registrationId, { channel = 'email', parent: n = 1 }, me) => {
   const r = await registrationWithAll('r.id = :registrationId', { registrationId });
   if (!r || r.status !== 'inscrit') return { error: 'Inscription introuvable', status: 404 };
-  if (r.consent_at) return { error: 'Autorisation déjà reçue', status: 409 };
+  if (r.consent_at) return { error: 'Accord spécifique déjà reçu', status: 409 };
   if (r.activity_status === 'annulée') return { error: 'Activité annulée' };
   const parent = parentOf(r, n === 2 ? 2 : 1);
   if (channel === 'email' && !parent.email) return { error: "Pas d'e-mail pour ce parent : utilisez WhatsApp" };
@@ -101,12 +101,12 @@ export const requestOutingConsent = async (registrationId, { channel = 'email', 
   if (channel === 'email') {
     send(
       parent.email,
-      `Sortie « ${r.title} » : autorisation pour ${r.first_name}`,
+      `Accord spécifique pour la sortie « ${r.title} » : ${r.first_name}`,
       `<p>Bonjour${parent.first_name ? ` ${escapeHtml(parent.first_name)}` : ''},</p>
-      <p><b>${escapeHtml(r.first_name)}</b> est inscrit(e) à la sortie culturelle « ${escapeHtml(r.title)} » le ${escapeHtml(when(r))}.</p>
-      <p>Merci de donner votre autorisation en ligne (2 minutes, depuis votre téléphone) :</p>
-      <p>${emailButton(link, "Donner l'autorisation")}</p>
-      <p>Ce lien vous est personnel.</p>
+      <p><b>${escapeHtml(r.first_name)}</b> est inscrit(e) à la sortie culturelle « ${escapeHtml(r.title)} » le ${escapeHtml(when(r))}${r.place ? ` (${escapeHtml(r.place)})` : ''}.</p>
+      <p>Pour qu'${escapeHtml(r.first_name)} puisse y participer, merci de donner votre <b>accord spécifique</b> en ligne. Cela prend deux minutes, depuis votre téléphone : vous lisez, vous cochez, vous indiquez comment votre enfant arrive et repart, puis vous signez.</p>
+      <p>${emailButton(link, "Donner mon accord")}</p>
+      <p>Ce lien est personnel. Il reste valable jusqu'au jour de la sortie. Une copie signée vous sera envoyée par e-mail.</p>
       <p>Bien cordialement,<br>L'association Séphora Berrebi</p>`,
       'Outing consent request'
     );
@@ -117,7 +117,7 @@ export const requestOutingConsent = async (registrationId, { channel = 'email', 
       channel,
       sent_to: channel === 'email' ? parent.email : parent.phone,
       expires_at: expiresAt,
-      whatsapp: `Bonjour${parent.first_name ? ` ${parent.first_name}` : ''}, ${r.first_name} est inscrit(e) à la sortie « ${r.title} » le ${when(r)}. Merci de donner votre autorisation en ligne (2 minutes) :\n\n${link}\n\n${me?.first_name ? `${me.first_name}, ` : ''}association Séphora Berrebi`,
+      whatsapp: `Bonjour${parent.first_name ? ` ${parent.first_name}` : ''}, ${r.first_name} est inscrit(e) à la sortie « ${r.title} » le ${when(r)}. Merci de donner votre accord spécifique en ligne (2 minutes) :\n\n${link}\n\n${me?.first_name ? `${me.first_name}, ` : ''}association Séphora Berrebi`,
     },
   };
 };
@@ -197,7 +197,7 @@ const wrapText = (text, font, size, width) => {
 };
 export const buildPdf = async ({ r, items, choices, signer, relation, arrival, departure, phone, signedAt, ip, signaturePng }) => {
   const pdf = await PDFDocument.create();
-  pdf.setTitle(`Autorisation de sortie - ${r.first_name} ${r.last_name || ''}`);
+  pdf.setTitle(`Accord spécifique de sortie - ${r.first_name} ${r.last_name || ''}`);
   pdf.setAuthor('Association Séphora Berrebi');
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -220,7 +220,7 @@ export const buildPdf = async ({ r, items, choices, signer, relation, arrival, d
     page.drawImage(logo, { x: (W - 64) / 2, y: y - 64, width: 64, height: 64 });
     y -= 76;
   } catch {}
-  para('Autorisation de sortie', { size: 18, font: bold, color: dark, gap: 2 });
+  para('Accord spécifique de sortie', { size: 18, font: bold, color: dark, gap: 2 });
   para(`Sortie culturelle « ${r.title} », ${when(r)}${r.place ? `, ${r.place}` : ''}`, { font: bold, gap: 12 });
   para(`Enfant : ${r.first_name} ${r.last_name || ''}${r.level ? ` (${r.level})` : ''}`, { font: bold });
   para(`Responsable légal : ${signer} (${relation})`, { font: bold, gap: 12 });
@@ -245,7 +245,7 @@ export const buildPdf = async ({ r, items, choices, signer, relation, arrival, d
   page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 0.5, color: grey });
   y -= 8;
   para(
-    `Autorisation donnée en ligne sur MyCogniverse depuis un lien personnel envoyé le ${new Date(r.consent_requested_at).toLocaleDateString('fr-FR')}${
+    `Accord donné en ligne sur MyCogniverse depuis un lien personnel envoyé le ${new Date(r.consent_requested_at).toLocaleDateString('fr-FR')}${
       r.consent_channel === 'email' ? ` à ${r.consent_sent_to}` : ' par WhatsApp'
     }. Adresse IP : ${ip || 'inconnue'}. Référence : inscription ${r.id}.`,
     { size: 8, color: grey }
@@ -258,7 +258,7 @@ export const buildPdf = async ({ r, items, choices, signer, relation, arrival, d
 export const signOutingConsent = async (token, body, ip) => {
   const { r, error, status } = await byToken(token);
   if (error) return { error, status };
-  if (r.consent_at) return { error: 'Autorisation déjà signée', status: 409 };
+  if (r.consent_at) return { error: 'Accord spécifique déjà signé', status: 409 };
   if (r.status !== 'inscrit' || r.activity_status === 'annulée') return { error: 'Inscription annulée', status: 410 };
   if (new Date(r.consent_expires_at) < new Date()) return { error: 'Lien expiré : demandez-en un nouveau', status: 410 };
   const signer = String(body.signer_name || '').trim().slice(0, 120);
@@ -292,7 +292,7 @@ export const signOutingConsent = async (token, body, ip) => {
   await s3.send(
     new PutObjectCommand({ Bucket: PRIVATE_BUCKET, Key: key, Body: Buffer.from(pdfBytes), ContentType: 'application/pdf' })
   );
-  const filename = `Autorisation de sortie - ${r.title} - ${r.first_name} ${r.last_name || ''}.pdf`.replace(/\s+/g, ' ');
+  const filename = `Accord spécifique de sortie - ${r.title} - ${r.first_name} ${r.last_name || ''}.pdf`.replace(/\s+/g, ' ');
   const file = await StudentFiles.create({ filename, mimetype: 'application/pdf', path: key, studentId: r.student_id });
   await q(
     `update activity_registrations set consent_at = :today, consent_source = 'en ligne', consent_signer = :signer,
@@ -316,8 +316,8 @@ export const signOutingConsent = async (token, body, ip) => {
   if (email) {
     send(
       email,
-      `Autorisation de sortie de ${r.first_name} : « ${r.title} »`,
-      `<p>Bonjour,</p><p>Merci, nous avons bien reçu votre autorisation pour la sortie « ${escapeHtml(r.title)} » de
+      `Accord spécifique de ${r.first_name} : « ${r.title} »`,
+      `<p>Bonjour,</p><p>Merci, nous avons bien reçu votre accord spécifique pour la sortie « ${escapeHtml(r.title)} » de
       <b>${escapeHtml(r.first_name)}</b>. Vous trouverez votre exemplaire en pièce jointe.</p>
       <p>Bien cordialement,<br>L'association Séphora Berrebi</p>`,
       'Outing consent copy',
@@ -344,10 +344,10 @@ export const storePaperConsent = async (registrationId, dataUrl, name) => {
     { registrationId }
   );
   if (!r) return { error: 'Inscription introuvable', status: 404 };
-  if (r.consent_source === 'en ligne') return { error: 'Autorisation déjà signée en ligne', status: 409 };
+  if (r.consent_source === 'en ligne') return { error: 'Accord spécifique déjà signé en ligne', status: 409 };
   const key = `student-documents/${r.student_id}/autorisation-sortie-papier-${r.activity_id}-${Date.now()}.${ext}`;
   await s3.send(new PutObjectCommand({ Bucket: PRIVATE_BUCKET, Key: key, Body: body, ContentType: m[1] }));
-  const filename = `Autorisation de sortie (papier) - ${r.title} - ${r.first_name} ${r.last_name || ''}.${ext}`.replace(/\s+/g, ' ');
+  const filename = `Accord spécifique de sortie (papier) - ${r.title} - ${r.first_name} ${r.last_name || ''}.${ext}`.replace(/\s+/g, ' ');
   const file = await StudentFiles.create({ filename, mimetype: m[1], path: key, studentId: r.student_id });
   const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
   await q(

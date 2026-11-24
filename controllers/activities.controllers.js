@@ -134,7 +134,7 @@ export const update = async (req, res) => {
     if (moved || fields.status === 'annulée') await releaseTutors(before, registeredIds(before), before.date);
     res.json(await shown(await getActivity(a.id), req));
   } catch (err) {
-    fail(res, err, "L'activité n'a pas pu être enregistrée");
+    fail(res, err, "L'activité n'a pas pu être enregistré");
   }
 };
 // An outing with registered children: deleted by "superculture" and the
@@ -465,7 +465,7 @@ export const paperConsent = async (req, res) => {
 export const consentPdf = async (req, res) => {
   try {
     const file = await outingConsentFile(Number(req.params.id));
-    if (!file) return res.status(404).json({ error: 'Pas de document d’autorisation' });
+    if (!file) return res.status(404).json({ error: 'Pas de document d’accord spécifique' });
     res.json({ url: await fileUrl(file.path) });
   } catch (err) {
     fail(res, err, 'Document indisponible');
@@ -483,6 +483,6 @@ export const signConsent = async (req, res) => {
     const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim();
     answer(res, await signOutingConsent(String(req.params.token), req.body, ip), 'result');
   } catch (err) {
-    fail(res, err, "L'autorisation n'a pas pu être enregistrée");
+    fail(res, err, "L'accord spécifique n'a pas pu être enregistré");
   }
 };
