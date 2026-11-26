@@ -244,7 +244,7 @@ export const todoList = async () => {
       'Élèves en binôme sans accord : des parents, ou de l’élève lui-même s’il est majeur.'),
     block('proposals', 'Propositions sans réponse', 'warning', { path: '/binomes' }, proposals,
       `Tuteurs qui n'ont pas répondu depuis plus de ${ANSWER_DAYS} jours.`),
-    block('waiting', 'Élèves sans tuteur', 'info', { path: '/eleves' }, waiting),
+    block('waiting', 'Élève en attente de tuteur', 'info', { path: '/eleves' }, waiting),
     block('conventions', 'Conventions famille à envoyer', 'warning', { path: '/eleves' }, conventions,
       'Élèves inscrits depuis la mise en place des conventions : à envoyer depuis la fiche élève, ou à relancer.'),
     block('confirm', 'Séances non renseignées', 'warning', { path: '/binomes/seances' }, toConfirm,
