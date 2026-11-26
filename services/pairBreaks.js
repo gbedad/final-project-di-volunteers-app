@@ -15,8 +15,6 @@ export const BREAK_REASONS = {
   vacances: 'Vacances',
   eleve: 'Élève indisponible',
   tuteur: 'Tuteur indisponible',
-  wa: 'Messages groupés WA',
-  non_renseigne: 'Non renseigné',
   autre: 'Autre',
 };
 // A break longer than this is a pause of the pair (status "en pause")
