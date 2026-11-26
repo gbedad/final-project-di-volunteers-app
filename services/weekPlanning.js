@@ -9,7 +9,7 @@ import { scheduleOn, dayOf } from './pairSchedule.js';
 import { addDays, offDayFinder, parisToday, weekOf } from './schoolCalendar.js';
 import { breaksOf, breakOn } from './pairBreaks.js';
 import { extrasOf, extraOn } from './extraSessions.js';
-import { activeRooms, roomIndex, markRoomConflicts } from './rooms.js';
+import { activeRooms, allRooms, roomIndex, markRoomConflicts } from './rooms.js';
 
 const REMOTE = /^\s*(à|a) distance\s*$/i;
 const isRemote = (pair) => REMOTE.test(pair.how_location || '');
@@ -53,6 +53,8 @@ export const weekPlanning = async (from) => {
   // Room of each session of the week, and the rooms to choose from
   const rooms = await roomIndex(ids, from, to);
   const roomChoices = await activeRooms();
+  // Capacity and alert threshold of every room (also the inactive ones)
+  const roomInfo = Object.fromEntries((await allRooms()).map((r) => [r.id, r]));
 
   const days = dates.map((date) => ({ date, day: dayOf(date), off: off(date), rows: [] }));
 
@@ -140,7 +142,7 @@ export const weekPlanning = async (from) => {
       };
     });
     d.rows.sort((a, b) => String(a.start).localeCompare(String(b.start)) || a.student.localeCompare(b.student));
-    markRoomConflicts(d.rows);
+    markRoomConflicts(d.rows, (id) => roomInfo[id]);
   }
 
   return { from, to, days, rooms: roomChoices, total: days.reduce((n, d) => n + d.rows.length, 0) };
