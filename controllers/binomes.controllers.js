@@ -327,6 +327,8 @@ const CONFIRMATION_CHANNELS = {
   appel_tuteur: 'Appel au tuteur',
   message_tuteur: 'Message au tuteur',
   famille: 'Contact avec la famille',
+  wa: 'Messages groupés WA',
+  non_renseigne: 'Non renseigné',
   autre: 'Autre',
 };
 export const confirmSession = async (req, res) => {
