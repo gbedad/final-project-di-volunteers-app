@@ -1,7 +1,7 @@
 // Rooms (salles) of the three sites, and the room of each session. The room
 // changes from one week to the next, so it is kept per session (pair, date,
 // start time), not on the pair. Tables: salles, session_rooms (see
-// scripts/migrate-salles.js).
+// scripts/migrate-salles.js and scripts/migrate-salles-capacite.js).
 import db from '../config/database.js';
 import { addDays } from './schoolCalendar.js';
 
@@ -18,11 +18,13 @@ export const roomLabel = (r) => `${r.site} · ${r.name}`;
 
 // Active rooms, by site then name: the choices of the planning
 export const activeRooms = async () =>
-  (await q('select id, site, name from salles where active order by site, name')).map((r) => ({
+  (await q('select id, site, name, capacite, seuil_alerte from salles where active order by site, name')).map((r) => ({
     id: r.id,
     site: r.site,
     name: r.name,
     label: roomLabel(r),
+    capacite: r.capacite,
+    seuil_alerte: r.seuil_alerte,
   }));
 
 // Rooms of these pairs between two days: { [binome_id]: [{ date, start_time, room_id, room_label }] }
@@ -100,22 +102,107 @@ export const copyPreviousWeekRooms = async (from, userId) => {
   return copied.length;
 };
 
-// Two sessions of the same room overlap in time: both are flagged. Rows
-// without a room, pauses and remote sessions are left out.
-export const markRoomConflicts = (rows) => {
+// Sessions of the same room that overlap in time. A session is in conflict
+// when more sessions than the room's capacity are there at the same time;
+// it gets a warning from the room's alert threshold (3 for Salle Haute, whose
+// capacity is 4). A room of capacity 1 therefore refuses any overlap.
+// capacityOf(room_id) => { capacite, seuil_alerte }. Rows without a room,
+// pauses and remote sessions are left out.
+export const markRoomConflicts = (rows, capacityOf) => {
   const used = rows.filter((r) => r.room_id && !r.remote && r.kind !== 'pause');
   for (const r of used) {
     const s = minutesOf(r.start);
     const e = minutesOf(r.end);
     const clash = used.filter(
-      (o) =>
-        o !== r &&
-        o.room_id === r.room_id &&
-        minutesOf(o.start) < e &&
-        s < minutesOf(o.end)
+      (o) => o !== r && o.room_id === r.room_id && minutesOf(o.start) < e && s < minutesOf(o.end)
     );
-    r.room_conflict = clash.length > 0;
-    r.room_conflict_with = clash.map((o) => o.student);
+    const { capacite = 1, seuil_alerte = null } = capacityOf(r.room_id) || {};
+    const count = clash.length + 1;
+    const names = clash.map((o) => o.student);
+    r.room_count = count;
+    r.room_conflict = count > capacite;
+    r.room_conflict_with = names;
+    r.room_warning = !r.room_conflict && !!seuil_alerte && count >= seuil_alerte;
   }
   return rows;
+};
+
+// Management of the list (team): every room, active or not
+export const SITES = ['MdA', 'Gerty', 'Bibliothèque'];
+
+const roomRow = (r) => ({
+  id: r.id,
+  site: r.site,
+  name: r.name,
+  active: !!r.active,
+  capacite: r.capacite,
+  seuil_alerte: r.seuil_alerte ?? null,
+  label: roomLabel(r),
+});
+
+const ROOM_COLUMNS = 'id, site, name, active, capacite, seuil_alerte';
+
+export const allRooms = async () =>
+  (await q(`select ${ROOM_COLUMNS} from salles order by site, name`)).map(roomRow);
+
+const checkRoom = ({ site, name, capacite, seuil_alerte }) => {
+  if (!SITES.includes(site)) return 'Site inconnu';
+  const clean = String(name || '').trim();
+  if (!clean || clean.length > 80) return 'Nom de salle invalide (1 à 80 caractères)';
+  if (!Number.isInteger(capacite) || capacite < 1 || capacite > 10) return 'Capacité : un nombre entre 1 et 10';
+  if (seuil_alerte !== null && (!Number.isInteger(seuil_alerte) || seuil_alerte < 1 || seuil_alerte > capacite)) {
+    return 'Seuil d’alerte : vide, ou un nombre entre 1 et la capacité';
+  }
+  return null;
+};
+
+const DUPLICATE = /duplicate key|unique/i;
+
+// { site, name, capacite?, seuil_alerte? } => { room } or { error }
+export const createRoom = async ({ site, name, capacite = 1, seuil_alerte = null }) => {
+  const error = checkRoom({ site, name, capacite, seuil_alerte });
+  if (error) return { error };
+  try {
+    const [r] = await q(
+      `insert into salles (site, name, active, capacite, seuil_alerte) values (:site, :name, true, :capacite, :seuil_alerte)
+       returning ${ROOM_COLUMNS}`,
+      { site, name: String(name).trim(), capacite, seuil_alerte }
+    );
+    return { room: roomRow(r) };
+  } catch (err) {
+    if (DUPLICATE.test(err.message || '')) return { error: 'Cette salle existe déjà sur ce site' };
+    throw err;
+  }
+};
+
+// Partial update: site, name, active, capacite, seuil_alerte. Rooms used by
+// sessions are not deleted, only deactivated.
+export const updateRoom = async (id, body) => {
+  const [current] = await q(`select ${ROOM_COLUMNS} from salles where id = :id`, { id });
+  if (!current) return { error: 'Salle introuvable' };
+  const next = {
+    site: body.site ?? current.site,
+    name: body.name !== undefined ? String(body.name).trim() : current.name,
+    active: typeof body.active === 'boolean' ? body.active : current.active,
+    capacite: body.capacite !== undefined ? Number(body.capacite) : current.capacite,
+    seuil_alerte:
+      body.seuil_alerte !== undefined
+        ? body.seuil_alerte === null || body.seuil_alerte === ''
+          ? null
+          : Number(body.seuil_alerte)
+        : current.seuil_alerte ?? null,
+  };
+  const error = checkRoom(next);
+  if (error) return { error };
+  try {
+    const [r] = await q(
+      `update salles set site = :site, name = :name, active = :active, capacite = :capacite, seuil_alerte = :seuil_alerte
+        where id = :id returning ${ROOM_COLUMNS}`,
+      { id, ...next }
+    );
+    return { room: roomRow(r) };
+  } catch (err) {
+    if (DUPLICATE.test(err.message || '')) return { error: 'Cette salle existe déjà sur ce site' };
+    throw err;
+  }
 };
