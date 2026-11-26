@@ -16,6 +16,9 @@ const minutesOf = (hhmm) => {
 
 export const roomLabel = (r) => `${r.site} · ${r.name}`;
 
+// Length of the occupation window, in minutes
+const WINDOW = 30;
+
 // Active rooms, by site then name: the choices of the planning
 export const activeRooms = async () =>
   (await q('select id, site, name, capacite, seuil_alerte from salles where active order by site, name')).map((r) => ({
@@ -102,10 +105,12 @@ export const copyPreviousWeekRooms = async (from, userId) => {
   return copied.length;
 };
 
-// Sessions of the same room that overlap in time. A session is in conflict
-// when more sessions than the room's capacity are there at the same time;
-// it gets a warning from the room's alert threshold (3 for Salle Haute, whose
-// capacity is 4). A room of capacity 1 therefore refuses any overlap.
+// Occupation of a room, measured in windows of 30 minutes (on the hour and
+// the half hour): for a session, the largest number of sessions of the same
+// room present in one of the windows it covers. A session is in conflict
+// when that number is above the room's capacity; it gets a warning from the
+// room's alert threshold (3 for Salle Haute, whose capacity is 4). A room of
+// capacity 1 therefore refuses any overlap.
 // capacityOf(room_id) => { capacite, seuil_alerte }. Rows without a room,
 // pauses and remote sessions are left out.
 export const markRoomConflicts = (rows, capacityOf) => {
@@ -113,15 +118,18 @@ export const markRoomConflicts = (rows, capacityOf) => {
   for (const r of used) {
     const s = minutesOf(r.start);
     const e = minutesOf(r.end);
-    const clash = used.filter(
-      (o) => o !== r && o.room_id === r.room_id && minutesOf(o.start) < e && s < minutesOf(o.end)
-    );
+    const group = [r, ...used.filter((o) => o !== r && o.room_id === r.room_id && minutesOf(o.start) < e && s < minutesOf(o.end))];
+    // Busiest 30-minute window covered by this session: the sessions present in it
+    let peak = [r];
+    for (let b = Math.floor(s / WINDOW) * WINDOW; b < e; b += WINDOW) {
+      const present = group.filter((o) => minutesOf(o.start) < b + WINDOW && b < minutesOf(o.end));
+      if (present.length > peak.length) peak = present;
+    }
     const { capacite = 1, seuil_alerte = null } = capacityOf(r.room_id) || {};
-    const count = clash.length + 1;
-    const names = clash.map((o) => o.student);
+    const count = peak.length;
     r.room_count = count;
     r.room_conflict = count > capacite;
-    r.room_conflict_with = names;
+    r.room_conflict_with = peak.filter((o) => o !== r).map((o) => o.student);
     r.room_warning = !r.room_conflict && !!seuil_alerte && count >= seuil_alerte;
   }
   return rows;
