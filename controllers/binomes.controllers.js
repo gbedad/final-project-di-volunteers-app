@@ -327,6 +327,8 @@ const CONFIRMATION_CHANNELS = {
   appel_tuteur: 'Appel au tuteur',
   message_tuteur: 'Message au tuteur',
   famille: 'Contact avec la famille',
+  wa: 'Messages groupés WA',
+  non_renseigne: 'Non renseigné',
   autre: 'Autre',
 };
 export const confirmSession = async (req, res) => {
@@ -373,6 +375,45 @@ export const confirmSession = async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "La séance n'a pas pu être enregistrée" });
+  }
+};
+
+// The team corrects a session it confirmed (e.g. recorded as "Non renseigné"
+// and then known). Only those sessions: a tutor's report is not touched here.
+// Body: { attendance, cancelled_by, duration_minutes, late, channel, note }
+export const teamEditSession = async (req, res) => {
+  try {
+    const session = await Seances.findByPk(req.params.id);
+    if (!session) return res.status(404).json({ error: 'Séance introuvable' });
+    if (session.source !== 'equipe') {
+      return res.status(409).json({ error: "Seule une séance confirmée par l'équipe se modifie ici" });
+    }
+    const attendance = ATTENDANCES.includes(req.body.attendance) ? req.body.attendance : null;
+    if (!attendance) return res.status(400).json({ error: 'Indiquez ce qui s’est passé' });
+    const cancelledBy = attendance === 'annulé' ? req.body.cancelled_by : null;
+    if (attendance === 'annulé' && !CANCELLED_BY[cancelledBy]) {
+      return res.status(400).json({ error: 'Indiquez qui a annulé : l’élève ou le tuteur' });
+    }
+    const channel = CONFIRMATION_CHANNELS[req.body.channel];
+    if (!channel) return res.status(400).json({ error: 'Indiquez comment la séance a été confirmée' });
+    const given = Number(req.body.duration_minutes);
+    const note = String(req.body.note || '').trim().slice(0, 500);
+    await session.update({
+      attendance,
+      cancelled_by: cancelledBy,
+      duration_minutes:
+        attendance === 'présent'
+          ? given > 0 && given <= 600
+            ? given
+            : session.duration_minutes
+          : null,
+      late: attendance === 'présent' && req.body.late === true,
+      confirmation: note ? `${channel} — ${note}` : channel,
+    });
+    res.json(session);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "La séance n'a pas pu être modifiée" });
   }
 };
 
