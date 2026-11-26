@@ -119,3 +119,60 @@ export const markRoomConflicts = (rows) => {
   }
   return rows;
 };
+
+// Management of the list (team): every room, active or not
+export const SITES = ['MdA', 'Gerty', 'Bibliothèque'];
+
+const roomRow = (r) => ({ id: r.id, site: r.site, name: r.name, active: !!r.active, label: roomLabel(r) });
+
+export const allRooms = async () =>
+  (await q('select id, site, name, active from salles order by site, name')).map(roomRow);
+
+const checkRoom = ({ site, name }) => {
+  if (!SITES.includes(site)) return 'Site inconnu';
+  const clean = String(name || '').trim();
+  if (!clean || clean.length > 80) return 'Nom de salle invalide (1 à 80 caractères)';
+  return null;
+};
+
+const DUPLICATE = /duplicate key|unique/i;
+
+// { site, name } => { room } or { error }
+export const createRoom = async ({ site, name }) => {
+  const error = checkRoom({ site, name });
+  if (error) return { error };
+  try {
+    const [r] = await q('insert into salles (site, name, active) values (:site, :name, true) returning id, site, name, active', {
+      site,
+      name: String(name).trim(),
+    });
+    return { room: roomRow(r) };
+  } catch (err) {
+    if (DUPLICATE.test(err.message || '')) return { error: 'Cette salle existe déjà sur ce site' };
+    throw err;
+  }
+};
+
+// Partial update: site, name, active. Rooms used by sessions are not deleted,
+// only deactivated.
+export const updateRoom = async (id, body) => {
+  const [current] = await q('select id, site, name, active from salles where id = :id', { id });
+  if (!current) return { error: 'Salle introuvable' };
+  const next = {
+    site: body.site ?? current.site,
+    name: body.name !== undefined ? String(body.name).trim() : current.name,
+    active: typeof body.active === 'boolean' ? body.active : current.active,
+  };
+  const error = checkRoom(next);
+  if (error) return { error };
+  try {
+    const [r] = await q(
+      'update salles set site = :site, name = :name, active = :active where id = :id returning id, site, name, active',
+      { id, ...next }
+    );
+    return { room: roomRow(r) };
+  } catch (err) {
+    if (DUPLICATE.test(err.message || '')) return { error: 'Cette salle existe déjà sur ce site' };
+    throw err;
+  }
+};

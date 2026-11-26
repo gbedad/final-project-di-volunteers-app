@@ -23,7 +23,7 @@ import {
   editSession,
 } from '../controllers/binomes.controllers.js';
 import { listExtras, teamAddExtra, teamDeleteExtra, tutorDeclareToday } from '../controllers/extraSessions.controllers.js';
-import { getWeekPlanning, setRoom, copyRooms } from '../controllers/weekPlanning.controllers.js';
+import { getWeekPlanning, setRoom, copyRooms, listRooms, addRoom, editRoom } from '../controllers/weekPlanning.controllers.js';
 import {
   myAddBreak,
   myDeleteBreak,
@@ -51,6 +51,10 @@ router.get('/admin/binomes/planning', pairsViewAuth, getWeekPlanning);
 // Room of each session (planning): one session, or the week before copied
 router.put('/admin/session-rooms', managerAuth, setRoom);
 router.post('/admin/session-rooms/copy', managerAuth, copyRooms);
+// The list of rooms (team reads; the managers add, rename, deactivate)
+router.get('/admin/salles', pairsViewAuth, listRooms);
+router.post('/admin/salles', managerAuth, addRoom);
+router.patch('/admin/salles/:id', managerAuth, editRoom);
 router.get('/admin/binomes/:id/seances', pairsViewAuth, pairSessions);
 // Sessions log of the team (recorded and expected sessions of a period)
 router.get('/admin/seances', pairsViewAuth, listSessionLog);
