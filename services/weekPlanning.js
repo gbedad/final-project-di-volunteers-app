@@ -9,6 +9,7 @@ import { scheduleOn, dayOf } from './pairSchedule.js';
 import { addDays, offDayFinder, parisToday, weekOf } from './schoolCalendar.js';
 import { breaksOf, breakOn } from './pairBreaks.js';
 import { extrasOf, extraOn } from './extraSessions.js';
+import { activeRooms, roomIndex, markRoomConflicts } from './rooms.js';
 
 const REMOTE = /^\s*(à|a) distance\s*$/i;
 const isRemote = (pair) => REMOTE.test(pair.how_location || '');
@@ -49,6 +50,9 @@ export const weekPlanning = async (from) => {
   const { off } = await offDayFinder();
   const breaks = await breaksOf(ids, from);
   const extras = await extrasOf(ids, from, to);
+  // Room of each session of the week, and the rooms to choose from
+  const rooms = await roomIndex(ids, from, to);
+  const roomChoices = await activeRooms();
 
   const days = dates.map((date) => ({ date, day: dayOf(date), off: off(date), rows: [] }));
 
@@ -123,10 +127,23 @@ export const weekPlanning = async (from) => {
   }
 
   for (const d of days) {
+    // Room of each session; a session without one is flagged (not for pauses
+    // or remote sessions)
+    d.rows = d.rows.map((r) => {
+      const room = rooms[`${r.binome_id}|${d.date}|${r.start}`] || null;
+      return {
+        ...r,
+        date: d.date,
+        room_id: room?.room_id ?? null,
+        room_label: room?.room_label ?? null,
+        needs_room: !r.remote && r.kind !== 'pause' && !room,
+      };
+    });
     d.rows.sort((a, b) => String(a.start).localeCompare(String(b.start)) || a.student.localeCompare(b.student));
+    markRoomConflicts(d.rows);
   }
 
-  return { from, to, days, total: days.reduce((n, d) => n + d.rows.length, 0) };
+  return { from, to, days, rooms: roomChoices, total: days.reduce((n, d) => n + d.rows.length, 0) };
 };
 
 export default weekPlanning;

@@ -23,7 +23,7 @@ import {
   editSession,
 } from '../controllers/binomes.controllers.js';
 import { listExtras, teamAddExtra, teamDeleteExtra, tutorDeclareToday } from '../controllers/extraSessions.controllers.js';
-import { getWeekPlanning } from '../controllers/weekPlanning.controllers.js';
+import { getWeekPlanning, setRoom, copyRooms } from '../controllers/weekPlanning.controllers.js';
 import {
   myAddBreak,
   myDeleteBreak,
@@ -48,6 +48,9 @@ router.patch('/admin/seances/:id', managerAuth, teamEditSession);
 // Follow-up: every pair with figures and alerts, reports of a pair
 router.get('/admin/binomes', pairsViewAuth, listPairs);
 router.get('/admin/binomes/planning', pairsViewAuth, getWeekPlanning);
+// Room of each session (planning): one session, or the week before copied
+router.put('/admin/session-rooms', managerAuth, setRoom);
+router.post('/admin/session-rooms/copy', managerAuth, copyRooms);
 router.get('/admin/binomes/:id/seances', pairsViewAuth, pairSessions);
 // Sessions log of the team (recorded and expected sessions of a period)
 router.get('/admin/seances', pairsViewAuth, listSessionLog);

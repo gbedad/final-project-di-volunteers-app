@@ -15,6 +15,8 @@ import { sessionLog, parisToday } from '../services/sessionLog.js';
 import { slotOn as slotOnDate, withNewSchedule } from '../services/pairSchedule.js';
 import { syncTutorActive } from '../services/tutorActivity.js';
 import { breaksOf } from '../services/pairBreaks.js';
+import { roomsOf } from '../services/rooms.js';
+import { addDays } from '../services/schoolCalendar.js';
 import { addExtra, extraMinutes, extraOn, extrasOf } from '../services/extraSessions.js';
 import {
   notifyPairProposed,
@@ -451,6 +453,8 @@ export const myPairs = async (req, res) => {
     const breaks = await breaksOf(pairs.map((p) => p.id), parisToday());
     // Exceptional sessions from today on (set by the association)
     const extras = await extrasOf(pairs.map((p) => p.id), parisToday());
+    // Rooms of the next two weeks: the tutor sees where to go
+    const rooms = await roomsOf(pairs.map((p) => p.id), parisToday(), addDays(parisToday(), 14));
     res.json(
       pairs.map((p) => {
         const s = students.find((x) => x.id === p.student_id) || {};
@@ -458,6 +462,7 @@ export const myPairs = async (req, res) => {
           ...p,
           breaks: breaks[p.id] || [],
           extras: extras[p.id] || [],
+          rooms: rooms[p.id] || [],
           sessions: sessions[p.id] || [],
           stats: pairStats(p, sessions[p.id] || []),
           student: {
