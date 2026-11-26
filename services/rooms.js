@@ -16,6 +16,12 @@ const minutesOf = (hhmm) => {
 
 export const roomLabel = (r) => `${r.site} · ${r.name}`;
 
+// Two sessions of the same room count together when they share at least this
+// many minutes
+const MIN_OVERLAP = 30;
+const overlapOf = (a, b) =>
+  Math.min(minutesOf(a.end), minutesOf(b.end)) - Math.max(minutesOf(a.start), minutesOf(b.start));
+
 // Active rooms, by site then name: the choices of the planning
 export const activeRooms = async () =>
   (await q('select id, site, name, capacite, seuil_alerte from salles where active order by site, name')).map((r) => ({
@@ -102,10 +108,11 @@ export const copyPreviousWeekRooms = async (from, userId) => {
   return copied.length;
 };
 
-// Sessions of the same room that overlap in time. A session is in conflict
-// when more sessions than the room's capacity are there at the same time;
-// it gets a warning from the room's alert threshold (3 for Salle Haute, whose
-// capacity is 4). A room of capacity 1 therefore refuses any overlap.
+// Occupation of a room: for a session, the sessions of the same room that
+// share at least 30 minutes with it, plus itself. A session is in conflict
+// when that number is above the room's capacity; it gets a warning from the
+// room's alert threshold (3 for Salle Haute, whose capacity is 4). A room of
+// capacity 1 therefore refuses any overlap of 30 minutes or more.
 // capacityOf(room_id) => { capacite, seuil_alerte }. Rows without a room,
 // pauses and remote sessions are left out.
 export const markRoomConflicts = (rows, capacityOf) => {
@@ -113,15 +120,13 @@ export const markRoomConflicts = (rows, capacityOf) => {
   for (const r of used) {
     const s = minutesOf(r.start);
     const e = minutesOf(r.end);
-    const clash = used.filter(
-      (o) => o !== r && o.room_id === r.room_id && minutesOf(o.start) < e && s < minutesOf(o.end)
-    );
+    // Sessions of the same room sharing at least MIN_OVERLAP minutes with this one
+    const clash = used.filter((o) => o !== r && o.room_id === r.room_id && overlapOf(r, o) >= MIN_OVERLAP);
     const { capacite = 1, seuil_alerte = null } = capacityOf(r.room_id) || {};
     const count = clash.length + 1;
-    const names = clash.map((o) => o.student);
     r.room_count = count;
     r.room_conflict = count > capacite;
-    r.room_conflict_with = names;
+    r.room_conflict_with = clash.map((o) => o.student);
     r.room_warning = !r.room_conflict && !!seuil_alerte && count >= seuil_alerte;
   }
   return rows;
