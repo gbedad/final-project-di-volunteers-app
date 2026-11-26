@@ -534,7 +534,6 @@ export const bulkUpdateUsers = async (req, res) => {
         'first_name',
         'email',
         'email2',
-        'honorability_received',
       ],
     });
     for (const user of users) {

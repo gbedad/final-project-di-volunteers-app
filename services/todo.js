@@ -53,7 +53,6 @@ export const todoList = async () => {
       'paper_documents',
       'b3_received',
       'convention_received',
-      'honorability_received',
       'engagements',
       'engagements_wished',
     ],
@@ -69,14 +68,9 @@ export const todoList = async () => {
   const missingDocs = validated
     .map((u) => ({
       u,
-      // Accompanying volunteer: no convention, the attestation at once
       missing: isTutor(u)
-        ? [
-            !u.b3_received && 'B3',
-            !u.convention_received && 'convention',
-            u.convention_received && !u.honorability_received && "attestation d'honorabilité",
-          ].filter(Boolean)
-        : [!u.b3_received && 'B3', !u.honorability_received && "attestation d'honorabilité"].filter(Boolean),
+        ? [!u.b3_received && 'B3', !u.convention_received && 'convention'].filter(Boolean)
+        : [!u.b3_received && 'B3'].filter(Boolean),
     }))
     .filter((x) => x.missing.length)
     .map(({ u, missing }) => ({ id: u.id, label: name(u), detail: missing.join(', '), link: tutorLink(u) }));

@@ -26,7 +26,6 @@ export const DOC_TYPES = [
   'cv',
   'id',
   'b3',
-  'honorability',
   'other',
   // Signed by the volunteer, then countersigned by the president
   'convention',
@@ -45,21 +44,6 @@ export const RECEIVED_FLAGS = {
   id: 'id_received',
   b3: 'b3_received',
   convention: 'convention_received',
-  honorability: 'honorability_received',
-};
-
-// The attestation d'honorabilité is due one month after the convention is
-// signed by both sides: the date of the countersigned convention
-export const honorabilityDeadline = (files) => {
-  const dates = files
-    .filter(
-      (f) => f.doc_type === 'convention_final' && isAvailable(f) && f.uploaded_at
-    )
-    .map((f) => new Date(f.uploaded_at));
-  if (!dates.length) return null;
-  const due = new Date(Math.min(...dates));
-  due.setMonth(due.getMonth() + 1);
-  return due;
 };
 
 const hasItems = (value) => Array.isArray(value) && value.length > 0;
@@ -110,7 +94,6 @@ export const applicationProgress = async (userId) => {
       'zipcode',
       'activity',
       'convention_received',
-      'honorability_received',
       'paper_documents',
       'engagements',
       'engagements_wished',
@@ -119,8 +102,7 @@ export const applicationProgress = async (userId) => {
   });
   if (!user) return null;
   // Tutor: full application; accompanying volunteer (outings only): no
-  // tutoring wishes, no CV, no convention, but B3 and attestation
-  // d'honorabilité (with minors)
+  // tutoring wishes, no CV, no convention, but the B3
   const tutor = isTutor(user);
   const skill = await Skills.findOne({ where: { userId } });
   const files = await Files.findAll({
@@ -148,17 +130,13 @@ export const applicationProgress = async (userId) => {
     cv: has('cv'),
     id: has('id'),
     b3: has('b3'),
-    // Received as a file or on paper (ticked by an admin)
-    honorability: !!user.honorability_received || has('honorability'),
   };
   // Complete with the countersigned file, or ticked "reçue sur papier"
   const convention = conventionState(
     files,
     (user.paper_documents || []).includes('convention')
   );
-  // The attestation d'honorabilité is asked once the convention is complete
   const conventionSigned = convention.state === 'complete';
-  const due = honorabilityDeadline(files);
   // The criminal record (B3) is only needed for the final validation
   // (no CV asked from an accompanying volunteer)
   const readyToSubmit =
@@ -175,7 +153,6 @@ export const applicationProgress = async (userId) => {
     details,
     conventionSigned,
     convention,
-    honorabilityDue: due,
     readyToSubmit,
     canSubmit: readyToSubmit && EARLY_STATUSES.includes(user.status),
   };
@@ -260,12 +237,10 @@ export const documentsStatus = async (userId) => {
       received: !!file || paper.includes(type),
     };
   });
-  const due = honorabilityDeadline(files);
   return {
     documents,
     convention: conventionState(files, paper.includes('convention')),
     test_voltaire_passed: !!user.test_voltaire_passed,
-    honorability_due: due,
   };
 };
 
@@ -326,7 +301,7 @@ export const submitApplication = async (userId) => {
       progress.documents.b3
         ? ''
         : !progress.tutor
-          ? "<p>Avant la validation de votre candidature, il vous sera demandé un extrait de casier judiciaire (B3) et une attestation d'honorabilité : vous pouvez dès maintenant les demander en ligne et les déposer dans l'onglet « Mes documents ».</p>"
+          ? "<p>Avant la validation de votre candidature, il vous sera demandé un extrait de casier judiciaire (B3) : vous pouvez dès maintenant le demander en ligne et le déposer dans l'onglet « Mes documents ».</p>"
           : "<p>Avant la signature de la convention, il vous sera demandé un extrait de casier judiciaire (B3) : vous pouvez dès maintenant le demander en ligne et le déposer dans l'onglet « Mes documents ».</p>"
     }
     <p>À très vite,<br>L'équipe MyCogniverse</p>`

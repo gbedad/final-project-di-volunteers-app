@@ -5,7 +5,7 @@ import File from '../models/files.model.js';
 import ConventionSignatures from '../models/conventionSignatures.model.js';
 import { fileUrl, privateDownloadUrl, safeFileName } from '../config/aws.config.js';
 import { CONVENTION_TEMPLATE_KEY } from '../config/multer.js';
-import { honorabilityDeadline, updateReceivedFlag } from '../services/application.js';
+import { updateReceivedFlag } from '../services/application.js';
 import { notifyConventionCountersigned, notifyConventionSigned } from '../services/convention.js';
 import {
   CHARTE_KEY,
@@ -49,7 +49,7 @@ const loadVolunteer = (id) =>
   Users.findByPk(id, {
     attributes: [
       'id', 'first_name', 'last_name', 'email', 'email2', 'role', 'status',
-      'honorability_received', 'charte_read_at', 'charte_version',
+      'charte_read_at', 'charte_version',
       'convention_end_date', 'convention_other',
     ],
     include: ['skill'],
@@ -309,8 +309,7 @@ export const countersignConvention = async (req, res) => {
       document_hash: sha256(bytes),
       file_id: file.id,
     });
-    const files = await File.findAll({ where: { userId: user.id }, attributes: ['path', 'doc_type', 'uploaded_at'] });
-    notifyConventionCountersigned(user, honorabilityDeadline(files));
+    notifyConventionCountersigned(user);
     res.json({ signed_at: signedAt, file_id: file.id });
   } catch (err) {
     fail(res, err, "La convention n'a pas pu être contresignée");

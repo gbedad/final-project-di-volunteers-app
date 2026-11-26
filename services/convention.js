@@ -31,19 +31,15 @@ const send = (to, subject, html, label) =>
   );
 
 // Status "A finaliser", accompanying volunteer (no convention): the last
-// documents to give before the validation
+// document to give before the validation
 const notifyDocumentsToGive = (user) =>
   send(
     user.email2 || user.email,
-    'Votre candidature est retenue : dernière étape, vos documents',
+    'Votre candidature est retenue : dernière étape, votre document',
     `<p>Bonjour ${escapeHtml(user.first_name)},</p>
     <p>Bonne nouvelle : à la suite de votre entretien, l'association Séphora Berrebi est heureuse de poursuivre avec vous !</p>
-    <p>Comme vous accompagnerez des enfants, deux documents sont nécessaires avant de valider votre candidature :</p>
-    <ul>
-      <li>un <b>extrait de casier judiciaire (B3)</b>, à demander gratuitement en ligne ;</li>
-      <li>une <b>attestation d'honorabilité</b>.</li>
-    </ul>
-    <p>Déposez-les dans l'onglet « Mes documents » de votre espace.</p>
+    <p>Comme vous accompagnerez des enfants, il vous reste à fournir un <b>extrait de casier judiciaire (B3)</b>, à demander gratuitement en ligne, avant de valider votre candidature.</p>
+    <p>Déposez-le dans l'onglet « Mes documents » de votre espace.</p>
     <p>${emailButton(`${clientUrl()}/login`, 'Accéder à mon espace')}</p>
     ${signature}`,
     'Documents to give'
@@ -91,21 +87,12 @@ export const notifyConventionSigned = (user) =>
   );
 
 // The countersigned convention is available to the volunteer
-export const notifyConventionCountersigned = (user, honorabilityDue) =>
+export const notifyConventionCountersigned = (user) =>
   send(
     user.email2 || user.email,
     "Votre convention est signée par l'association",
     `<p>Bonjour ${escapeHtml(user.first_name)},</p>
     <p>Votre convention d'engagement réciproque est désormais signée par vous et par la présidente de l'association. Vous pouvez la télécharger dans l'onglet « Ma convention » de votre espace.</p>
-    ${
-      user.honorability_received
-        ? ''
-        : `<p>Dernier document à fournir : votre <b>attestation d'honorabilité</b>${
-            honorabilityDue
-              ? `, au plus tard le ${formatDate(honorabilityDue)}`
-              : ''
-          }, à déposer dans l'onglet « Mes documents ».</p>`
-    }
     <p>Merci pour votre engagement !</p>
     <p>${emailButton(conventionLink(), 'Accéder à mon espace')}</p>
     ${signature}`,
@@ -139,11 +126,6 @@ const sendTutorValidated = (user) =>
     <p>Votre candidature est <b>validée</b> : bienvenue parmi les tuteurs bénévoles de l'association Séphora Berrebi !</p>
     <p>Nous recherchons maintenant, parmi les demandes de tutorat, l'élève qui correspond le mieux à vos souhaits et à vos disponibilités, et nous revenons vers vous très vite.</p>
     <p>D'ici là, pensez à tenir à jour vos disponibilités dans votre espace.</p>
-    ${
-      user.honorability_received
-        ? ''
-        : "<p>N'oubliez pas de déposer votre <b>attestation d'honorabilité</b> dans l'onglet « Mes documents », si ce n'est pas encore fait.</p>"
-    }
     <p>${emailButton(`${clientUrl()}/login`, 'Accéder à mon espace')}</p>
     <p>Merci pour votre engagement,<br>L'équipe MyCogniverse</p>`,
     'Application validated'

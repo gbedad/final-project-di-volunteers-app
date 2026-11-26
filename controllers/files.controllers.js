@@ -16,7 +16,6 @@ import {
 import {
   DOC_TYPES,
   updateReceivedFlag,
-  honorabilityDeadline,
   conventionState,
   applicationProgress,
   submitApplication as submit,
@@ -90,23 +89,12 @@ export const uploadFile = async (req, res) => {
     // that it is complete
     if (docType === 'convention' || docType === 'convention_final') {
       const volunteer = await Users.findByPk(userId, {
-        attributes: [
-          'id',
-          'first_name',
-          'last_name',
-          'email',
-          'email2',
-          'honorability_received',
-        ],
+        attributes: ['id', 'first_name', 'last_name', 'email', 'email2'],
       });
       if (volunteer && docType === 'convention') {
         notifyConventionSigned(volunteer);
       } else if (volunteer) {
-        const files = await File.findAll({
-          where: { userId },
-          attributes: ['path', 'doc_type', 'uploaded_at'],
-        });
-        notifyConventionCountersigned(volunteer, honorabilityDeadline(files));
+        notifyConventionCountersigned(volunteer);
       }
     }
   } catch (err) {
@@ -203,16 +191,9 @@ export const adminDeleteFile = async (req, res) => {
   }
 };
 
-// Volunteers with at least one document not yet marked as received. The
-// attestation d'honorabilité only counts once the convention is signed.
+// Volunteers with at least one document not yet marked as received
 export const adminMissingDocuments = async (req, res) => {
-  const flags = [
-    'cv_received',
-    'id_received',
-    'b3_received',
-    'convention_received',
-    'honorability_received',
-  ];
+  const flags = ['cv_received', 'id_received', 'b3_received', 'convention_received'];
   try {
     const users = await Users.findAll({
       where: { role: 'volunteer' },
@@ -235,14 +216,7 @@ export const adminMissingDocuments = async (req, res) => {
       ],
       order: [['last_name', 'ASC']],
     });
-    const now = new Date();
     const rows = users.map((u) => {
-      const due = honorabilityDeadline(u.file);
-      // Asked once the convention is complete
-      const honorabilityNeeded = conventionState(
-        u.file,
-        (u.paper_documents || []).includes('convention')
-      ).state === 'complete';
       const convention = conventionState(
         u.file,
         (u.paper_documents || []).includes('convention')
@@ -260,13 +234,6 @@ export const adminMissingDocuments = async (req, res) => {
         convention_received: !!u.convention_received,
         // to_sign | to_countersign | complete
         convention_state: convention.state,
-        // null: not asked yet (no convention)
-        honorability_received: honorabilityNeeded
-          ? !!u.honorability_received
-          : null,
-        honorability_due: due,
-        honorability_late:
-          honorabilityNeeded && !u.honorability_received && !!due && due < now,
         files_uploaded: u.file.length,
       };
     });
@@ -276,8 +243,7 @@ export const adminMissingDocuments = async (req, res) => {
           !r.cv_received ||
           !r.id_received ||
           !r.b3_received ||
-          !r.convention_received ||
-          r.honorability_received === false
+          !r.convention_received
       )
     );
   } catch (err) {
