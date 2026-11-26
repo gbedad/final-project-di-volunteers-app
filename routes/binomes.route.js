@@ -8,6 +8,7 @@ import {
   updatePair,
   updatePairDetails,
   confirmSession,
+  teamEditSession,
   myPairs,
   answerPair,
   listPairs,
@@ -43,6 +44,7 @@ router.patch('/admin/binomes/:id', managerAuth, updatePair);
 router.patch('/admin/binomes/:id/details', managerAuth, updatePairDetails);
 // Session confirmed by the team (no sign-in: call, message…)
 router.post('/admin/binomes/:id/seances', managerAuth, confirmSession);
+router.patch('/admin/seances/:id', managerAuth, teamEditSession);
 // Follow-up: every pair with figures and alerts, reports of a pair
 router.get('/admin/binomes', pairsViewAuth, listPairs);
 router.get('/admin/binomes/planning', pairsViewAuth, getWeekPlanning);
