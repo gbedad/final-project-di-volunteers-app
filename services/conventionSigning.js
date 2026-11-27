@@ -10,10 +10,23 @@ import { formatName } from './names.js';
 
 export const CHARTE_KEY = `${TEMPLATES_PREFIX}/charte`;
 export const PRESIDENT_SIGNATURE_KEY = `${TEMPLATES_PREFIX}/signature-presidente.png`;
-// Only the president countersigns
+export const PRESIDENT_NAME = 'Emmanuelle Berrebi';
+// The president countersigns. A delegate (PRESIDENT_DELEGATE_EMAILS, comma
+// separated) countersigns in her place, with his or her own signature.
 export const presidentEmail = () =>
   (process.env.PRESIDENT_EMAIL || 'e.berrebi@sephoraberrebi.org').toLowerCase();
+export const delegateEmails = () =>
+  (process.env.PRESIDENT_DELEGATE_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
 export const isPresident = (user) => !!user?.email && user.email.toLowerCase() === presidentEmail();
+export const isDelegate = (user) => !!user?.email && delegateEmails().includes(user.email.toLowerCase());
+export const canCountersign = (user) => isPresident(user) || isDelegate(user);
+// Each countersigner keeps one signature image: the president's is the one
+// used for the automatic countersignature of family conventions
+export const signatureKeyFor = (user) =>
+  isPresident(user) ? PRESIDENT_SIGNATURE_KEY : `${TEMPLATES_PREFIX}/signature-delegue-${user.id}.png`;
 
 // Fields of the template: the agreed names, or LibreOffice's default ones
 export const FIELDS = {
@@ -182,7 +195,10 @@ export const drawSignature = async (pdf, side, png, caption) => {
   const h = image.height * scale;
   const y = H - top - 18 - h;
   page.drawImage(image, { x, y, width: w, height: h });
-  page.drawText(caption, { x, y: y - 10, size: 7, font, color: rgb(0.2, 0.2, 0.2) });
+  // A caption may span several lines (separated by \n)
+  caption.split('\n').forEach((line, i) =>
+    page.drawText(line, { x, y: y - 10 - i * 9, size: 7, font, color: rgb(0.2, 0.2, 0.2) })
+  );
 };
 
 export const sha256 = (bytes) => crypto.createHash('sha256').update(Buffer.from(bytes)).digest('hex');

@@ -9,7 +9,8 @@ import { updateReceivedFlag } from '../services/application.js';
 import { notifyConventionCountersigned, notifyConventionSigned } from '../services/convention.js';
 import {
   CHARTE_KEY,
-  PRESIDENT_SIGNATURE_KEY,
+  PRESIDENT_NAME,
+  canCountersign,
   charteInfo,
   checkTemplate,
   conventionValues,
@@ -17,6 +18,7 @@ import {
   drawSignature,
   fillConvention,
   isPresident,
+  signatureKeyFor,
   readStored,
   readTemplate,
   sha256,
@@ -25,6 +27,7 @@ import {
 } from '../services/conventionSigning.js';
 import { PDFDocument } from 'pdf-lib';
 import { privateFileInfo } from '../config/aws.config.js';
+import { formatName } from '../services/names.js';
 
 // Browsers send the file name in UTF-8, read as Latin-1 by multer
 const fileNameOf = (file) => {
@@ -144,7 +147,7 @@ export const getConventionSigning = async (req, res) => {
       convention_end_date: user.convention_end_date || defaultEndDate(),
       convention_other: user.convention_other || '',
       values: conventionValues(user.toJSON()),
-      i_am_president: isPresident(await Users.findByPk(userIdOf(req), { attributes: ['email'] })),
+      can_countersign: canCountersign(await Users.findByPk(userIdOf(req), { attributes: ['email'] })),
     });
   } catch (err) {
     fail(res, err, 'Could not load the convention');
@@ -235,36 +238,39 @@ export const signConvention = async (req, res) => {
   }
 };
 
-const presidentOnly = async (req, res) => {
-  const me = await Users.findByPk(userIdOf(req), { attributes: ['id', 'email'] });
-  if (!isPresident(me)) {
-    res.status(403).json({ error: 'Réservé à la présidente de l’association' });
+// The president, or her delegate, countersigns
+const countersignerOnly = async (req, res) => {
+  const me = await Users.findByPk(userIdOf(req), { attributes: ['id', 'email', 'first_name', 'last_name'] });
+  if (!canCountersign(me)) {
+    res.status(403).json({ error: 'Réservé à la présidente de l’association et à sa déléguée' });
     return null;
   }
   return me;
 };
 
-// Signature of the president, drawn once
+// Signature of the countersigner, drawn once
 export const getPresidentSignature = async (req, res) => {
-  if (!(await presidentOnly(req, res))) return;
-  res.json({ saved: !!(await privateFileInfo(PRESIDENT_SIGNATURE_KEY)) });
+  const me = await countersignerOnly(req, res);
+  if (!me) return;
+  res.json({ saved: !!(await privateFileInfo(signatureKeyFor(me))) });
 };
 export const savePresidentSignature = async (req, res) => {
-  if (!(await presidentOnly(req, res))) return;
+  const me = await countersignerOnly(req, res);
+  if (!me) return;
   const png = pngOf(req.body.signature);
   if (!png) return res.status(400).json({ error: 'Merci de signer dans le cadre prévu.' });
   try {
-    await writeObject(PRESIDENT_SIGNATURE_KEY, png, 'image/png');
+    await writeObject(signatureKeyFor(me), png, 'image/png');
     res.json({ saved: true });
   } catch (err) {
     fail(res, err, "La signature n'a pas pu être enregistrée");
   }
 };
 
-// The president countersigns the convention signed online
+// The president (or her delegate) countersigns the convention signed online
 export const countersignConvention = async (req, res) => {
   try {
-    const me = await presidentOnly(req, res);
+    const me = await countersignerOnly(req, res);
     if (!me) return;
     const user = await loadVolunteer(req.params.id);
     if (!user) return res.status(404).json({ error: 'Bénévole introuvable' });
@@ -280,13 +286,17 @@ export const countersignConvention = async (req, res) => {
     }
     let png;
     try {
-      png = await readStored(PRESIDENT_SIGNATURE_KEY);
+      png = await readStored(signatureKeyFor(me));
     } catch {
       return res.status(409).json({ error: 'Enregistrez d’abord votre signature.', code: 'no_signature' });
     }
     const signedAt = new Date();
     const pdf = await PDFDocument.load(await readStored(source.path));
-    await drawSignature(pdf, 'president', png, `Contresigné électroniquement le ${frDateTime(signedAt)}`);
+    const caption = isPresident(me)
+      ? `Contresigné électroniquement le ${frDateTime(signedAt)}`
+      : // The delegate signs for the president: say so on the document
+        `Pour ${PRESIDENT_NAME}, présidente\nContresigné par ${formatName(me.first_name || '')} ${String(me.last_name || '').toUpperCase()}\nélectroniquement le ${frDateTime(signedAt)}`;
+    await drawSignature(pdf, 'president', png, caption);
     const bytes = await pdf.save();
     const key = `conventions/${user.id}/convention-contresignee-${safeFileName('en-ligne.pdf')}`;
     await writeObject(key, bytes);
